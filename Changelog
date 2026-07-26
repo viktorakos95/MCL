@@ -1,3 +1,7 @@
+MCL 5.02 26/06/2026
+
+- Hotfix for regression in track LEV parameter loading.
+
 MCL 5.01 14/06/2026
 
 - Hotfix for regression in external MIDI and transport forwarding.
