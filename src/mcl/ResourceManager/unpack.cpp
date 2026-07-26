@@ -48,9 +48,11 @@ size_t unpack(uint8_t* src, uint8_t* dst) {
 
       auto bit1 = shift(state, src);
       auto bit2 = shift(state, src);
-      auto len = SHL32_WITH(bit2, bit1);
+      // Copy runs are bounded by ResourceManager's <= 32768-byte output
+      // buffer. Keep idx/shift_len 32-bit: the end marker is 0x01000002.
+      uint16_t len = SHL_WITH_0(bit1) + bit2;
       if (len == 0) {
-        len = shift_len(state, src) + 2;
+        len = (uint16_t)shift_len(state, src) + 2;
       }
       len = len + 1 + (0xd00 < dst_lookback);
 
