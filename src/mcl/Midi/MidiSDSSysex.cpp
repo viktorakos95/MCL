@@ -18,10 +18,18 @@ void MidiSDSSysexListenerClass::start() {
 #define MD_ID 0x02
 #define MD_SDS_NAME 0x73
 
-static uint32_t read_sds_u21(const SysexView &view, uint8_t &idx) {
-  uint32_t value = view.getByte(idx++);
-  value |= ((uint32_t)view.getByte(idx++) << 7);
-  value |= ((uint32_t)view.getByte(idx++) << 14);
+static constexpr uint8_t SDS_DUMP_SAMPLE_NUMBER = 3;
+static constexpr uint8_t SDS_DUMP_SAMPLE_FORMAT = 5;
+static constexpr uint8_t SDS_DUMP_SAMPLE_PERIOD = 6;
+static constexpr uint8_t SDS_DUMP_SAMPLE_LENGTH = 9;
+static constexpr uint8_t SDS_DUMP_LOOP_START = 12;
+static constexpr uint8_t SDS_DUMP_LOOP_END = 15;
+static constexpr uint8_t SDS_DUMP_LOOP_TYPE = 18;
+
+static uint32_t read_sds_u21(const SysexView &view, uint8_t idx) {
+  uint32_t value = view.getByte(idx);
+  value |= ((uint32_t)view.getByte(idx + 1) << 7);
+  value |= ((uint32_t)view.getByte(idx + 2) << 14);
   return value;
 }
 
@@ -120,24 +128,24 @@ void MidiSDSSysexListenerClass::dump_request() {}
 
 void MidiSDSSysexListenerClass::dump_header(const SysexView &view) {
   sds_name_rec = false;
-  uint8_t i = 3;
 
-  midi_sds.sampleNumber = view.getByte(i++);
-  midi_sds.sampleNumber |= ((uint32_t)view.getByte(i++) << 7);
+  midi_sds.sampleNumber = view.getByte(SDS_DUMP_SAMPLE_NUMBER);
+  midi_sds.sampleNumber |=
+      ((uint16_t)view.getByte(SDS_DUMP_SAMPLE_NUMBER + 1) << 7);
 
-  midi_sds.sampleFormat = view.getByte(i++);
+  midi_sds.sampleFormat = view.getByte(SDS_DUMP_SAMPLE_FORMAT);
 
-  midi_sds.samplePeriod = read_sds_u21(view, i);
+  midi_sds.samplePeriod = read_sds_u21(view, SDS_DUMP_SAMPLE_PERIOD);
 
   // SampleLength in words;
-  DEBUG_PRINTLN(view.getByte(i));
-  midi_sds.sampleLength = read_sds_u21(view, i);
+  DEBUG_PRINTLN(view.getByte(SDS_DUMP_SAMPLE_LENGTH));
+  midi_sds.sampleLength = read_sds_u21(view, SDS_DUMP_SAMPLE_LENGTH);
 
-  midi_sds.loopStart = read_sds_u21(view, i);
+  midi_sds.loopStart = read_sds_u21(view, SDS_DUMP_LOOP_START);
 
-  midi_sds.loopEnd = read_sds_u21(view, i);
+  midi_sds.loopEnd = read_sds_u21(view, SDS_DUMP_LOOP_END);
 
-  midi_sds.loopType = view.getByte(i++);
+  midi_sds.loopType = view.getByte(SDS_DUMP_LOOP_TYPE);
 
   DEBUG_PRINTLN(midi_sds.sampleLength);
   if (midi_sds.samplePeriod == 0) {
