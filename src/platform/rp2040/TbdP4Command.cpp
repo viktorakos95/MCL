@@ -4,6 +4,7 @@
 
 #include "DaDa_SPI.h"
 #include "MidiUart.h"
+#include "TbdP4DmaRecovery.h"
 #include "global.h"
 #include <Arduino.h>
 #include <new>
@@ -124,6 +125,7 @@ bool TbdP4CommandTransport::transfer_frame(uint32_t timeout_ms) {
   while (spi.IsBusy()) {
     if (timeout_ms != 0 && (millis() - start_ms) >= timeout_ms) {
       ready_timeouts_++;
+      tbd_p4_recover_spi_dma(spi0, kSpiSpeed);
       return false;
     }
     service_realtime_while_waiting();
@@ -141,6 +143,7 @@ bool TbdP4CommandTransport::transfer_frame(uint32_t timeout_ms) {
   while (spi.IsBusy()) {
     if (timeout_ms != 0 && (millis() - start_ms) >= timeout_ms) {
       ready_timeouts_++;
+      tbd_p4_recover_spi_dma(spi0, kSpiSpeed);
       return false;
     }
     service_realtime_while_waiting();

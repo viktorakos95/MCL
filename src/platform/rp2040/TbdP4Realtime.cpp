@@ -4,6 +4,7 @@
 
 #include "Arduino.h"
 #include "DaDa_SPI.h"
+#include "TbdP4DmaRecovery.h"
 #include "../../mcl/Midi/midi-common.h"
 #include <hardware/gpio.h>
 #include <hardware/spi.h>
@@ -401,11 +402,13 @@ bool TbdP4RealtimeTransport::finish_transaction() {
   DaDa_SPI &spi = realtime_spi_instance();
   if (spi.IsBusy()) {
     uint32_t now = now_ms();
-    if (spi_deadline_ms_ != 0 && now > spi_deadline_ms_) {
+    if (spi_deadline_ms_ != 0 &&
+        (int32_t)(now - spi_deadline_ms_) >= 0) {
       error_count_++;
       dma_timeout_count_++;
       spi_active_ = false;
-      can_prepare_request_ = true;
+      dma_reset_pending_ = true;
+      can_prepare_request_ = false;
       request_prepared_ = false;
       last_seen_response_ = 0;
       return false;
@@ -419,6 +422,7 @@ bool TbdP4RealtimeTransport::finish_transaction() {
 }
 
 void TbdP4RealtimeTransport::abort_transaction_blocking() {
+  tbd_p4_recover_spi_dma(spi1, kSpiSpeed);
   spi_active_ = false;
   dma_reset_pending_ = false;
   can_prepare_request_ = true;
