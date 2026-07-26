@@ -91,6 +91,9 @@ struct wav_sample_t {
 };
 
 struct smplchunk_t : public chunk_t {
+  static constexpr uint32_t kLegacyMclProduct = 0x204C434DUL;
+  static constexpr uint32_t kMcl2Product = 0x324C434DUL;
+
   uint32_t dwManufacturer;
   uint32_t dwProduct;
   uint32_t dwSamplePeriod;
@@ -108,7 +111,7 @@ struct smplchunk_t : public chunk_t {
     dwManufacturer = 0;
     // MCL2 writes standard WAV sample-frame loop indices. Older MCL releases
     // used "MCL " while storing byte offsets instead.
-    memcpy(&dwProduct, "MCL2", 4);
+    dwProduct = kMcl2Product;
     dwSamplePeriod = 0;
     dwMIDIUnityNote = 60; // middle C
     dwMIDIPitchFraction = 0;

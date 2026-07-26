@@ -402,14 +402,12 @@ bool SampleBrowserPage::_handle_filemenu() {
 }
 void SampleBrowserPage::end() {
   SysexView view(sysex);
-  if (view.getByte(3) != 0x02)
-    return;
-  if (view.getByte(4) != 0x00)
-    return;
-  if (view.getByte(5) != 0x72)
-    return;
-  if (view.getByte(6) != 0x34)
-    return;
+  static const uint8_t expected_header[] PROGMEM = {0x02, 0x00, 0x72, 0x34};
+  for (uint8_t i = 0; i < sizeof(expected_header); ++i) {
+    if (view.getByte(3 + i) != pgm_read_byte(expected_header + i)) {
+      return;
+    }
+  }
   int nr_samplecount = view.getByte(7);
   if (nr_samplecount > 48)
     return;

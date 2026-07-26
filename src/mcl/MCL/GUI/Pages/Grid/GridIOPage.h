@@ -6,6 +6,8 @@
 #include "GUI.h"
 #include "MCLMemory.h"
 
+void grid_io_draw_groups_title(const char *groups_P, uint8_t y_offset);
+
 class GridIOPage : public LightPage {
  public:
  static uint32_t track_select;
