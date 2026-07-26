@@ -31,6 +31,15 @@ void GridIOPage::init() {
   R.use_icons_logo();
 }
 
+void grid_io_draw_groups_title(const char *groups_P, uint8_t y_offset)
+    NOINLINE();
+void grid_io_draw_groups_title(const char *groups_P, uint8_t y_offset) {
+  char str[16];
+  mclstr_copy_progmem(str, groups_P, sizeof(str));
+  GridIOPage::draw_title(str, y_offset);
+  mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, y_offset);
+}
+
 void GridIOPage::show_group_select_ui(const char *title_P) {
   show_track_type = true;
   MD.popup_text_P(title_P, true);

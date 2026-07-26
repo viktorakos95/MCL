@@ -87,7 +87,11 @@ public:
   void processSysex();
   void processMidi();
 
+#if defined(__AVR__)
+  void sysexEnd(uint8_t msg_rd) NOINLINE();
+#else
   void sysexEnd(uint8_t msg_rd);
+#endif
   void handleByte(uint8_t c);
 
 #ifdef HOST_MIDIDUINO

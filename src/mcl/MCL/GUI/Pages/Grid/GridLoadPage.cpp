@@ -113,10 +113,7 @@ void GridLoadPage::display_at(uint8_t y_offset) {
 
   oled_display.setFont(&TomThumb);
   if (show_track_type) {
-    char str[16];
-    mclstr_copy_progmem(str, mclstr_load_groups, sizeof(str));
-    draw_title(str, y_offset);
-    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, y_offset);
+    grid_io_draw_groups_title(mclstr_load_groups, y_offset);
   } else {
 #ifdef PLATFORM_TBD
     if (y_offset >= 32) {

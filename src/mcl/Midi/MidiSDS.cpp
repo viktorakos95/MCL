@@ -194,7 +194,7 @@ struct WavReader : SDSFileReader {
       // unmarked 5.00/5.01 MCL file whose standard points are both aligned is
       // inherently ambiguous and will be migrated as legacy.
       const bool legacy_mcl =
-          memcmp(&wav->header.smpl.dwProduct, "MCL ", 4) == 0;
+          wav->header.smpl.dwProduct == smplchunk_t::kLegacyMclProduct;
       if (legacy_mcl && block_align > 1 &&
           loopStart % block_align == 0 && loopEnd % block_align == 0) {
         loopStart /= block_align;

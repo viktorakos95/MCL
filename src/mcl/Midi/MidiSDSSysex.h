@@ -26,7 +26,11 @@ public:
 
   virtual void start();
   virtual void end();
+#if defined(__AVR__)
+  void data_packet(const SysexView &view) NOINLINE();
+#else
   void data_packet(const SysexView &view);
+#endif
   void dump_request();
   void dump_header(const SysexView &view);
   void ack();
