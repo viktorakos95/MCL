@@ -2,13 +2,17 @@
 
 #include "platform.h"
 
-// WAV Designer is a substantial RAM/flash consumer that AVR (MegaCommand)
-// has essentially no spare margin for — disabled there specifically rather
-// than globally, so RP2040/TBD/desktop builds keep it untouched.
-#ifndef __AVR__
 #define WAV_DESIGNER
-#endif
 #define SOUND_PAGE
+
+// AVR (MegaCommand) has essentially no spare flash margin, and the added
+// manual-step-mode feature needs a little more room. Per upstream
+// maintainer guidance, dropping legacy project conversion is the preferred
+// way to free that space (rather than disabling WAV Designer) — see
+// MCL_DISABLE_PROJECT_CONVERSION below.
+#ifdef __AVR__
+#define MCL_DISABLE_PROJECT_CONVERSION
+#endif
 
 /*
  * Single source of truth for MCL feature gates.

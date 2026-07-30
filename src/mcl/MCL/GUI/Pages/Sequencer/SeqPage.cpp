@@ -1911,14 +1911,14 @@ void save_manual_step_to_project_if_settled() {
   }
   pending = false;
 
-  if (proj.cfg.manual_step_enabled == mcl_cfg.manual_step_enabled &&
-      proj.cfg.manual_step_cc == mcl_cfg.manual_step_cc &&
-      proj.cfg.manual_step_port == mcl_cfg.manual_step_port) {
+  if (proj.reserved[MANUAL_STEP_RESERVED_ENABLED_IDX] ==
+          (mcl_cfg.manual_step_enabled ? 1 : 0) &&
+      proj.reserved[MANUAL_STEP_RESERVED_CC_IDX] == mcl_cfg.manual_step_cc &&
+      proj.reserved[MANUAL_STEP_RESERVED_PORT_IDX] == mcl_cfg.manual_step_port) {
     return;
   }
-  proj.cfg.manual_step_enabled = mcl_cfg.manual_step_enabled;
-  proj.cfg.manual_step_cc = mcl_cfg.manual_step_cc;
-  proj.cfg.manual_step_port = mcl_cfg.manual_step_port;
+  // write_header() pulls current mcl_cfg.manual_step_* into reserved[]
+  // itself (see write_project_manual_step() in Project.cpp).
   proj.write_header();
   midi_setup.cfg_ports();
 }

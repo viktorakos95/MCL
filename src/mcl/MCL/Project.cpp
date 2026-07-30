@@ -396,12 +396,6 @@ constexpr size_t PROJECT_CONFIG_SIZE_LEGACY =
     offsetof(MCLSysConfigData, md_sample_bank_capture);
 constexpr size_t PROJECT_HEADER_SIZE_LEGACY_CONFIG =
     offsetof(ProjectHeader, cfg) + PROJECT_CONFIG_SIZE_LEGACY;
-// Size of files saved before manual-step-mode fields existed (i.e. through
-// active_arrangement_idx, the previous tail field).
-constexpr size_t PROJECT_CONFIG_SIZE_PRE_MANUAL_STEP =
-    offsetof(MCLSysConfigData, manual_step_enabled);
-constexpr size_t PROJECT_HEADER_SIZE_PRE_MANUAL_STEP =
-    offsetof(ProjectHeader, cfg) + PROJECT_CONFIG_SIZE_PRE_MANUAL_STEP;
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
 #define PROJECT_VERSION_CAN_OPEN(v)                                           \
@@ -423,9 +417,6 @@ size_t project_header_read_size(File &file) {
   uint32_t file_size = file.fileSize();
   if (file_size >= sizeof(ProjectHeader)) {
     return sizeof(ProjectHeader);
-  }
-  if (file_size >= PROJECT_HEADER_SIZE_PRE_MANUAL_STEP) {
-    return PROJECT_HEADER_SIZE_PRE_MANUAL_STEP;
   }
   if (file_size >= PROJECT_HEADER_SIZE_LEGACY_CONFIG) {
     return PROJECT_HEADER_SIZE_LEGACY_CONFIG;
@@ -475,20 +466,42 @@ void clear_project_sample_bank(MCLSysConfigData *data) {
   data->md_sample_bank_capture = 0;
 }
 
-bool project_config_has_manual_step(const MCLSysConfigData &source) {
-  return source.version == CONFIG_VERSION;
+// Manual-step mode's 3 settings live in ProjectHeader.reserved[] (see the
+// MANUAL_STEP_RESERVED_*_IDX indices in Project.h), not MCLSysConfigData, so
+// growing/changing them never touches CONFIG_VERSION or the config blob
+// layout. reserved[] is all-zero on any project saved before this existed,
+// which already means "disabled, CC 0, port MIDI2" here, so no explicit
+// legacy-file handling is needed.
+uint8_t normalized_manual_step_port(uint8_t port) {
+  return port == MANUAL_STEP_PORT_USB ? MANUAL_STEP_PORT_USB
+                                      : MANUAL_STEP_PORT_MIDI2;
+}
+
+void read_project_manual_step(const ProjectHeader &header) {
+  mcl_cfg.manual_step_enabled =
+      header.reserved[MANUAL_STEP_RESERVED_ENABLED_IDX] ? 1 : 0;
+  mcl_cfg.manual_step_cc = header.reserved[MANUAL_STEP_RESERVED_CC_IDX];
+  mcl_cfg.manual_step_port = normalized_manual_step_port(
+      header.reserved[MANUAL_STEP_RESERVED_PORT_IDX]);
+}
+
+void write_project_manual_step(ProjectHeader *header) {
+  header->reserved[MANUAL_STEP_RESERVED_ENABLED_IDX] =
+      mcl_cfg.manual_step_enabled ? 1 : 0;
+  header->reserved[MANUAL_STEP_RESERVED_CC_IDX] = mcl_cfg.manual_step_cc;
+  header->reserved[MANUAL_STEP_RESERVED_PORT_IDX] = mcl_cfg.manual_step_port;
 }
 
 // Always defaults manual-step mode OFF rather than trusting/inheriting it,
 // since silently resurrecting it on an untrusted/older config could start
 // stepping the MD sequencer off a stale CC binding.
-void clear_project_manual_step(MCLSysConfigData *data) {
-  if (data == nullptr) {
+void clear_project_manual_step(ProjectHeader *header) {
+  if (header == nullptr) {
     return;
   }
-  data->manual_step_enabled = 0;
-  data->manual_step_cc = 0;
-  data->manual_step_port = MANUAL_STEP_PORT_MIDI2;
+  header->reserved[MANUAL_STEP_RESERVED_ENABLED_IDX] = 0;
+  header->reserved[MANUAL_STEP_RESERVED_CC_IDX] = 0;
+  header->reserved[MANUAL_STEP_RESERVED_PORT_IDX] = MANUAL_STEP_PORT_MIDI2;
 }
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
@@ -852,7 +865,6 @@ void copy_project_config(MCLSysConfigData *dst,
   dst->md_sample_bank = normalized_sample_bank_setting(source.md_sample_bank);
   dst->md_sample_bank_capture = 0;
   dst->active_arrangement_idx = source.active_arrangement_idx;
-  clear_project_manual_step(dst);
 }
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
@@ -865,7 +877,6 @@ void normalize_project_config(MCLSysConfigData *data) {
   data->md_sample_bank = sample_bank;
   data->md_sample_bank_capture = 0;
   data->active_arrangement_idx = 0;
-  clear_project_manual_step(data);
 }
 #endif
 
@@ -1339,19 +1350,16 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   // Manual-step mode always follows the loaded project, regardless of the
   // PROJ CFG toggle above — it's sequencer playback behavior specific to
   // each project, not a general system setting like MIDI routing/tempo.
+  // Lives in reserved[] (see Project.h), not cfg, so it never depends on
+  // project_config_valid()/CONFIG_VERSION.
+  uint8_t prev_manual_step_enabled = mcl_cfg.manual_step_enabled;
+  uint8_t prev_manual_step_cc = mcl_cfg.manual_step_cc;
+  uint8_t prev_manual_step_port = mcl_cfg.manual_step_port;
+  read_project_manual_step(*this);
   bool manual_step_changed =
-      mcl_cfg.manual_step_enabled != cfg.manual_step_enabled ||
-      mcl_cfg.manual_step_cc != cfg.manual_step_cc ||
-      mcl_cfg.manual_step_port != cfg.manual_step_port;
-  if (project_config_valid(cfg)) {
-    mcl_cfg.manual_step_enabled = cfg.manual_step_enabled;
-    mcl_cfg.manual_step_cc = cfg.manual_step_cc;
-    mcl_cfg.manual_step_port = cfg.manual_step_port;
-  } else {
-    mcl_cfg.manual_step_enabled = 0;
-    mcl_cfg.manual_step_cc = 0;
-    mcl_cfg.manual_step_port = MANUAL_STEP_PORT_MIDI2;
-  }
+      mcl_cfg.manual_step_enabled != prev_manual_step_enabled ||
+      mcl_cfg.manual_step_cc != prev_manual_step_cc ||
+      mcl_cfg.manual_step_port != prev_manual_step_port;
 
 #if MCL_FEATURE_HOST_ARRANGER
   uint8_t active_arrangement_idx = cfg.active_arrangement_idx;
@@ -1471,7 +1479,6 @@ bool Project::read_header() {
     } else {
       copy_project_config(&cfg, mcl_cfg);
       clear_project_sample_bank(&cfg);
-      clear_project_manual_step(&cfg);
     }
     return true;
   }
@@ -1485,7 +1492,7 @@ bool Project::read_header() {
   if (!project_config_valid(cfg)) {
     copy_project_config(&cfg, mcl_cfg);
     clear_project_sample_bank(&cfg);
-    clear_project_manual_step(&cfg);
+    clear_project_manual_step(this);
   }
   return true;
 }
@@ -1788,6 +1795,7 @@ bool Project::write_header() {
   //  Config mcl_cfg.
   //  uint8_t reserved[16];
   hash = 0;
+  write_project_manual_step(this);
 
   ret = file.seekSet(0);
 

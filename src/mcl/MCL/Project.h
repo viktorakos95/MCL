@@ -14,6 +14,16 @@
 #define PROJ_VERSION 3013
 #define PRJ_DIR "/Projects"
 
+// Manual-step mode's 3 per-project settings live in the tail of
+// ProjectHeader.reserved[] rather than as new named fields, so this fork
+// doesn't grow ProjectHeader/MCLSysConfigData or bump CONFIG_VERSION.
+// Using the tail (not the front) minimises collision risk if upstream
+// ever claims more of reserved[] for an official field (upstream has
+// historically claimed from the front, see active_grid_pair).
+#define MANUAL_STEP_RESERVED_ENABLED_IDX 12
+#define MANUAL_STEP_RESERVED_CC_IDX 13
+#define MANUAL_STEP_RESERVED_PORT_IDX 14
+
 class ATTR_PACKED() ProjectHeader {
 public:
   uint32_t version;
@@ -25,7 +35,7 @@ public:
 
 static_assert(offsetof(ProjectHeader, cfg) == 24,
               "persisted project config offset changed");
-static_assert(sizeof(ProjectHeader) == 212,
+static_assert(sizeof(ProjectHeader) == 209,
               "persisted project header layout changed");
 
 class Project : public ProjectHeader {

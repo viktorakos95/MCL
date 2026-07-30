@@ -8,8 +8,7 @@
 #include "Sequencer/PtcGroups.h"
 
 #define CONFIG_VERSION_SAMPLE_BANK_LINK 4021
-#define CONFIG_VERSION_MANUAL_STEP 4022
-#define CONFIG_VERSION CONFIG_VERSION_MANUAL_STEP
+#define CONFIG_VERSION CONFIG_VERSION_SAMPLE_BANK_LINK
 
 // manual_step_port values
 #define MANUAL_STEP_PORT_MIDI2 0
@@ -98,16 +97,9 @@ public:
   uint8_t md_sample_bank;
   uint8_t md_sample_bank_capture;
   uint8_t active_arrangement_idx;
-
-  // Manual-step mode: advance the MD sequencer one step per incoming CC
-  // message instead of on the MIDI clock, while the clock keeps running
-  // for everything else (other gear, LFOs not tied to MD tracks, etc).
-  uint8_t manual_step_enabled;
-  uint8_t manual_step_cc;
-  uint8_t manual_step_port;
 };
 
-static_assert(sizeof(MCLSysConfigData) == 188,
+static_assert(sizeof(MCLSysConfigData) == 185,
               "persisted system config layout changed");
 
 class MCLSysConfig : public MCLSysConfigData {
@@ -116,6 +108,16 @@ public:
   File cfgfile;
   bool write_cfg();
   bool cfg_init();
+
+  // Manual-step mode: advance the MD sequencer one step per incoming CC
+  // message instead of on the MIDI clock, while the clock keeps running
+  // for everything else (other gear, LFOs not tied to MD tracks, etc).
+  // Not part of MCLSysConfigData: this is per-project state, restored from
+  // ProjectHeader.reserved[] on load rather than the versioned config blob,
+  // so it never affects CONFIG_VERSION or config.mcls.
+  uint8_t manual_step_enabled;
+  uint8_t manual_step_cc;
+  uint8_t manual_step_port;
 };
 
 extern MCLSysConfig mcl_cfg;
