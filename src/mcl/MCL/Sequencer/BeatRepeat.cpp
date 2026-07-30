@@ -4,10 +4,12 @@
 
 #include "GUI/PageIndex.h"
 #include "GUI/Pages/CommonPages.h"
+#include "GUI/Pages/Sequencer/SeqPage.h"
 #include "KeyInterface.h"
 #include "MCL.h"
 #include "MCLSysConfig.h"
 #include "MidiClock.h"
+#include "Sequencer/SeqPtcTrackRef.h"
 #include "Sequencer/SeqTrack.h"
 #include "../../Drivers/DeviceContext.h"
 #include "../../Drivers/MD/MD.h"
@@ -108,9 +110,27 @@ void beat_repeat_tick(MidiUartClass *uart) {
   // triggering" from ever disagreeing. Gated to the Primary device slot
   // since the roll is MD-specific (MD.triggerTrack() below); the Mixer
   // page's Secondary slot may be bound to a different device entirely.
-  bool armed = mcl.current_page == MIXER_PAGE &&
-               mixer_page.beat_repeat_armed &&
+  //
+  // Deliberately NOT gated on mcl.current_page == MIXER_PAGE: arming still
+  // only happens from MixerPage::handleEvent() (so the gesture can only
+  // start there), but once armed the roll keeps running off raw key state
+  // read directly below, regardless of which page is now active. This
+  // matters because pressing REC forces a page switch away from Mixer to
+  // the step page (stock behavior, see MCL.cpp) — without this, holding
+  // the roll through a REC press would silently kill it, unlike the
+  // arpeggiator, which isn't tied to any one page either.
+  bool armed = mixer_page.beat_repeat_armed &&
                mixer_page.mixer_device_idx == DeviceIdx::Primary;
+
+  if (armed && !(key_interface.is_key_down(MDX_KEY_LEFT) &&
+                key_interface.is_key_down(MDX_KEY_RIGHT))) {
+    // The chord was released. MixerPage's own key-release handler already
+    // disarms instantly while Mixer page is still active (for immediate UI
+    // feedback); this is the fallback for when it isn't — Mixer page never
+    // sees the release event once REC has switched the active page away.
+    mixer_page.beat_repeat_armed = false;
+    armed = false;
+  }
 
   uint16_t pad_mask = 0;
   if (armed) {
@@ -173,5 +193,16 @@ void beat_repeat_tick(MidiUartClass *uart) {
     }
 
     MD.triggerTrack(i, BEAT_REPEAT_VELOCITY, uart);
+
+    // Same explicit trigger+record pairing the arpeggiator uses for MD
+    // tracks (MDArpSeqTrack::dispatch_note() -> SeqPtcTrackRef::trigger()/
+    // record_track(), which on AVR is the exact same MD.triggerTrack()
+    // call above) — recording isn't a passive listener on any note that
+    // goes out, each dispatch site has to opt in like this or it's
+    // invisible to live-record.
+    if (SeqPage::recording && MidiClock.state == 2) {
+      reset_undo();
+      SeqPtcTrackRef::record_track(i, BEAT_REPEAT_VELOCITY);
+    }
   }
 }
