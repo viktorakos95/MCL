@@ -504,18 +504,19 @@ void MixerPage::adjust_param(EncoderParent *enc, uint8_t param) {
 void MixerPage::display() {
   sync_selected_mixer_device();
 
-  // Beat-repeat rate indicator: always shown (not just while a roll is
-  // active/armed) so the current subdivision is visible before you commit
-  // to a roll. Top-right corner is free of other Mixer page content
-  // (faders start at fader_y=11 below).
-  {
+  // Beat-repeat rate card: same centered textbox style used for other
+  // momentary confirmations (undo/copy/paste, etc.) elsewhere in the app.
+  // Shown only while the roll is armed, hidden the instant it isn't —
+  // re-triggering it every frame keeps it from hitting its own 800ms
+  // auto-expiry while still held, and explicitly clearing textbox_enabled
+  // on release means it disappears immediately rather than lingering.
+  if (beat_repeat_armed) {
     char rate_str[6];
     beat_repeat_rate_name(mcl_cfg.beat_repeat_rate, rate_str,
                           sizeof(rate_str));
-    oled_display.setFont(&TomThumb);
-    oled_display.setTextColor(WHITE, BLACK);
-    oled_display.setCursor(104, 6);
-    oled_display.print(rate_str);
+    oled_display.textbox("ROLL", rate_str);
+  } else if (oled_display.textbox_enabled) {
+    oled_display.textbox_enabled = false;
   }
 
   if (oled_display.textbox_enabled) {

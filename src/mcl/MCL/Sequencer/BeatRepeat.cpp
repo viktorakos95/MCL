@@ -7,6 +7,7 @@
 #include "KeyInterface.h"
 #include "MCL.h"
 #include "MCLSysConfig.h"
+#include "MidiClock.h"
 #include "../../Drivers/DeviceContext.h"
 #include "../../Drivers/MD/MD.h"
 
@@ -14,20 +15,26 @@
 
 namespace {
 
-// Values are in half-ticks (24ppqn MIDI clock == 48 half-ticks per quarter
-// note) rather than whole ticks, purely so 1/64 (1.5 ticks) has an exact,
-// whole-number period like every other rate here. See beat_repeat_tick().
-const uint8_t BEAT_REPEAT_HALF_TICKS[BEAT_REPEAT_RATE_COUNT] PROGMEM = {
-    48, // 1/4
-    32, // 1/4T
-    24, // 1/8
-    16, // 1/8T
-    12, // 1/16
-    8,  // 1/16T
-    6,  // 1/32
-    4,  // 1/32T
-    3,  // 1/64
-    2,  // 1/64T
+// Values are in div192ths (MidiClock.div192th_counter's own unit: 192 per
+// quarter note) rather than raw 24ppqn ticks, so every rate here — including
+// 1/64 and all the triplets — has an exact whole-number period (1/64 would
+// be 1.5 raw ticks). Firing off MidiClock's own running position (rather
+// than a counter this feature starts from 0 whenever the gesture begins)
+// means repeats always land exactly on the same absolute grid the rest of
+// the sequencer already uses, instead of potentially landing a few
+// milliseconds off a note that's already scheduled on that same step —
+// audible as two near-simultaneous hits ("flamming") rather than one.
+const uint8_t BEAT_REPEAT_DIV192_PERIOD[BEAT_REPEAT_RATE_COUNT] PROGMEM = {
+    192, // 1/4
+    128, // 1/4T
+    96,  // 1/8
+    64,  // 1/8T
+    48,  // 1/16
+    32,  // 1/16T
+    24,  // 1/32
+    16,  // 1/32T
+    12,  // 1/64
+    8,   // 1/64T
 };
 
 const char BEAT_REPEAT_NAME_0[] PROGMEM = "1/4";
@@ -81,9 +88,6 @@ void beat_repeat_rate_name(uint8_t rate, char *dst, uint8_t dst_size) {
 }
 
 void beat_repeat_tick(MidiUartClass *uart) {
-  static uint8_t half_tick_counter = 0;
-  static uint16_t prev_pad_mask = 0;
-
   // beat_repeat_armed already reflects the debounced LEFT+RIGHT chord (see
   // MixerPage::handleEvent()/loop()) — reusing it here (rather than
   // re-checking raw key state) keeps "shown as armed" and "actually
@@ -93,10 +97,18 @@ void beat_repeat_tick(MidiUartClass *uart) {
   bool armed = mcl.current_page == MIXER_PAGE &&
                mixer_page.beat_repeat_armed &&
                mixer_page.mixer_device_idx == DeviceIdx::Primary;
-
   if (!armed) {
-    half_tick_counter = 0;
-    prev_pad_mask = 0;
+    return;
+  }
+
+  uint8_t rate = beat_repeat_normalized_rate(mcl_cfg.beat_repeat_rate);
+  uint8_t period = pgm_read_byte(&BEAT_REPEAT_DIV192_PERIOD[rate]);
+
+  // Deliberately no "fire instantly on newly-pressed pad" case: every hit,
+  // including the very first one after pressing, waits for this grid point
+  // so it's always exactly on time rather than at whatever arbitrary
+  // moment the pad happened to be pressed.
+  if (MidiClock.div192th_counter % period != 0) {
     return;
   }
 
@@ -106,30 +118,12 @@ void beat_repeat_tick(MidiUartClass *uart) {
       pad_mask |= (uint16_t)1 << i;
     }
   }
-
-  uint16_t newly_pressed = pad_mask & ~prev_pad_mask;
-  prev_pad_mask = pad_mask;
-
-  uint8_t rate = beat_repeat_normalized_rate(mcl_cfg.beat_repeat_rate);
-  uint8_t period = pgm_read_byte(&BEAT_REPEAT_HALF_TICKS[rate]);
-
-  bool fire_all = false;
-  half_tick_counter += 2;
-  if (half_tick_counter >= period) {
-    half_tick_counter = 0;
-    fire_all = true;
-  }
-
-  uint16_t to_fire = newly_pressed;
-  if (fire_all) {
-    to_fire |= pad_mask;
-  }
-  if (to_fire == 0) {
+  if (pad_mask == 0) {
     return;
   }
 
   for (uint8_t i = 0; i < 16; i++) {
-    if (to_fire & ((uint16_t)1 << i)) {
+    if (pad_mask & ((uint16_t)1 << i)) {
       MD.triggerTrack(i, BEAT_REPEAT_VELOCITY, uart);
     }
   }
