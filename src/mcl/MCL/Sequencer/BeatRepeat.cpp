@@ -157,12 +157,14 @@ void beat_repeat_tick(MidiUartClass *uart) {
       continue;
     }
 
-    // Bypass mute for the roll: mute is a real MD hardware CC, not just an
-    // MCL bookkeeping flag, so a manually-triggered note wouldn't sound on
-    // a muted track otherwise. Only send the unmute CC once per hold (not
-    // every hit) — mute_state itself is left untouched, so MCL's own
-    // mute bookkeeping/LEDs/mixer display stay accurate throughout.
-    if (!(forced_unmuted_mask & ((uint16_t)1 << i))) {
+    // Bypass mute for the roll (SYSTEM menu "ROLL MUTE" toggle): mute is a
+    // real MD hardware CC, not just an MCL bookkeeping flag, so a
+    // manually-triggered note wouldn't sound on a muted track otherwise.
+    // Only send the unmute CC once per hold (not every hit) — mute_state
+    // itself is left untouched, so MCL's own mute bookkeeping/LEDs/mixer
+    // display stay accurate throughout.
+    if (mcl_cfg.roll_ignores_mute &&
+        !(forced_unmuted_mask & ((uint16_t)1 << i))) {
       SeqTrack *seq_track = mixer_page.mixer_seq_track(i);
       if (seq_track != nullptr && seq_track->mute_state) {
         mixer_page.mixer_target.mute_track(i, false);

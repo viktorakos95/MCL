@@ -124,6 +124,14 @@ public:
   // manual_step_* above: per-project via ProjectHeader.reserved[], not
   // part of MCLSysConfigData/CONFIG_VERSION.
   uint8_t beat_repeat_rate;
+
+  // SYSTEM menu "ROLL MUTE" toggle: whether beat-repeat unmutes a muted
+  // track for the duration of the roll (see BeatRepeat.h). A global
+  // preference, not per-project, but still kept out of MCLSysConfigData
+  // for the same CONFIG_VERSION reason as above — persisted as one extra
+  // byte appended after the versioned struct in config.mcls (see
+  // MCLSysConfig::write_cfg() and MCLSd::load_init()).
+  uint8_t roll_ignores_mute;
 };
 
 extern MCLSysConfig mcl_cfg;

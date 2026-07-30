@@ -111,4 +111,6 @@ menu_option_t MENU_OPTIONS[] = {
 #endif
   // MANUAL_STEP_PORT_OPTIONS_OFFSET: manual-step trigger source port
   {0, "MIDI 2"}, {1, "USB"},
+  // ROLL_IGNORES_MUTE_OPTIONS_OFFSET: SYSTEM menu, roll ignores mute
+  {0, "NO"}, {1, "YES"},
 };

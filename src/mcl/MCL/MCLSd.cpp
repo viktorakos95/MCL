@@ -229,6 +229,18 @@ bool MCLSd::load_init() {
 
         }
 
+        // roll_ignores_mute lives one byte past the versioned struct (see
+        // MCLSysConfig::write_cfg()) rather than inside it, so it doesn't
+        // affect CONFIG_VERSION. A short read (upgrading from a build that
+        // predates this byte) or a stray value both fall back to the
+        // default (1, matching prior hardcoded behavior) rather than
+        // trusting whatever preallocated/uninitialised byte was on disk.
+        if (!read_data(&mcl_cfg.roll_ignores_mute,
+                       sizeof(mcl_cfg.roll_ignores_mute), &mcl_cfg.cfgfile) ||
+            mcl_cfg.roll_ignores_mute > 1) {
+          mcl_cfg.roll_ignores_mute = 1;
+        }
+
         if (mcl_cfg.project_config > 1) {
           mcl_cfg.project_config = 0;
         }

@@ -124,6 +124,7 @@ menu_t<midi_config_page_N> midiconfig_menu_layout = {
   #define SEQ_CHANNEL_OPTIONS_OFFSET 0
   #define MANUAL_STEP_PORT_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 1)
 #endif
+#define ROLL_IGNORES_MUTE_OPTIONS_OFFSET (MANUAL_STEP_PORT_OPTIONS_OFFSET + 2)
 
 menu_t<mididevice_menu_page_N> mididevice_menu_layout = {
     "DEVICES",
@@ -318,6 +319,7 @@ menu_t<mcl_config_page_N> mclconfig_menu_layout = {
         {"DISPLAY:", 0, 2, 2, 13, NULL_PAGE, 0, 23},
         {"PROJ CFG:", 0, 2, 2, 72, NULL_PAGE, 0, 25},
         {"GRID ENCOD:", 0, 2, 2, 62, NULL_PAGE, 0, 114},
+        {"ROLL MUTE:", 0, 2, 2, 78, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
     },
     1
 };
