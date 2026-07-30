@@ -15,26 +15,31 @@
 
 namespace {
 
-// Values are in div192ths (MidiClock.div192th_counter's own unit: 192 per
-// quarter note) rather than raw 24ppqn ticks, so every rate here — including
-// 1/64 and all the triplets — has an exact whole-number period (1/64 would
-// be 1.5 raw ticks). Firing off MidiClock's own running position (rather
-// than a counter this feature starts from 0 whenever the gesture begins)
-// means repeats always land exactly on the same absolute grid the rest of
-// the sequencer already uses, instead of potentially landing a few
-// milliseconds off a note that's already scheduled on that same step —
-// audible as two near-simultaneous hits ("flamming") rather than one.
+// Values are in MidiClock.div192th_counter's own unit. Despite the name,
+// MidiClockClass::div192th_ticks_per_16th() returns 12 on AVR (not 48), so
+// a quarter note is 12*4 = 48 units here, not 192 — using the wrong scale
+// here previously made every rate fire 4x slower than intended. 48 units/
+// quarter is still fine-grained enough for every rate below (including
+// 1/64 and the triplets) to have an exact whole-number period, unlike the
+// raw 24ppqn tick (1/64 would be 1.5 ticks).
+//
+// Firing off MidiClock's own running position (rather than a counter this
+// feature starts from 0 whenever the gesture begins) means repeats always
+// land exactly on the same absolute grid the rest of the sequencer already
+// uses, instead of potentially landing a few milliseconds off a note
+// that's already scheduled on that same step — audible as two
+// near-simultaneous hits ("flamming") rather than one.
 const uint8_t BEAT_REPEAT_DIV192_PERIOD[BEAT_REPEAT_RATE_COUNT] PROGMEM = {
-    192, // 1/4
-    128, // 1/4T
-    96,  // 1/8
-    64,  // 1/8T
-    48,  // 1/16
-    32,  // 1/16T
-    24,  // 1/32
-    16,  // 1/32T
-    12,  // 1/64
-    8,   // 1/64T
+    48, // 1/4
+    32, // 1/4T
+    24, // 1/8
+    16, // 1/8T
+    12, // 1/16
+    8,  // 1/16T
+    6,  // 1/32
+    4,  // 1/32T
+    3,  // 1/64
+    2,  // 1/64T
 };
 
 const char BEAT_REPEAT_NAME_0[] PROGMEM = "1/4";
