@@ -6,6 +6,7 @@
 #include "GUI/Pages/Grid/GridPages.h"
 #include "Devices/MidiSetup.h"
 #include "Sequencer/SeqTrackUtil.h"
+#include "Sequencer/BeatRepeat.h"
 #include "oled.h"
 #include "Devices/DeviceManager.h"
 
@@ -502,6 +503,21 @@ void clear_project_manual_step(ProjectHeader *header) {
   header->reserved[MANUAL_STEP_RESERVED_ENABLED_IDX] = 0;
   header->reserved[MANUAL_STEP_RESERVED_CC_IDX] = 0;
   header->reserved[MANUAL_STEP_RESERVED_PORT_IDX] = MANUAL_STEP_PORT_MIDI2;
+}
+
+// Beat-repeat rate (see BEAT_REPEAT_RESERVED_RATE_IDX in Project.h): same
+// reserved[]-based approach as manual-step above, for the same reason.
+// Unlike manual-step, an unrecognised/stale value here just falls back to
+// a default subdivision rather than needing a "safe OFF" — beat-repeat
+// only ever fires while its key gesture is actively held, so there's no
+// equivalent risk of silently resurrecting an unattended trigger.
+void read_project_beat_repeat(const ProjectHeader &header) {
+  mcl_cfg.beat_repeat_rate =
+      beat_repeat_normalized_rate(header.reserved[BEAT_REPEAT_RESERVED_RATE_IDX]);
+}
+
+void write_project_beat_repeat(ProjectHeader *header) {
+  header->reserved[BEAT_REPEAT_RESERVED_RATE_IDX] = mcl_cfg.beat_repeat_rate;
 }
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
@@ -1361,6 +1377,11 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
       mcl_cfg.manual_step_cc != prev_manual_step_cc ||
       mcl_cfg.manual_step_port != prev_manual_step_port;
 
+  // Beat-repeat rate is a pure display/performance preference (see
+  // BeatRepeat.h) — no port reconfiguration depends on it, so unlike
+  // manual-step above it doesn't need change-tracking here.
+  read_project_beat_repeat(*this);
+
 #if MCL_FEATURE_HOST_ARRANGER
   uint8_t active_arrangement_idx = cfg.active_arrangement_idx;
   if (!ensure_arrangements_current_project(&active_arrangement_idx)) {
@@ -1796,6 +1817,7 @@ bool Project::write_header() {
   //  uint8_t reserved[16];
   hash = 0;
   write_project_manual_step(this);
+  write_project_beat_repeat(this);
 
   ret = file.seekSet(0);
 

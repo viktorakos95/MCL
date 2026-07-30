@@ -6,14 +6,54 @@
 #include "ResourceManager.h"
 #include "MCLGUI.h"
 #include "Sequencer/MCLSeq.h"
+#include "Sequencer/BeatRepeat.h"
 #include "GUI/Pages/Performance/MixerPerf.h"
 #include "GUI/Pages/Sequencer/SeqPages.h"
 #include "../../../../Drivers/MD/MD.h"
+#include "Project.h"
 
 #define FADER_LEN 18
 #define FADE_RATE 8
 
+// Grace window for the LEFT+RIGHT beat-repeat chord (see MixerPage.h) —
+// long enough to reliably catch a near-simultaneous two-key press, short
+// enough that it's not perceptible as added latency on a solo arrow tap.
+constexpr uint16_t BEAT_REPEAT_CHORD_GRACE_MS = 40;
+
 namespace {
+
+// beat_repeat_rate is edited live by UP/DOWN while the roll is armed (no
+// discrete "commit" step — see MixerPage::handleEvent()), so it's persisted
+// the same way manual-step's SEQ menu settings are (see SeqPage.cpp): once
+// the value has stopped changing for a moment, rather than on every tick
+// while still being dialed in.
+constexpr uint16_t BEAT_REPEAT_SAVE_DEBOUNCE_MS = 500;
+
+void save_beat_repeat_rate_to_project_if_settled() {
+  if (!proj.project_loaded) {
+    return;
+  }
+  static uint8_t last_seen_rate = 0;
+  static uint16_t last_change_ms = 0;
+  static bool pending = false;
+
+  if (mcl_cfg.beat_repeat_rate != last_seen_rate) {
+    last_seen_rate = mcl_cfg.beat_repeat_rate;
+    last_change_ms = read_clock_ms();
+    pending = true;
+  }
+
+  if (!pending ||
+      clock_diff(last_change_ms, read_clock_ms()) < BEAT_REPEAT_SAVE_DEBOUNCE_MS) {
+    return;
+  }
+  pending = false;
+
+  if (proj.reserved[BEAT_REPEAT_RESERVED_RATE_IDX] == mcl_cfg.beat_repeat_rate) {
+    return;
+  }
+  proj.write_header();
+}
 
 uint16_t track_mask_for_len(uint8_t len) NOINLINE();
 uint16_t track_mask_for_len(uint8_t len) {
@@ -361,6 +401,24 @@ void MixerPage::loop() {
   constexpr int timeout = 750;
   bool old_draw_encoders = draw_encoders;
   sync_selected_mixer_device();
+
+  // Resolve a pending solo LEFT/RIGHT tap once the beat-repeat chord grace
+  // window has passed without the other key joining it (see handleEvent()).
+  // If the key was released before the window even elapsed, treat it as
+  // too quick to have been an intentional hold and just drop it — applying
+  // preview_mute_set after release would leave it stuck on with no
+  // corresponding release event left to clear it.
+  if (beat_repeat_key_pending && !beat_repeat_armed) {
+    if (!key_interface.is_key_down(beat_repeat_key_pending)) {
+      beat_repeat_key_pending = 0;
+    } else if (clock_diff(beat_repeat_key_pending_ms, read_clock_ms()) >=
+               BEAT_REPEAT_CHORD_GRACE_MS) {
+      preview_mute_set = get_mute_set(beat_repeat_key_pending);
+      redraw_mutes = true;
+      beat_repeat_key_pending = 0;
+    }
+  }
+  save_beat_repeat_rate_to_project_if_settled();
   const bool use_perf_encoders = mixer_target.perf_available();
   const bool notes_on = note_interface.notes_on;
 
@@ -445,6 +503,20 @@ void MixerPage::adjust_param(EncoderParent *enc, uint8_t param) {
 
 void MixerPage::display() {
   sync_selected_mixer_device();
+
+  // Beat-repeat rate indicator: always shown (not just while a roll is
+  // active/armed) so the current subdivision is visible before you commit
+  // to a roll. Top-right corner is free of other Mixer page content
+  // (faders start at fader_y=11 below).
+  {
+    char rate_str[6];
+    beat_repeat_rate_name(mcl_cfg.beat_repeat_rate, rate_str,
+                          sizeof(rate_str));
+    oled_display.setFont(&TomThumb);
+    oled_display.setTextColor(WHITE, BLACK);
+    oled_display.setCursor(104, 6);
+    oled_display.print(rate_str);
+  }
 
   if (oled_display.textbox_enabled) {
     redraw();
@@ -708,6 +780,13 @@ bool MixerPage::handleEvent(gui_event_t *event) {
     if (track >= 16) {
       return false;
     }
+    if (beat_repeat_armed) {
+      // The roll itself is driven off raw key state each clock tick (see
+      // beat_repeat_tick() in BeatRepeat.cpp/MCLSeq.cpp), independent of
+      // this handler — just make sure a pad press/release here doesn't
+      // also toggle a mute or select a track while a roll is in progress.
+      return true;
+    }
     if (!ext_key_down && !show_mixer_menu && preview_mute_set == 255) {
       show_live_mute_leds(*this);
     }
@@ -886,10 +965,40 @@ bool MixerPage::handleEvent(gui_event_t *event) {
         break;
       }
       case MDX_KEY_LEFT:
+      case MDX_KEY_RIGHT: {
+        if (key_interface.is_key_down(MDX_KEY_NO)) {
+          return true;
+        }
+        uint8_t set = get_mute_set(key);
+        if (key_interface.is_key_down(MDX_KEY_YES)) {
+          switch_perf_state(set, true, load_types[set]);
+          break;
+        }
+        // LEFT+RIGHT together is the beat-repeat "roll" gesture — it
+        // overrides the normal single-arrow mute-preview-set below. A
+        // short grace window (resolved in loop()) absorbs the moment
+        // when only one of the two is down yet, so a solo tap still
+        // works normally if the other key never joins it.
+        uint8_t other_key = (key == MDX_KEY_LEFT) ? MDX_KEY_RIGHT : MDX_KEY_LEFT;
+        if (key_interface.is_key_down(other_key)) {
+          beat_repeat_key_pending = 0;
+          beat_repeat_armed = true;
+          redraw();
+          return true;
+        }
+        beat_repeat_key_pending = key;
+        beat_repeat_key_pending_ms = read_clock_ms();
+        return true;
+      }
       case MDX_KEY_UP:
-      case MDX_KEY_RIGHT:
       case MDX_KEY_DOWN: {
         if (key_interface.is_key_down(MDX_KEY_NO)) {
+          return true;
+        }
+        if (beat_repeat_armed) {
+          mcl_cfg.beat_repeat_rate = beat_repeat_cycle_rate(
+              mcl_cfg.beat_repeat_rate, key == MDX_KEY_UP);
+          redraw();
           return true;
         }
         uint8_t set = get_mute_set(key);
@@ -946,8 +1055,22 @@ bool MixerPage::handleEvent(gui_event_t *event) {
         return true;
       }
       case MDX_KEY_LEFT:
+      case MDX_KEY_RIGHT: {
+        beat_repeat_key_pending = 0;
+        if (beat_repeat_armed &&
+            !(key_interface.is_key_down(MDX_KEY_LEFT) &&
+              key_interface.is_key_down(MDX_KEY_RIGHT))) {
+          beat_repeat_armed = false;
+          redraw();
+        }
+        if (!mixer_arrow_or_yes_key_down()) {
+          show_live_mute_leds(*this);
+          preview_mute_set = 255;
+          redraw();
+        }
+        break;
+      }
       case MDX_KEY_UP:
-      case MDX_KEY_RIGHT:
       case MDX_KEY_DOWN: {
         if (!mixer_arrow_or_yes_key_down()) {
           show_live_mute_leds(*this);

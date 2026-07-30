@@ -15,6 +15,7 @@
 #include "../../Drivers/TBD/TBDTrack.h"
 #endif
 #include "../../Drivers/MD/MD.h"
+#include "Sequencer/BeatRepeat.h"
 
 namespace {
 
@@ -502,6 +503,13 @@ void MCLSeq::seq() {
     realtime = false;
     engage_sidechannel = false;
   }
+
+  // Deliberately outside the loop above: that loop can run its body twice
+  // per real clock tick (a realtime pass, then a non-realtime drain pass —
+  // see the comment above it), but beat_repeat_tick() increments a counter
+  // and fires notes, so it must run exactly once per real tick regardless
+  // of manual-step mode (unlike run_md_tick() above).
+  beat_repeat_tick(uart);
 #if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
   TrackLoadFadeRunner::tick(uart, uart2);
 #endif

@@ -118,6 +118,12 @@ public:
   uint8_t manual_step_enabled;
   uint8_t manual_step_cc;
   uint8_t manual_step_port;
+
+  // Grid-page beat-repeat rate (index into beat_repeat_rate_names/
+  // beat_repeat_half_ticks in Sequencer/BeatRepeat.h). Same rationale as
+  // manual_step_* above: per-project via ProjectHeader.reserved[], not
+  // part of MCLSysConfigData/CONFIG_VERSION.
+  uint8_t beat_repeat_rate;
 };
 
 extern MCLSysConfig mcl_cfg;

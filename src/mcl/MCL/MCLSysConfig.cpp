@@ -8,6 +8,7 @@
 #include "hardware.h"
 #include "platform.h"
 #include "MCLStrings.h"
+#include "Sequencer/BeatRepeat.h"
 
 // Consolidated display function to reduce code duplication
 static void show_message(PGM_P line1) {
@@ -284,6 +285,7 @@ bool MCLSysConfig::cfg_init() {
   //manual_step_enabled = 0;
   manual_step_cc = 110;
   //manual_step_port = MANUAL_STEP_PORT_MIDI2;
+  beat_repeat_rate = BEAT_REPEAT_RATE_1_16;
   mclsys_normalize_midi_config();
   cfgfile.close();
   ret = write_cfg();

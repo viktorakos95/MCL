@@ -24,6 +24,10 @@
 #define MANUAL_STEP_RESERVED_CC_IDX 13
 #define MANUAL_STEP_RESERVED_PORT_IDX 14
 
+// Grid-page beat-repeat subdivision (see BeatRepeat.h), same rationale as
+// manual-step above — kept one further toward the front of the tail.
+#define BEAT_REPEAT_RESERVED_RATE_IDX 11
+
 class ATTR_PACKED() ProjectHeader {
 public:
   uint32_t version;

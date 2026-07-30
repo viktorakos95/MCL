@@ -99,6 +99,16 @@ public:
   uint8_t preview_mute_set = 255;
   uint8_t load_perf_state = 255;
 
+  // Beat-repeat "roll" gesture (see Sequencer/BeatRepeat.h): holding
+  // LEFT+RIGHT together arms it, overriding the normal single-arrow
+  // mute-preview-set behavior below. beat_repeat_key_pending/_ms implement
+  // a short grace window so a solo LEFT or RIGHT tap (the other key never
+  // joining it) still works normally instead of always waiting on the
+  // chord. See handleEvent()/loop() in MixerPage.cpp.
+  bool beat_repeat_armed = false;
+  uint8_t beat_repeat_key_pending = 0;
+  uint16_t beat_repeat_key_pending_ms = 0;
+
   // Don't change order
   PerfState perf_states[4];
   uint8_t perf_locks[4][4];
