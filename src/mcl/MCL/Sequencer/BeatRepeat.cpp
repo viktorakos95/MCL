@@ -8,6 +8,7 @@
 #include "MCL.h"
 #include "MCLSysConfig.h"
 #include "MidiClock.h"
+#include "Sequencer/SeqTrack.h"
 #include "../../Drivers/DeviceContext.h"
 #include "../../Drivers/MD/MD.h"
 
@@ -93,6 +94,14 @@ void beat_repeat_rate_name(uint8_t rate, char *dst, uint8_t dst_size) {
 }
 
 void beat_repeat_tick(MidiUartClass *uart) {
+  // Tracks currently held open on the MD hardware by the roll itself (its
+  // mute_state was true when we started rolling it). Resynced — not
+  // "restored" — to whatever mute_state currently says once released, so
+  // a mute-scene load (YES + arrow) that changes this track's real mute
+  // state mid-roll is respected rather than clobbered back to a stale
+  // pre-roll snapshot. See the release-resync loop below.
+  static uint16_t forced_unmuted_mask = 0;
+
   // beat_repeat_armed already reflects the debounced LEFT+RIGHT chord (see
   // MixerPage::handleEvent()/loop()) — reusing it here (rather than
   // re-checking raw key state) keeps "shown as armed" and "actually
@@ -102,7 +111,33 @@ void beat_repeat_tick(MidiUartClass *uart) {
   bool armed = mcl.current_page == MIXER_PAGE &&
                mixer_page.beat_repeat_armed &&
                mixer_page.mixer_device_idx == DeviceIdx::Primary;
-  if (!armed) {
+
+  uint16_t pad_mask = 0;
+  if (armed) {
+    for (uint8_t i = 0; i < 16; i++) {
+      if (key_interface.is_key_down(MDX_KEY_TRIG1 + i)) {
+        pad_mask |= (uint16_t)1 << i;
+      }
+    }
+  }
+
+  // Runs every real tick regardless of grid phase, so a released pad (or
+  // the whole roll disarming) gets its mute state resynced promptly rather
+  // than waiting for the next subdivision boundary.
+  uint16_t released = forced_unmuted_mask & (uint16_t)~pad_mask;
+  if (released != 0) {
+    for (uint8_t i = 0; i < 16; i++) {
+      if (released & ((uint16_t)1 << i)) {
+        SeqTrack *seq_track = mixer_page.mixer_seq_track(i);
+        if (seq_track != nullptr) {
+          mixer_page.mixer_target.mute_track(i, seq_track->mute_state);
+        }
+      }
+    }
+    forced_unmuted_mask &= ~released;
+  }
+
+  if (!armed || pad_mask == 0) {
     return;
   }
 
@@ -117,19 +152,24 @@ void beat_repeat_tick(MidiUartClass *uart) {
     return;
   }
 
-  uint16_t pad_mask = 0;
   for (uint8_t i = 0; i < 16; i++) {
-    if (key_interface.is_key_down(MDX_KEY_TRIG1 + i)) {
-      pad_mask |= (uint16_t)1 << i;
+    if (!(pad_mask & ((uint16_t)1 << i))) {
+      continue;
     }
-  }
-  if (pad_mask == 0) {
-    return;
-  }
 
-  for (uint8_t i = 0; i < 16; i++) {
-    if (pad_mask & ((uint16_t)1 << i)) {
-      MD.triggerTrack(i, BEAT_REPEAT_VELOCITY, uart);
+    // Bypass mute for the roll: mute is a real MD hardware CC, not just an
+    // MCL bookkeeping flag, so a manually-triggered note wouldn't sound on
+    // a muted track otherwise. Only send the unmute CC once per hold (not
+    // every hit) — mute_state itself is left untouched, so MCL's own
+    // mute bookkeeping/LEDs/mixer display stay accurate throughout.
+    if (!(forced_unmuted_mask & ((uint16_t)1 << i))) {
+      SeqTrack *seq_track = mixer_page.mixer_seq_track(i);
+      if (seq_track != nullptr && seq_track->mute_state) {
+        mixer_page.mixer_target.mute_track(i, false);
+        forced_unmuted_mask |= (uint16_t)1 << i;
+      }
     }
+
+    MD.triggerTrack(i, BEAT_REPEAT_VELOCITY, uart);
   }
 }
