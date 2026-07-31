@@ -16,18 +16,18 @@ with the original author here: https://github.com/jmamma/MCL/pull/197
 **Manual Step.** Lets a MIDI CC message manually advance the Machinedrum
 sequencer one step at a time, instead of following the clock. Good for
 triggering steps from a pad, footswitch, envelope follower, or anything
-that sends a MIDI CC. SEQ menu, under QUANT: `STEP MODE`, `STEP CC`,
-`STEP PORT`. Settings save per project.
+that sends a MIDI CC. 
+SEQ menu, under QUANT: `STEP MODE`, `STEP CC`, `STEP PORT`. 
+Settings save per project.
 - Only listens on MIDI2 or USB, never MIDI1.
-- Fires on every message with no debounce, so a fast or continuous CC
-  source can advance steps faster than intended.
+- Fires on every message with no debounce
 
 **Live Step Repeat / Roll.** Hold LEFT and RIGHT on the Mixer page, then a
-trig pad, to repeat that track at a chosen subdivision for as long as you
-hold it. UP and DOWN while held change the rate. SYSTEM menu: `ROLL MUTE`,
-`ROLL TRIPLETS`.
-- Only works while the Mixer page is showing and the Primary device is
-  selected. Pressing REC or leaving the page stops the roll.
+trig pad, to repeat that sound at a chosen subdivision for as long as you
+hold it. UP and DOWN while held change the rate. 
+SYSTEM menu: `ROLL MUTE`, (ignores sound mute so you an roll muted sounds as well)
+`ROLL TRIPLETS` (add/remove triplets from the roll subdivision list)
+- Only works while the Mixer page is showing. Pressing REC or leaving the page stops the roll.
 - Can't currently be captured into a pattern through live record.
 
 ### ⚠️ Project compatibility warning
