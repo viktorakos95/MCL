@@ -241,14 +241,13 @@ bool MCLSd::load_init() {
           mcl_cfg.roll_ignores_mute = 1;
         }
 
-        // roll_remove_triplets follows immediately after roll_ignores_mute
-        // — same rationale/fallback as above (default 0, matching prior
-        // behavior of every rate being available).
-        if (!read_data(&mcl_cfg.roll_remove_triplets,
-                       sizeof(mcl_cfg.roll_remove_triplets),
+        // roll_triplets follows immediately after roll_ignores_mute — same
+        // rationale/fallback as above (default 1, matching prior behavior
+        // of every rate being available).
+        if (!read_data(&mcl_cfg.roll_triplets, sizeof(mcl_cfg.roll_triplets),
                        &mcl_cfg.cfgfile) ||
-            mcl_cfg.roll_remove_triplets > 1) {
-          mcl_cfg.roll_remove_triplets = 0;
+            mcl_cfg.roll_triplets > 1) {
+          mcl_cfg.roll_triplets = 1;
         }
 
         if (mcl_cfg.project_config > 1) {
