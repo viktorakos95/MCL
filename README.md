@@ -8,6 +8,60 @@ Visit the [releases page](https://github.com/jmamma/MCL/releases) for:
 - User documentation
 - Installation instructions
 
+## Custom Features (this fork)
+
+This fork adds two extra features on top of official MCL. They're both opt-in
+(off by default) — if you don't turn them on, the firmware behaves exactly
+like upstream. Built with AI help (Claude), discussed with the original
+author here: https://github.com/jmamma/MCL/pull/197
+
+### Manual Step (CC-triggered step advance)
+
+Lets a MIDI CC message manually advance the Machinedrum sequencer one step
+per message, instead of the sequencer following the clock. Useful for
+triggering steps from a pad, footswitch, envelope follower, or anything else
+that can send a MIDI CC — the clock keeps running normally for everything
+else (other gear, LFOs), only the MD step-advance is taken over.
+
+**How to use:** SEQ menu, right under QUANT — `STEP MODE` (on/off), `STEP CC`
+(which CC number), `STEP PORT` (MIDI2 or USB). Settings save per-project.
+
+**Warnings:**
+- Only listens on MIDI2 or USB — never MIDI1, on purpose, so it can't
+  collide with the Machinedrum's own CC traffic on MIDI1.
+- Fires on *every* message on the chosen CC, regardless of value — no
+  debounce. If your CC source sends continuous/repeated values (e.g. an
+  envelope follower), it can advance steps much faster than you intend.
+- Only affects Machinedrum tracks.
+
+### Live Step Repeat / Roll
+
+Hold LEFT+RIGHT on the Mixer page, then hold a trig pad, to repeat that
+track's sound at a chosen subdivision — for as long as you hold it — instead
+of waiting for its next scheduled step. While LEFT+RIGHT are held, UP/DOWN
+cycles the subdivision (1/4 through 1/64, including triplets). A card shows
+the current rate while armed.
+
+**How to use:** just the gesture above, on the Mixer page, with the Primary
+device selected. Two related toggles live in the SYSTEM menu:
+- `ROLL MUTE` (default YES) — whether rolling a muted track temporarily
+  unmutes it for the roll, or stays silent.
+- `ROLL TRIPLETS` (default YES) — whether triplet rates are included when
+  cycling with UP/DOWN, or skipped (leaving only 1/4, 1/8, 1/16, 1/32, 1/64).
+
+**Warnings:**
+- LEFT and RIGHT already do something on their own on the Mixer page (they
+  preview mute sets). Holding both together is a deliberate combo, not a
+  conflict — a short grace window tells a solo tap apart from the start of
+  the chord — but if you're not going for the roll, a very fast press of
+  just one arrow could occasionally be misread as the start of the chord.
+- Only works while the Mixer page is showing and the Primary device is
+  selected — if you press REC or otherwise leave the page, the roll stops.
+  It is not currently possible to record a roll into a pattern via
+  live-record (this was attempted and removed — it didn't work reliably).
+- Requires the sequencer clock to be running; the timing is locked to the
+  actual clock position, not to whenever you happen to press the pad.
+
 ## Documentation
 
 The [MCL User Documentation](https://jmamma.github.io/MCL/) is available online.
