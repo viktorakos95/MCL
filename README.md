@@ -14,32 +14,21 @@ Two opt-in features on top of official MCL, both off by default. Discussed
 with the original author here: https://github.com/jmamma/MCL/pull/197
 
 **Manual Step.** Lets a MIDI CC message manually advance the Machinedrum
-sequencer one step at a time, instead of the sequencer following the clock
-like normal. This is useful if you want to trigger steps from a pad, a
-footswitch, an envelope follower, or basically anything that can send a
-MIDI CC. The clock itself keeps running normally for everything else (other
-gear, LFOs), only the MD step advance gets taken over. Turn it on in the SEQ
-menu, right under QUANT: `STEP MODE` turns it on/off, `STEP CC` picks the CC
-number, `STEP PORT` picks MIDI2 or USB (it only ever listens on those two,
-never MIDI1, so it can't collide with the Machinedrum's own CC traffic).
-Settings are saved per project. One thing to know: it fires on every single
-message on that CC, with no debounce at all, so a fast or continuous CC
-source (like an envelope follower left open) can advance steps a lot faster
-than you meant it to.
+sequencer one step at a time, instead of following the clock. Good for
+triggering steps from a pad, footswitch, envelope follower, or anything
+that sends a MIDI CC. SEQ menu, under QUANT: `STEP MODE`, `STEP CC`,
+`STEP PORT`. Settings save per project.
+- Only listens on MIDI2 or USB, never MIDI1.
+- Fires on every message with no debounce, so a fast or continuous CC
+  source can advance steps faster than intended.
 
-**Live Step Repeat / Roll.** On the Mixer page, hold LEFT and RIGHT together,
-then hold a trig pad, and it repeats that track's sound at a chosen
-subdivision for as long as you hold it, instead of waiting for its next
-scheduled step. While LEFT and RIGHT are held, UP and DOWN cycle through the
-subdivision (1/4 down to 1/64, including triplets), and a small card on
-screen shows the current rate while it's armed. Two related options live in
-the SYSTEM menu: `ROLL MUTE` decides whether rolling a muted track
-temporarily unmutes it for the roll or just stays silent, and `ROLL
-TRIPLETS` decides whether triplet rates show up at all when cycling. A few
-things worth knowing: it only works while the Mixer page is showing and the
-Primary device is selected, pressing REC or leaving that page stops the
-roll, and there is currently no way to record a roll into a pattern through
-live record.
+**Live Step Repeat / Roll.** Hold LEFT and RIGHT on the Mixer page, then a
+trig pad, to repeat that track at a chosen subdivision for as long as you
+hold it. UP and DOWN while held change the rate. SYSTEM menu: `ROLL MUTE`,
+`ROLL TRIPLETS`.
+- Only works while the Mixer page is showing and the Primary device is
+  selected. Pressing REC or leaving the page stops the roll.
+- Can't currently be captured into a pattern through live record.
 
 ### ⚠️ Project compatibility warning
 
