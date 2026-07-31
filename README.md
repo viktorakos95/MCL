@@ -46,7 +46,7 @@ that will upgrade them to the current format. Projects already saved on
 The "Upgrade MCL" auto download steps below always fetch the official
 jmamma/MCL release, not this fork, so they will not install this build.
 Either use "Building from Source Code" below after cloning this fork
-(recommended), or download the `.hex` from this fork's Releases page and
+(recommended), or download the `.hex` from this fork's [Releases page](https://github.com/viktorakos95/MCL/releases/tag/5.02-custom) and
 flash it yourself with a tool like  Waftlord’s [MCL Hex Flasher](https://wftlrd.uk/mclhexflasher/).
 
 ## Documentation
