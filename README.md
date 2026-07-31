@@ -10,8 +10,10 @@ Visit the [releases page](https://github.com/jmamma/MCL/releases) for:
 
 ## Custom Features (this fork)
 
-Two opt-in features on top of official MCL, both off by default. Discussed
-with the original author here: https://github.com/jmamma/MCL/pull/197
+Two opt-in features on top of official MCL. Manual Step is off by default.
+Live Step Repeat is on by default, toggle it off with `ROLL ACTIVE` in the
+SYSTEM menu if you don't want it. Discussed with the original author here:
+https://github.com/jmamma/MCL/pull/197
 
 **Manual Step.** Lets a MIDI CC message manually advance the Machinedrum
 sequencer one step at a time, instead of following the clock. Good for
@@ -27,6 +29,7 @@ trig pad, to repeat that sound at a chosen subdivision for as long as you
 hold it. UP and DOWN while held change the rate. 
 SYSTEM menu: `ROLL MUTE`, (ignores sound mute so you an roll muted sounds as well)
 `ROLL TRIPLETS` (add/remove triplets from the roll subdivision list)
+`ROLL ACTIVE` (turns the whole feature on/off, YES by default)
 - Only works while the Mixer page is showing. Pressing REC or leaving the page stops the roll.
 - Can't currently be captured into a pattern through live record.
 
