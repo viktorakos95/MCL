@@ -183,11 +183,13 @@ bool MCLSysConfig::write_cfg() {
   if (!ret) {
     DEBUG_PRINTLN(F("Write cfg failed"));
   }
-  // Extra byte appended right after the versioned struct — not part of
+  // Extra bytes appended right after the versioned struct — not part of
   // MCLSysConfigData/CONFIG_VERSION, see roll_ignores_mute's comment in
   // MCLSysConfig.h. Write position follows on immediately from the write
   // above, so no explicit seek is needed.
   mcl_sd.write_data(&roll_ignores_mute, sizeof(roll_ignores_mute), &cfgfile);
+  mcl_sd.write_data(&roll_remove_triplets, sizeof(roll_remove_triplets),
+                    &cfgfile);
   DEBUG_PRINTLN(F("Write cfg okay"));
   cfgfile.close();
   cfg_save_lastclock = read_clock_ms();
@@ -292,6 +294,7 @@ bool MCLSysConfig::cfg_init() {
   //manual_step_port = MANUAL_STEP_PORT_MIDI2;
   beat_repeat_rate = BEAT_REPEAT_RATE_1_16;
   roll_ignores_mute = 1;
+  //roll_remove_triplets = 0;
   mclsys_normalize_midi_config();
   cfgfile.close();
   ret = write_cfg();

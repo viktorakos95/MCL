@@ -132,6 +132,12 @@ public:
   // byte appended after the versioned struct in config.mcls (see
   // MCLSysConfig::write_cfg() and MCLSd::load_init()).
   uint8_t roll_ignores_mute;
+
+  // SYSTEM menu "RM TRIPLETS" toggle: when on, beat_repeat_cycle_rate()
+  // (BeatRepeat.h) only cycles through 1/4, 1/8, 1/16, 1/32, 1/64, skipping
+  // every triplet rate. Same global/extra-byte rationale as
+  // roll_ignores_mute above.
+  uint8_t roll_remove_triplets;
 };
 
 extern MCLSysConfig mcl_cfg;

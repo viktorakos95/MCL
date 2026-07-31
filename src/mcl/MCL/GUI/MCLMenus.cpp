@@ -212,7 +212,9 @@ const uint8_t *const menu_target_param[] PROGMEM = {
     // 77
     &mcl_cfg.manual_step_port,
     // 78
-    &mcl_cfg.roll_ignores_mute
+    &mcl_cfg.roll_ignores_mute,
+    // 79
+    &mcl_cfg.roll_remove_triplets
 };
 
 const menu_function_t menu_target_functions[] PROGMEM = {

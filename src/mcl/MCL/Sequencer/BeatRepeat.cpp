@@ -73,6 +73,21 @@ uint8_t beat_repeat_normalized_rate(uint8_t rate) {
 
 uint8_t beat_repeat_cycle_rate(uint8_t rate, bool increase) {
   rate = beat_repeat_normalized_rate(rate);
+  // SYSTEM menu "RM TRIPLETS": every triplet rate is an odd index (see the
+  // BEAT_REPEAT_RATE_* enum in BeatRepeat.h), so stepping by 2 instead of 1
+  // visits only 1/4, 1/8, 1/16, 1/32, 1/64. Snap to the even neighbor first
+  // in case the stored rate is a leftover triplet from before the toggle
+  // was turned on — otherwise stepping by 2 from an odd index would only
+  // ever land on other odd (triplet) indices.
+  if (mcl_cfg.roll_remove_triplets) {
+    rate &= ~1;
+    if (increase) {
+      rate = (rate + 2 >= BEAT_REPEAT_RATE_COUNT) ? 0 : rate + 2;
+    } else {
+      rate = (rate == 0) ? (BEAT_REPEAT_RATE_COUNT - 2) : rate - 2;
+    }
+    return rate;
+  }
   if (increase) {
     rate++;
     if (rate >= BEAT_REPEAT_RATE_COUNT) {
