@@ -41,14 +41,13 @@ MCL 5.00, open and re-save them once with an official 5.00+ build first,
 that will upgrade them to the current format. Projects already saved on
 5.00, 5.01, or 5.02 need no action.
 
-### ⚠️ Installing this fork
+### Installing this fork
 
 The "Upgrade MCL" auto download steps below always fetch the official
 jmamma/MCL release, not this fork, so they will not install this build.
 Either use "Building from Source Code" below after cloning this fork
 (recommended), or download the `.hex` from this fork's Releases page and
-flash it yourself with a tool like avrdude, after putting the MegaCommand
-into OS UPGRADE mode as described below.
+flash it yourself with a tool like  Waftlord’s [MCL Hex Flasher](https://wftlrd.uk/mclhexflasher/).
 
 ## Documentation
 
