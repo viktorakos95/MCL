@@ -321,6 +321,7 @@ menu_t<mcl_config_page_N> mclconfig_menu_layout = {
         {"GRID ENCOD:", 0, 2, 2, 62, NULL_PAGE, 0, 114},
         {"ROLL MUTE:", 0, 2, 2, 78, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
         {"ROLL TRIPLETS:", 0, 2, 2, 79, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
+        {"ROLL ACTIVE:", 0, 2, 2, 80, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
     },
     1
 };

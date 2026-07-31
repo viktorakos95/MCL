@@ -250,6 +250,15 @@ bool MCLSd::load_init() {
           mcl_cfg.roll_triplets = 1;
         }
 
+        // roll_active follows immediately after roll_triplets, same
+        // rationale/fallback as above (default 1, matching prior behavior
+        // of the roll gesture always being active).
+        if (!read_data(&mcl_cfg.roll_active, sizeof(mcl_cfg.roll_active),
+                       &mcl_cfg.cfgfile) ||
+            mcl_cfg.roll_active > 1) {
+          mcl_cfg.roll_active = 1;
+        }
+
         if (mcl_cfg.project_config > 1) {
           mcl_cfg.project_config = 0;
         }

@@ -123,7 +123,7 @@ void beat_repeat_tick(MidiUartClass *uart) {
   // triggering" from ever disagreeing. Gated to the Primary device slot
   // since the roll is MD-specific (MD.triggerTrack() below); the Mixer
   // page's Secondary slot may be bound to a different device entirely.
-  bool armed = mcl.current_page == MIXER_PAGE &&
+  bool armed = mcl_cfg.roll_active && mcl.current_page == MIXER_PAGE &&
                mixer_page.beat_repeat_armed &&
                mixer_page.mixer_device_idx == DeviceIdx::Primary;
 

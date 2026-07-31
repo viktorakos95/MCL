@@ -138,6 +138,13 @@ public:
   // every triplet rate. Same global/extra-byte rationale as
   // roll_ignores_mute above.
   uint8_t roll_triplets;
+
+  // SYSTEM menu "ROLL ACTIVE" toggle: when off (0), the LEFT+RIGHT chord on
+  // the Mixer page (MixerPage::handleEvent()) is left alone entirely, so
+  // LEFT/RIGHT behave exactly like stock MCL (mute-set preview only, no
+  // beat-repeat interception). Same global/extra-byte rationale as
+  // roll_ignores_mute above.
+  uint8_t roll_active;
 };
 
 extern MCLSysConfig mcl_cfg;

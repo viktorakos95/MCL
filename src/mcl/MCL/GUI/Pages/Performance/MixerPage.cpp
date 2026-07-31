@@ -979,17 +979,24 @@ bool MixerPage::handleEvent(gui_event_t *event) {
         // overrides the normal single-arrow mute-preview-set below. A
         // short grace window (resolved in loop()) absorbs the moment
         // when only one of the two is down yet, so a solo tap still
-        // works normally if the other key never joins it.
-        uint8_t other_key = (key == MDX_KEY_LEFT) ? MDX_KEY_RIGHT : MDX_KEY_LEFT;
-        if (key_interface.is_key_down(other_key)) {
-          beat_repeat_key_pending = 0;
-          beat_repeat_armed = true;
-          redraw();
+        // works normally if the other key never joins it. SYSTEM menu
+        // "ROLL ACTIVE" off skips all of this, leaving LEFT/RIGHT exactly
+        // as stock MCL behaves.
+        if (mcl_cfg.roll_active) {
+          uint8_t other_key = (key == MDX_KEY_LEFT) ? MDX_KEY_RIGHT : MDX_KEY_LEFT;
+          if (key_interface.is_key_down(other_key)) {
+            beat_repeat_key_pending = 0;
+            beat_repeat_armed = true;
+            redraw();
+            return true;
+          }
+          beat_repeat_key_pending = key;
+          beat_repeat_key_pending_ms = read_clock_ms();
           return true;
         }
-        beat_repeat_key_pending = key;
-        beat_repeat_key_pending_ms = read_clock_ms();
-        return true;
+        preview_mute_set = set;
+        redraw_mutes = true;
+        break;
       }
       case MDX_KEY_UP:
       case MDX_KEY_DOWN: {
