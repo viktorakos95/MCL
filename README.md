@@ -10,9 +10,11 @@ Visit the [releases page](https://github.com/jmamma/MCL/releases) for:
 
 ## Custom Features (this fork)
 
-Two opt-in features on top of official MCL. Manual Step is off by default.
+Three additions on top of official MCL. Manual Step is off by default.
 Live Step Repeat is on by default, toggle it off with `ROLL ACTIVE` in the
-SYSTEM menu if you don't want it. Discussed with the original author here:
+SYSTEM menu if you don't want it. The Euclidean sequencer has no global
+toggle -- it only affects a track once you open it from the SEQ menu and
+touch its parameters. Discussed with the original author here:
 https://github.com/jmamma/MCL/pull/197
 
 **Manual Step.** Lets a MIDI CC message manually advance the Machinedrum
@@ -26,12 +28,29 @@ Settings save per project.
 
 **Live Step Repeat / Roll.** Hold LEFT and RIGHT on the Mixer page, then a
 trig pad, to repeat that sound at a chosen subdivision for as long as you
-hold it. UP and DOWN while held change the rate. 
-SYSTEM menu: `ROLL MUTE`, (ignores sound mute so you an roll muted sounds as well)
+hold it. UP and DOWN while held change the rate. While a pad is held, that
+track's own sequenced pattern is bypassed, so you only hear the roll, not
+the pattern playing underneath it.
+SYSTEM menu: `ROLL ACTIVE` (turns the whole feature on/off, YES by default)
+`ROLL IF MUTED` (ignores sound mute so you can roll muted sounds as well)
 `ROLL TRIPLETS` (add/remove triplets from the roll subdivision list)
-`ROLL ACTIVE` (turns the whole feature on/off, YES by default)
 - Only works while the Mixer page is showing. Pressing REC or leaving the page stops the roll.
 - Can't currently be captured into a pattern through live record.
+
+**Euclidean Sequencer.** Elektron-style Euclidean mode for Machinedrum
+tracks: two pulse generators (`PL1`/`PL2`), each with its own rotation
+(`RO1`/`RO2`), combined with a boolean operator (`OP`: OR/XOR/AND/SUB) and
+rotated together (`TRO`) into one generated pattern.
+SEQ menu: `EUCLIDEAN`. LEFT/RIGHT selects a parameter, UP/DOWN edits it,
+SCALE pages through the visible step window on patterns longer than 16
+steps. Each track remembers its own settings, so scrolling tracks with the
+normal track-select buttons while the page is open shows each one's own
+values, the same way the arpeggiator page already does.
+- Live preview only: leaving the page, or the track, without pressing YES
+  reverts to that track's manually programmed pattern -- nothing is
+  changed until you commit.
+- YES bakes the generated pattern into the track's real steps and turns
+  the mode off for that track; NO cancels without changing anything.
 
 ### ⚠️ Project compatibility warning
 
@@ -40,6 +59,13 @@ open or convert older project formats**. If you have projects from before
 MCL 5.00, open and re-save them once with an official 5.00+ build first,
 that will upgrade them to the current format. Projects already saved on
 5.00, 5.01, or 5.02 need no action.
+
+### ⚠️ File menu changes
+
+This fork disables the `MOVE` file menu entry to free up flash space.
+Everything else in the file menu -- save/load/rename/clone/delete, and the
+project backup/version browser (`VERS`) -- is unaffected and works exactly
+like official MCL.
 
 ### Installing this fork
 
