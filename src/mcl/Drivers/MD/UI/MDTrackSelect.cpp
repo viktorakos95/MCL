@@ -182,6 +182,10 @@ void MDTrackSelect::handle_track_select_legacy(const SysexView &view,
         255,
         seq_ptc_page.primary_channel_event(seq_ptc_page.dev_note_channels[0]) !=
             POLY_EVENT);
+    // Same reasoning as arp_page above -- lets EucPage show the newly
+    // selected track's own remembered settings when the physical track
+    // buttons are used while it's open, same as ArpPage already does.
+    euc_page.track_update();
   }
 }
 

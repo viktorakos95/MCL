@@ -5,6 +5,7 @@
 #include "MidiClock.h"
 #include "GUI/Pages/CommonPages.h"
 #include "GUI/Pages/Sequencer/SeqPages.h"
+#include "Sequencer/BeatRepeat.h"
 #include "Sequencer/SeqPtcTrackRef.h"
 #include "Grid/GridTask.h"
 #include "Sequencer/MCLSeq.h"
@@ -407,26 +408,42 @@ void MDSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
       auto &step = steps[current_step];
       uint8_t send_trig = trig_conditional(step.cond_id);
       bool is_midi_model = md_track_is_midi_model(track_number);
-      bool step_fired = send_trig == TRIG_TRUE && step.trig;
+      // effective_trig() picks the euclidean-generated pattern instead of
+      // the raw step bit while EUC mode is on (see MDSeqTrack.h) -- lock
+      // application (send_parameter_locks_inline below) follows the same
+      // switch, so a generated trig is p-lockable exactly like a manual
+      // one, matching Elektron's own behavior.
+      bool trig_active = effective_trig(current_step);
+      bool step_fired = send_trig == TRIG_TRUE && trig_active;
       if (send_trig == TRIG_TRUE ||
           (!step.cond_plock && send_trig != TRIG_ONESHOT)) {
         if (is_midi_model && step_fired) {
           send_notes_off();
           init_notes();
         }
-        send_parameter_locks_inline(current_step, step.trig, lock_idx);
+        send_parameter_locks_inline(current_step, trig_active, lock_idx);
         if (IS_BIT_SET64(slide_mask, current_step)) {
           locks_slides_recalc = current_step;
           locks_slides_idx = lock_idx;
         }
         if (step_fired) {
           bool arp_triggered = mcl_seq.md_arp_tracks[track_number].trigger();
-          if (!arp_triggered && is_midi_model) {
-            notes.count_down = md_note_count_down(notes.len, ticks_per_step);
-            send_notes_on();
-          }
-          if (!arp_triggered) {
-            send_trig_inline();
+          // While this track's pad is held for the roll, its own
+          // programmed hits would otherwise keep landing underneath the
+          // manually-retriggered ones -- skip sending this step's trigger
+          // so holding the pad replaces the sequence instead of layering
+          // on top of it. arp_triggered is still computed above (not
+          // skipped) so the arp's own step position keeps advancing
+          // normally and picks back up correctly once the pad is
+          // released.
+          if (!beat_repeat_bypasses_track(track_number)) {
+            if (!arp_triggered && is_midi_model) {
+              notes.count_down = md_note_count_down(notes.len, ticks_per_step);
+              send_notes_on();
+            }
+            if (!arp_triggered) {
+              send_trig_inline();
+            }
           }
         }
       }
@@ -618,7 +635,7 @@ void MDSeqTrack::get_mask(uint64_t *_pmask, uint8_t mask_type) const {
 bool MDSeqTrack::get_step(uint8_t step, uint8_t mask_type) const {
   switch (mask_type) {
   case MASK_PATTERN:
-    return steps[step].trig;
+    return effective_trig(step);
   case MASK_LOCK:
     return steps[step].locks != 0;
   case MASK_MUTE:

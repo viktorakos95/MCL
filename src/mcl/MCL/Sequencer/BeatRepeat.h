@@ -43,3 +43,11 @@ void beat_repeat_rate_name(uint8_t rate, char *dst, uint8_t dst_size);
 // unconditionally (independent of manual-step mode) so beat repeat keeps
 // working regardless of whether the MD tracks are clock- or CC-advanced.
 void beat_repeat_tick(MidiUartClass *uart);
+
+// True while `track`'s pad is currently held for the roll. MDSeqTrack::seq()
+// checks this to skip that track's own normal step trigger while it's being
+// rolled, so holding the pad replaces the sequenced pattern with the roll
+// instead of layering the two -- otherwise the track's own programmed hits
+// keep landing underneath the manually-retriggered ones, audible as
+// flamming/a background beat that doesn't match what's actually held.
+bool beat_repeat_bypasses_track(uint8_t track);

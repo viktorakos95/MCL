@@ -4,14 +4,20 @@
 
 #define WAV_DESIGNER
 #define SOUND_PAGE
-
-// AVR (MegaCommand) has essentially no spare flash margin, and the added
-// manual-step-mode feature needs a little more room. Per upstream
-// maintainer guidance, dropping legacy project conversion is the preferred
-// way to free that space (rather than disabling WAV Designer) — see
-// MCL_DISABLE_PROJECT_CONVERSION below.
 #ifdef __AVR__
 #define MCL_DISABLE_PROJECT_CONVERSION
+// Tried replacing this with a custom Extract/Backup workflow that exposed
+// backups as independent projects in a subfolder, to save flash -- reverted
+// (see project memory/session notes): it meant "restore a version" required
+// remembering to reopen that subfolder's project every time instead of just
+// switching which pair the *same* project uses, needed MOVE to relocate a
+// version back out, and didn't actually save enough to matter. The
+// original pair-switching version browser has none of that: switching
+// versions is a single header byte (active_grid_pair), not a copy.
+// Move-destination mode is the flash carve-out instead; normal
+// save/load/rename/copy/delete/versions are untouched, only the MOVE FILE
+// menu entry goes away.
+#define MCL_DISABLE_FILE_MOVE
 #endif
 
 /*

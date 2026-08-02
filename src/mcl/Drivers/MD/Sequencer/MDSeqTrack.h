@@ -4,8 +4,10 @@
 #define MDSEQTRACK_H__
 
 #include "DeviceTrack.h"
+#include "MCL.h"
 #include "MD.h"
 #include "MDSeqTrackData.h"
+#include "Sequencer/Euclidean.h"
 #include "Sequencer/SeqTrack.h"
 #include "MidiClock.h"
 
@@ -34,6 +36,31 @@ class MDSeqTrack : public MDSeqTrackData, public SeqSlideTrack {
 
 public:
   uint64_t oneshot_mask;
+
+  // What get_step()/get_mask() (MASK_PATTERN) and seq() actually play/show
+  // for a step: this track's own Euclidean-generated pattern (see
+  // Euclidean.h -- every track has its own permanent slot) when armed
+  // (`enabled`) AND a sequencer/euclidean-family page is actually showing
+  // -- otherwise whatever was manually placed. Leaving to Mixer/Grid/etc
+  // reverts the track to its normal pattern without discarding anything:
+  // the slot (pl1/pl2/.../enabled) is untouched, this is purely a
+  // read-time gate, so coming back to the step page (or reopening
+  // EucPage) picks the generated pattern back up exactly as it was. The
+  // manual pattern itself is never modified by any of this either, so
+  // turning off a slot always shows exactly what was there before,
+  // untouched.
+  ALWAYS_INLINE() bool effective_trig(uint8_t step) const {
+    PageIndex page = mcl.current_page;
+    bool on_seq_page = page == SEQ_STEP_PAGE || page == SEQ_EXTSTEP_PAGE ||
+                       page == SEQ_PTC_PAGE || page == EUC_PAGE;
+    EucSlot *slot = euc_slot_find(track_number);
+    if (on_seq_page && slot->enabled) {
+      return euclidean_pattern_has_pulse(step, slot->pl1, slot->pl2,
+                                         slot->ro1, slot->ro2, slot->op,
+                                         slot->tro, length);
+    }
+    return steps[step].trig;
+  }
 
   static uint16_t gui_update;
   static uint16_t md_trig_mask;

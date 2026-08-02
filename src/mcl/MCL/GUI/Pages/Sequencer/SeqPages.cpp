@@ -29,5 +29,6 @@ uint8_t last_primary_track;
 SeqPtcPage seq_ptc_page(&ptc_param_oct, &ptc_param_fine_tune, &ptc_param_len, &ptc_param_scale);
 
 ArpPage arp_page(&arp_enabled, &arp_mode, &arp_rate, &arp_range);
+EucPage euc_page;
 
 //SeqLFOPage seq_lfo_page[NUM_LFO_PAGES];

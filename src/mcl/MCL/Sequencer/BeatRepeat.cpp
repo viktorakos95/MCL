@@ -63,7 +63,17 @@ const char *const BEAT_REPEAT_NAMES[BEAT_REPEAT_RATE_COUNT] PROGMEM = {
 
 constexpr uint8_t BEAT_REPEAT_VELOCITY = 100;
 
+// Which tracks currently have a pad held for the roll -- kept in sync every
+// tick in beat_repeat_tick() below regardless of grid phase, so a released
+// pad (or the whole roll disarming) un-bypasses that track's normal
+// sequencer trigger immediately rather than on the next subdivision.
+uint16_t roll_held_mask = 0;
+
 } // namespace
+
+bool beat_repeat_bypasses_track(uint8_t track) {
+  return track < 16 && (roll_held_mask & ((uint16_t)1 << track)) != 0;
+}
 
 uint8_t beat_repeat_normalized_rate(uint8_t rate) {
   return rate < BEAT_REPEAT_RATE_COUNT ? rate : 0;
@@ -135,6 +145,7 @@ void beat_repeat_tick(MidiUartClass *uart) {
       }
     }
   }
+  roll_held_mask = pad_mask;
 
   // Runs every real tick regardless of grid phase, so a released pad (or
   // the whole roll disarming) gets its mute state resynced promptly rather
