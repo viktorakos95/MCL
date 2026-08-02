@@ -27,7 +27,7 @@ steps. Each track remembers its own settings, so scrolling tracks with the
 normal track-select buttons while the page is open shows each one's own
 values, the same way the arpeggiator page already does.
 - Live preview only: leaving the page, or the track, without pressing YES
-  reverts to that track's manually programmed pattern , nothing is
+  reverts to that track's manually programmed pattern, nothing is
   changed until you commit.
 - YES bakes the generated pattern into the track's real steps and turns
   the mode off for that track; NO cancels without changing anything.
@@ -37,8 +37,7 @@ trig pad, to repeat that sound at a chosen subdivision for as long as you
 hold it. UP and DOWN while held change the rate. While a pad is held, that
 track's own sequenced pattern is bypassed, so you only hear the roll, not
 the pattern playing underneath it.
-SYSTEM menu: 
-`ROLL ACTIVE` (turns the whole feature on/off, YES by default)
+SYSTEM menu: `ROLL ACTIVE` (turns the whole feature on/off, YES by default)
 `ROLL IF MUTED` (ignores sound mute so you can roll muted sounds as well)
 `ROLL TRIPLETS` (add/remove triplets from the roll subdivision list)
 - Only works while the Mixer page is showing. Pressing REC or leaving the page stops the roll.
@@ -53,7 +52,6 @@ Settings save per project.
 - Only listens on MIDI2 or USB, never MIDI1.
 - Fires on every message with no debounce
 
-
 ### ⚠️ Project compatibility warning
 
 This fork disables project conversion to free up flash space, so it **cannot
@@ -65,7 +63,7 @@ that will upgrade them to the current format. Projects already saved on
 ### ⚠️ File menu changes
 
 This fork disables the `MOVE` file menu entry to free up flash space.
-Everything else in the file menu , save/load/rename/clone/delete, and the
+Everything else in the file menu, save/load/rename/clone/delete, and the
 project backup/version browser (`VERS`), is unaffected and works exactly
 like official MCL.
 
@@ -73,8 +71,8 @@ like official MCL.
 
 The "Upgrade MCL" auto download steps below always fetch the official
 jmamma/MCL release, not this fork, so they will not install this build.
-Either Build from Source Code  after cloning this fork, or download the `.hex` from this [fork's Releases page](https://github.com/viktorakos95/MCL/releases/tag/5.02-custom) and
-flash it yourself with a tool like  Waftlord’s [MCL Hex Flasher](https://wftlrd.uk/mclhexflasher/).
+Either Build from Source Code after cloning this fork, or download the `.hex` from this [fork's Releases page](https://github.com/viktorakos95/MCL/releases/tag/5.02-custom) and
+flash it yourself with a tool like Waftlord’s [MCL Hex Flasher](https://wftlrd.uk/mclhexflasher/).
 
 ## Documentation
 
@@ -139,7 +137,7 @@ MCL can now be built to run across different hardware platforms using PlatformIO
   
     Should platformio not detect the correct upload port you can specify it like so:
     ```
-    platformio run -t nobuild -t upload ,upload-port <port> -e <environment>
+    platformio run -t nobuild -t upload --upload-port <port> -e <environment>
     ```
 ## Building from Source Code
 
