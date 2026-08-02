@@ -102,6 +102,18 @@ bool ProjectVersionPage::handleEvent(gui_event_t *event) {
 }
 
 void ProjectVersionPage::on_new() {
+  // FileBrowserPage::handleEvent()'s YES-path opens `file` (a static
+  // shared with every other FileBrowserPage subclass, including
+  // LoadProjectPage) against whatever's currently highlighted before
+  // calling on_new()/on_select() -- for this page that's always a
+  // synthetic "[ BACKUP ]"/"Vn" label, never a real file, so that open
+  // fails and leaves `file` sitting open on nothing in particular.
+  // LoadProjectPage::on_new()/on_select() both close it first for exactly
+  // this reason; this page was missing the same guard, which is why
+  // going back to LoadProjectPage afterward could find its own directory
+  // scan silently failing until something else (like opening and
+  // cancelling New Project there) happened to close `file` instead.
+  file.close();
   uint8_t pair = 0;
   if (!proj.create_backup(lwd, &pair)) {
     gfx.alert_error("No backup.");
@@ -118,6 +130,7 @@ void ProjectVersionPage::on_new() {
 
 void ProjectVersionPage::on_select(const char *entry) {
   (void)entry;
+  file.close(); // see on_new() above
   uint8_t pair = 0;
   if (!selected_pair(&pair)) {
     return;
