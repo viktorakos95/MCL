@@ -13,30 +13,18 @@
 //#define MDPATTERN_TOSYSEX_ENABLE
 
 #if !defined(__AVR__)
-#define MD_PATTERN_VERSION_SPSX_V1 0x40
-#define MD_PATTERN_VERSION_SPSX    0x41
-#define MD_PATTERN_LOCK_SLOTS_V1   34
+#define MD_PATTERN_VERSION_SPSX    0x04
+#define MD_PATTERN_SCHEMA_SPSX     0x40
 #define MD_PATTERN_LOCK_SLOTS      SPS_PARAMS_PER_TRACK
 // Maximum number of distinct param-lock rows the host can transmit in an SPS-X
 // pattern. The base ElektronPattern::locks[64][64] array covers rows 0-63;
 // Non-AVR MDPattern adds extension storage for rows 64..MAX_LOCK_ROWS-1.
 #define MAX_LOCK_ROWS SPS_MAX_LOCK_ROWS
 
-constexpr uint8_t mdPatternLockSlotCountForVersion(uint8_t version) {
-  return version == MD_PATTERN_VERSION_SPSX
-             ? MD_PATTERN_LOCK_SLOTS
-         : version == MD_PATTERN_VERSION_SPSX_V1
-             ? MD_PATTERN_LOCK_SLOTS_V1
-             : MD_PARAMS_PER_TRACK;
-}
-
 static_assert(MD_PATTERN_LOCK_SLOTS == SPSX_NUM_LOCKS,
               "pattern and SPS-X sequencer lock mappings must match");
-static_assert(mdPatternLockSlotCountForVersion(MD_PATTERN_VERSION_SPSX_V1) ==
-                  34,
-              "v0x40 pattern width changed");
-static_assert(mdPatternLockSlotCountForVersion(MD_PATTERN_VERSION_SPSX) == 37,
-              "v0x41 pattern width changed");
+static_assert(MD_PATTERN_LOCK_SLOTS == 38,
+              "compact SPS-X pattern width changed");
 #endif
 
 /**
@@ -128,6 +116,12 @@ public:
   uint8_t ext_track_speeds[16];
   uint16_t patternTempo;
   uint8_t chain_change;
+  // Canonical compact settings retained by hosted/RP2040 MCL so a receive/send
+  // round-trip remains lossless.
+  uint8_t ext_scale_mode;
+  uint8_t ext_tempo_multiplier;
+  uint8_t ext_chain_row;
+  uint8_t ext_chain_loops;
 
   /** Extended lock rows (64..MAX_LOCK_ROWS-1). Base class locks[64][64]
    *  covers the first 64 rows; this array extends storage for current SPS-X
@@ -145,6 +139,10 @@ public:
    *  live in MDPattern::ext_locks. */
   inline int8_t *lock_row(uint16_t row) {
     return (row < 64) ? (int8_t*)locks[row] : ext_locks[row - 64];
+  }
+  inline const int8_t *lock_row(uint16_t row) const {
+    return (row < 64) ? (const int8_t*)locks[row]
+                      : ext_locks[row - 64];
   }
 #else
   // AVR has no ext_locks; only rows 0..63 exist. Provided so the encoder
@@ -230,6 +228,11 @@ public:
   /** ElektronSysexObject implementation */
   bool fromSysex(MidiClass *midi) override;
   uint16_t toSysex(ElektronDataToSysexEncoder *encoder) override;
+
+#if !defined(__AVR__)
+  bool fromSysex40(const SysexView &sysex);
+  uint16_t toSysex40(ElektronDataToSysexEncoder *encoder);
+#endif
 
   MDPattern(bool _init = true) : ElektronPattern(_init) {
     maxSteps = 64;
