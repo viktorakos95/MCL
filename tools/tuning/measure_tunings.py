@@ -111,6 +111,31 @@ def detect_pitch(x, sr=SR, fmin=18.0, fmax=6000.0):
     return sr / lag, float(seg[idx])
 
 
+def detect_spectral(x, sr=SR, fmin=40.0, fmax=8000.0):
+    """Strongest spectral line in the window (for metallic / noisy sounds where autocorrelation finds
+    no period but a dominant partial still moves with the knob). conf = share of band energy near the peak."""
+    n = len(x)
+    if n < 256 or np.max(np.abs(x)) < 1e-4:
+        return None, 0.0
+    w = np.hanning(n)
+    nfft = 1 << (int(np.ceil(np.log2(n))) + 2)
+    mag = np.abs(np.fft.rfft((x - np.mean(x)) * w, nfft))
+    fr = np.fft.rfftfreq(nfft, 1.0 / sr)
+    band = (fr >= fmin) & (fr <= fmax)
+    if not band.any():
+        return None, 0.0
+    k = int(np.argmax(np.where(band, mag, 0.0)))
+    if 1 <= k < len(mag) - 1 and mag[k] > 0:
+        la, lb, lc = np.log(mag[k - 1] + 1e-12), np.log(mag[k] + 1e-12), np.log(mag[k + 1] + 1e-12)
+        d = la - 2 * lb + lc
+        k = k + (0.5 * (la - lc) / d if d else 0.0)
+    f0 = float(np.interp(k, np.arange(len(fr)), fr))
+    e = mag ** 2
+    near = band & (np.abs(fr - f0) <= 0.03 * f0)
+    conf = float(e[near].sum() / (e[band].sum() + 1e-12))
+    return f0, min(1.0, conf * 2.0)
+
+
 def hz_to_mcl_note(f):
     """MCL note numbers are plain MIDI numbers of the sounding pitch (MIDI_NOTE_B1 == 23
     == 30.9 Hz). Checked against TRX-BD: the emulator's cc 44 sounds 49 Hz == MIDI 31,
@@ -118,14 +143,53 @@ def hz_to_mcl_note(f):
     return 69 + 12 * math.log2(f / 440.0)
 
 
-def analyse_slots(audio, t0, sr=SR):
+def analyse_slots(audio, t0, sr=SR, detector="autocorr"):
+    det = detect_spectral if detector == "spectral" else detect_pitch
     out = []
     for v in range(128):
-        s = int((t0 + v * SLOT_S + ANALYSIS[0]) * sr)
-        e = int((t0 + v * SLOT_S + ANALYSIS[1]) * sr)
-        f, conf = detect_pitch(audio[s:e], sr)
+        s0 = int((t0 + v * SLOT_S + ANALYSIS[0]) * sr)
+        e0 = int((t0 + v * SLOT_S + ANALYSIS[1]) * sr)
+        f, conf = det(audio[s0:e0], sr)
         out.append({"cc": v, "hz": f, "conf": round(conf, 3)})
     return out
+
+
+def _score(r):
+    """Prefer a clean line-like pitch law over a long but erratic 'curve'; then the longer table."""
+    return (r.get("verdict") == "linear", len(r.get("table", [])))
+
+
+def build_tuning_adaptive(points):
+    """build_tuning with progressively looser confidence cut-offs; keeps the best-scoring result.
+    A rising, line-like run among noisy detections is very unlikely by chance, so loosening is safe."""
+    best = None
+    for min_conf in (0.5, 0.35, 0.25):
+        r = build_tuning(points, min_conf=min_conf)
+        r["min_conf"] = min_conf
+        if best is None or _score(r) > _score(best):
+            best = r
+    return best
+
+
+def analyse_auto(audio, t0, sr=SR):
+    """Autocorrelation first; also try the spectral detector when that is not a clean line law.
+    Spectral results follow the strongest partial, whose octave is arbitrary, so the base note is folded
+    into 24..35 (the CC ladder is what matters). Returns (points, tuning dict with 'detector' and 'quality')."""
+    pts = analyse_slots(audio, t0, sr)
+    r = build_tuning_adaptive(pts)
+    r["detector"] = "autocorr"
+    if not (r["verdict"] == "linear" and len(r.get("table", [])) >= 12):
+        pts2 = analyse_slots(audio, t0, sr, detector="spectral")
+        r2 = build_tuning_adaptive(pts2)
+        r2["detector"] = "spectral"
+        if _score(r2) > _score(r):
+            if "base_note" in r2:
+                r2["raw_base_note"] = r2["base_note"]
+                r2["base_note"] = 24 + (r2["base_note"] - 24) % 12
+            pts, r = pts2, r2
+    clean = r["verdict"] == "linear" and len(r.get("table", [])) >= 12
+    r["quality"] = "good" if clean else ("uncertain" if r.get("table") else "none")
+    return pts, r
 
 
 # --- curve -> tuning table ---------------------------------------------------
@@ -432,7 +496,7 @@ def _sweep(play, mid, a, outdir, tonal=False, assign=True):
     audio = play(ev, t0 + 128 * SLOT_S + 0.5)
     audio.tofile(f)  # raw take kept so analysis can be redone: from-audio <outdir>
     pk = float(np.max(np.abs(audio)))
-    r = build_tuning(analyse_slots(audio / (pk + 1e-9), t0)) if pk > 1e-4 else {"verdict": "silent"}
+    r = analyse_auto(audio / (pk + 1e-9), t0)[1] if pk > 1e-4 else {"verdict": "silent"}
     return pk, r
 
 
@@ -444,7 +508,7 @@ def cmd_live(a):
         if (outdir / ("m%d.f32" % mid)).exists() and not a.redo:
             print("%-8s id %3d  already measured (use --redo)" % (name, mid)); continue
         pk, r = _sweep(play, mid, a, outdir)
-        print("%-8s id %3d  peak %.2f  %s" % (name, mid, pk, r["verdict"]), flush=True)
+        print("%-8s id %3d  peak %.2f  %s (%s)" % (name, mid, pk, r["verdict"], r.get("quality", "")), flush=True)
     print("done. Now: python measure_tunings.py from-audio %s --out tunings.json && python measure_tunings.py report tunings.json" % outdir)
 
 
@@ -476,7 +540,7 @@ def cmd_guided(a):
             if (outdir / ("m%d.f32" % mid)).exists() and not a.redo:
                 print("   already measured, skipping (use --redo)"); continue
             pk, r = _sweep(play, mid, a, outdir)
-            print("   peak %.2f  %s" % (pk, r["verdict"]), flush=True)
+            print("   peak %.2f  %s (%s)" % (pk, r["verdict"], r.get("quality", "")), flush=True)
             continue
         if (outdir / ("m%dt.f32" % mid)).exists() and not a.redo:
             print("   tonal take exists, skipping (use --redo)"); continue
@@ -510,8 +574,8 @@ def cmd_fromaudio(a):
         if peak < 1e-4:
             results[key] = {"id": mid, "tonal": tonal, "points": [], "tuning": {"verdict": "silent"}}
             continue
-        pts = analyse_slots(audio / peak, 0.5)
-        results[key] = {"id": mid, "tonal": tonal, "points": pts, "tuning": build_tuning(pts)}
+        pts, tun = analyse_auto(audio / peak, 0.5)
+        results[key] = {"id": mid, "tonal": tonal, "points": pts, "tuning": tun}
     Path(a.out).write_text(json.dumps(results, indent=1))
     print("analysed", len(results), "->", a.out)
 
@@ -520,8 +584,8 @@ def cmd_report(a):
     res = json.loads(Path(a.file).read_text())
     for name, r in res.items():
         t = r["tuning"]
-        print("%-8s id %3d  %-9s" % (name, r["id"], t["verdict"]),
-              {k: t[k] for k in ("semitones_per_cc", "max_linear_error", "base_note") if k in t})
+        print("%-8s id %3d  %-9s %-9s" % (name, r["id"], t["verdict"], t.get("quality", "")),
+              {k: t[k] for k in ("detector", "semitones_per_cc", "max_linear_error", "base_note", "cc_range") if k in t})
     print()
     for name, r in res.items():
         macro = re.sub(r"[^A-Z0-9]", "_", name.split(" (")[0].upper()) + "_MODEL"
