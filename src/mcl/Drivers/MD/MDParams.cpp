@@ -435,7 +435,6 @@ static const uint8_t p_i_hh_tuning[] PROGMEM = {
   127
 };
 
-#if !defined(__AVR__)
 // OS X.14 model patcher machines, measured on hardware (tools/tuning/measure_tunings.py).
 // table[i] = CC that sounds note base+i. Sub-oscillators / unison / chorus were off for MM-SAW, MM-PLS, SAWPW.
 // MM-DEN: 0.99787 st/cc, max err 0.295 st
@@ -532,9 +531,8 @@ static const uint8_t sawpw_tuning[] PROGMEM = {
   48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92,
   94, 96, 98, 100, 102, 104, 106, 108
 };
-#endif
 
-static const tuning_t rom_tuning_t = { ROM_MODEL,    45, 
+static const tuning_t rom_tuning_t PROGMEM = { ROM_MODEL,    45, 
 				       sizeof(rom_tuning), 4,   rom_tuning };
 
 static const uint8_t tonal_tuning[] PROGMEM = {
@@ -543,10 +541,10 @@ static const uint8_t tonal_tuning[] PROGMEM = {
 94, 96, 98, 100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126
 };
 
-static const tuning_t rom_tonal_tuning_t = { ROM_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning };
+static const tuning_t rom_tonal_tuning_t PROGMEM = { ROM_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning };
 
 
-static const tuning_t tunings_tonal[] = {
+static const tuning_t tunings_tonal[] PROGMEM = {
 
   { EFM_BD_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { EFM_SD_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
@@ -571,7 +569,7 @@ static const tuning_t tunings_tonal[] = {
   { NFX_UC_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 3, tonal_tuning },
 };
 
-static const tuning_t tunings[] = {
+static const tuning_t tunings[] PROGMEM = {
   { EFM_RS_MODEL, MIDI_NOTE_B4, sizeof(efm_rs_tuning), 4, efm_rs_tuning },
   { EFM_HH_MODEL, MIDI_NOTE_B4, sizeof(efm_hh_tuning), 8, efm_hh_tuning },
   { EFM_CP_MODEL, MIDI_NOTE_B3, sizeof(efm_cp_tuning), 3, efm_cp_tuning },
@@ -609,7 +607,6 @@ static const tuning_t tunings[] = {
   { P_I_RC_MODEL, 46, sizeof(p_i_rc_tuning), 3, p_i_rc_tuning },
   { P_I_CC_MODEL, 39, sizeof(p_i_cc_tuning), 3, p_i_cc_tuning },
   { P_I_HH_MODEL, 40, sizeof(p_i_hh_tuning), 3, p_i_hh_tuning },
-#if !defined(__AVR__)
   { MM_DEN_MODEL, 16, sizeof(mm_den_tuning), 1, mm_den_tuning },
   { MM_FMDY_MODEL, 15, sizeof(fm_dy_tuning), 1, fm_dy_tuning },
   { MM_FMST_MODEL, 15, sizeof(fm_st_tuning), 1, fm_st_tuning },
@@ -628,7 +625,6 @@ static const tuning_t tunings[] = {
   { MM_SAW_MODEL, 15, sizeof(mm_saw_tuning), 1, mm_saw_tuning },
   { MM_PLS_MODEL, 15, sizeof(fm4op_tuning), 1, fm4op_tuning },
   { CM_SAWPW_MODEL, 24, sizeof(sawpw_tuning), 1, sawpw_tuning },
-#endif
 };
 
 
@@ -660,7 +656,7 @@ const tuning_t PROGMEM *MDClass::getModelTuning(uint8_t model, bool tonal) {
   }
 
   for (i = 0; i < len; i++) {
-    if (model == t[i].model) {
+    if (model == TUNING_MODEL(&t[i])) {
       return t + i;
     }
   }

@@ -307,11 +307,11 @@ struct __T_machine_names_long {
   static constexpr size_t sizeofof_mnm_machine_names = 240;
   union {
     md_machine_name_t machine_names[0];
-    char zz__machine_names[1136];
+    char zz__machine_names[1336];
   };
-  static constexpr size_t countof_machine_names = 1136 / sizeof(md_machine_name_t);
-  static constexpr size_t sizeofof_machine_names = 1136;
-  static constexpr size_t __total_size = 1376;
+  static constexpr size_t countof_machine_names = 1336 / sizeof(md_machine_name_t);
+  static constexpr size_t sizeofof_machine_names = 1336;
+  static constexpr size_t __total_size = 1576;
 };
 
 extern const unsigned char __R_machine_names_short[] PROGMEM;
@@ -324,11 +324,11 @@ struct __T_machine_names_short {
   static constexpr size_t sizeofof_mnm_machine_names_short = 140;
   union {
     short_machine_name_t md_machine_names_short[0];
-    char zz__md_machine_names_short[994];
+    char zz__md_machine_names_short[1169];
   };
-  static constexpr size_t countof_md_machine_names_short = 994 / sizeof(short_machine_name_t);
-  static constexpr size_t sizeofof_md_machine_names_short = 994;
-  static constexpr size_t __total_size = 1134;
+  static constexpr size_t countof_md_machine_names_short = 1169 / sizeof(short_machine_name_t);
+  static constexpr size_t sizeofof_md_machine_names_short = 1169;
+  static constexpr size_t __total_size = 1309;
 };
 
 extern const unsigned char __R_machine_param_names[] PROGMEM;
@@ -341,11 +341,11 @@ struct __T_machine_param_names {
   static constexpr size_t sizeofof_mnm_model_param_names = 955;
   union {
     model_param_name_t md_model_param_names[0];
-    char zz__md_model_param_names[3090];
+    char zz__md_model_param_names[4180];
   };
-  static constexpr size_t countof_md_model_param_names = 3090 / sizeof(model_param_name_t);
-  static constexpr size_t sizeofof_md_model_param_names = 3090;
-  static constexpr size_t __total_size = 4045;
+  static constexpr size_t countof_md_model_param_names = 4180 / sizeof(model_param_name_t);
+  static constexpr size_t sizeofof_md_model_param_names = 4180;
+  static constexpr size_t __total_size = 5135;
 };
 
 extern const unsigned char __R_menu_layouts[] PROGMEM;
@@ -370,10 +370,10 @@ struct __T_menu_layouts {
   static constexpr size_t sizeofof_slot_menu_layout = 221;
   union {
     menu_t<seq_menu_page_N> seq_menu_layout[0];
-    char zz__seq_menu_layout[578];
+    char zz__seq_menu_layout[641];
   };
-  static constexpr size_t countof_seq_menu_layout = 578 / sizeof(menu_t<seq_menu_page_N>);
-  static constexpr size_t sizeofof_seq_menu_layout = 578;
+  static constexpr size_t countof_seq_menu_layout = 641 / sizeof(menu_t<seq_menu_page_N>);
+  static constexpr size_t sizeofof_seq_menu_layout = 641;
   union {
     menu_t<file_menu_page_N> file_menu_layout[0];
     char zz__file_menu_layout[200];
@@ -382,10 +382,10 @@ struct __T_menu_layouts {
   static constexpr size_t sizeofof_file_menu_layout = 200;
   union {
     menu_t<mcl_config_page_N> mclconfig_menu_layout[0];
-    char zz__mclconfig_menu_layout[74];
+    char zz__mclconfig_menu_layout[137];
   };
-  static constexpr size_t countof_mclconfig_menu_layout = 74 / sizeof(menu_t<mcl_config_page_N>);
-  static constexpr size_t sizeofof_mclconfig_menu_layout = 74;
+  static constexpr size_t countof_mclconfig_menu_layout = 137 / sizeof(menu_t<mcl_config_page_N>);
+  static constexpr size_t sizeofof_mclconfig_menu_layout = 137;
   union {
     menu_t<md_import_page_N> mdimport_menu_layout[0];
     char zz__mdimport_menu_layout[95];
@@ -506,17 +506,17 @@ struct __T_menu_layouts {
   };
   static constexpr size_t countof_boot_menu_layout = 95 / sizeof(menu_t<boot_menu_page_N>);
   static constexpr size_t sizeofof_boot_menu_layout = 95;
-  static constexpr size_t __total_size = 2659;
+  static constexpr size_t __total_size = 2785;
 };
 
 extern const unsigned char __R_menu_options[] PROGMEM;
 struct __T_menu_options {
   union {
     menu_option_t MENU_OPTIONS[0];
-    char zz__MENU_OPTIONS[1449];
+    char zz__MENU_OPTIONS[1485];
   };
-  static constexpr size_t countof_MENU_OPTIONS = 1449 / sizeof(menu_option_t);
-  static constexpr size_t sizeofof_MENU_OPTIONS = 1449;
-  static constexpr size_t __total_size = 1449;
+  static constexpr size_t countof_MENU_OPTIONS = 1485 / sizeof(menu_option_t);
+  static constexpr size_t sizeofof_MENU_OPTIONS = 1485;
+  static constexpr size_t __total_size = 1485;
 };
 

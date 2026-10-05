@@ -106,10 +106,10 @@ uint8_t SeqPtcTrackRef::note_from_pitch(uint8_t track, uint8_t pitch) {
   tuning_t const *tuning = MD.getKitModelTuning(track);
   pitch -= ptc_param_fine_tune.getValue() - 32;
   if (pitch != 255 && tuning) {
-    for (uint8_t i = 0; i < tuning->len; i++) {
-      uint8_t cc_stored = pgm_read_byte(&tuning->tuning[i]);
+    for (uint8_t i = 0; i < TUNING_LEN(tuning); i++) {
+      uint8_t cc_stored = pgm_read_byte(&TUNING_TAB(tuning)[i]);
       if (cc_stored >= pitch) {
-        uint8_t note_offset = tuning->base - ((tuning->base / 12) * 12);
+        uint8_t note_offset = TUNING_BASE(tuning) - ((TUNING_BASE(tuning) / 12) * 12);
         return i + note_offset;
       }
     }
@@ -144,13 +144,13 @@ uint8_t SeqPtcTrackRef::pitch_from_note(uint8_t track, uint8_t note,
     return 255;
   }
 
-  uint8_t note_offset = tuning->base - ((tuning->base / 12) * 12);
+  uint8_t note_offset = TUNING_BASE(tuning) - ((TUNING_BASE(tuning) / 12) * 12);
   note = note - note_offset;
-  if (note >= tuning->len) {
+  if (note >= TUNING_LEN(tuning)) {
     return 255;
   }
 
-  int8_t pitch = (int8_t)pgm_read_byte(&tuning->tuning[note]) +
+  int8_t pitch = (int8_t)pgm_read_byte(&TUNING_TAB(tuning)[note]) +
                  (int8_t)fine_tune - 32;
   if (pitch < 0) {
     return 0;

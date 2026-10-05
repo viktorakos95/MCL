@@ -1085,6 +1085,22 @@ typedef struct tuning_s {
   /* @} */
 } tuning_t;
 
+// On AVR the tuning index lives in flash (PROGMEM), so its fields must be read with pgm_read_*.
+// Everywhere else these are plain member reads.
+#if defined(__AVR__)
+#define TUNING_MODEL(t) pgm_read_byte(&(t)->model)
+#define TUNING_BASE(t) pgm_read_byte(&(t)->base)
+#define TUNING_LEN(t) pgm_read_byte(&(t)->len)
+#define TUNING_OFFSET(t) pgm_read_byte(&(t)->offset)
+#define TUNING_TAB(t) ((const uint8_t *)pgm_read_word(&(t)->tuning))
+#else
+#define TUNING_MODEL(t) ((t)->model)
+#define TUNING_BASE(t) ((t)->base)
+#define TUNING_LEN(t) ((t)->len)
+#define TUNING_OFFSET(t) ((t)->offset)
+#define TUNING_TAB(t) ((t)->tuning)
+#endif
+
 
 /* @} @} */
 
