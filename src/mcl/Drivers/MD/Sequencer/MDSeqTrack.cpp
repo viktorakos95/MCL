@@ -207,6 +207,11 @@ void MDSeqTrack::init_notes() {
 
 uint8_t MDSeqTrack::effective_timing(uint8_t step, uint8_t ticks_per_step) const {
   int8_t mt = microtiming[step];
+  // Manual step: no time passes between steps, so every trig is on the grid
+  // and fires on the press itself (see MCLSeq::manual_step_advance).
+  if (mcl_cfg.manual_step_enabled) {
+    return ticks_per_step;
+  }
   if (mt == 0) {
     if (swing_amount && IS_BIT_SET64(swing_mask, step)) {
       return ticks_per_step +

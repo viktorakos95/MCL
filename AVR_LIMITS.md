@@ -23,6 +23,9 @@ flashing.
   straight lines are stored as 4-byte formulas (`TUNING_FORMULA` in `MDParams.h`),
   identical formulas are shared, and the note/CC conversion lives in one place
   (`tuning_note_from_cc` / `tuning_cc_from_note`).
+- Watch for `always_inline` functions with more than one call site: each call
+  copies the whole body. `run_md_tick` (called from `seq()` and manual step) is
+  `noinline` on AVR for this reason, which saved ~470 bytes.
 - Read-only data read with `pgm_read_byte` must stay in the first 64 KB of flash.
   Today all PROGMEM data ends below ~16 KB, so this is not close, but check with
   `avr-nm -n firmware.elf` if a lot of tables are added.

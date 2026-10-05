@@ -65,8 +65,15 @@ inline __attribute__((always_inline)) void prepare_tx_buffers(MidiUartClass *pri
   uart_sidechannel = !uart_sidechannel;
 }
 
+#if defined(__AVR__)
+// One shared copy on AVR: called from seq() and manual_step_advance(), and
+// inlining it twice costs ~300 bytes of flash. A call per tick is negligible.
+static __attribute__((noinline)) void run_md_tick(MCLSeq &self, MidiUartClass *uart,
+                                MidiUartClass *uart2, bool legacy_tick) {
+#else
 inline __attribute__((always_inline)) void run_md_tick(MCLSeq &self, MidiUartClass *uart,
                                 MidiUartClass *uart2, bool legacy_tick) {
+#endif
   if (!seq_grid_x_runs_md_tracks()) return;
 #if !defined(__AVR__)
   if (self.using_spsx_tracks) {
@@ -537,7 +544,23 @@ void MCLSeq::manual_step_advance() {
   MidiUartClass *uart = primary_output;
   MidiUartClass *uart2 = secondary_output;
 
-  for (uint8_t i = 0; i < MANUAL_STEP_TICKS; i++) {
+  // Send the step's trigs first: if the tracks are mid-step (e.g. stepping
+  // started after normal playback stopped), first run the ticks left until the
+  // next step boundary, using the first 1x track as reference. Otherwise the
+  // boundary would be the last of the 12 ticks and every trig would wait for
+  // 11 ticks of processing (~7 ms measured on a MegaCommand).
+  uint8_t ticks = MANUAL_STEP_TICKS;
+  for (uint8_t t = 0; t < num_md_tracks; t++) {
+    MDSeqTrack &ref = md_tracks[t];
+    if (ref.speed != SEQ_SPEED_1X) continue;
+    uint8_t c = ref.mod12_counter;
+    if (c < MANUAL_STEP_TICKS - 1) {
+      ticks += MANUAL_STEP_TICKS - 1 - c;
+    }
+    break;
+  }
+
+  for (uint8_t i = 0; i < ticks; i++) {
     run_md_tick(*this, uart, uart2, /*legacy_tick=*/true);
   }
   recalc_all_slides(*this, /*legacy_tick=*/true);
