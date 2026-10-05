@@ -370,20 +370,25 @@ static const uint8_t e12_lt_tuning[] PROGMEM = {
   73, 76, 79, 82, 85, 89, 92, 95, 98, 101, 105, 108, 111, 114, 118, 121, 124, 127
 };
 
-// Older machines that had no table. Measured by sweeping the pitch knob in the emulator running the stock 1.63 OS
-// (tools/tuning); percussion notes are relative, the CC ladder is what matters.
-// E12-OH: autocorr, 0.314 st/cc, max err 0.08 st, CC 0-42 (emulator, OS 1.63)
+// Older machines that had no table. Measured by sweeping the pitch knob (tools/tuning), on the real MD or in the
+// emulator running the stock 1.63 OS. Percussion notes are relative; the CC ladder is what matters.
+// E12-OH: autocorr, 0.313 st/cc, max err 0.13 st, CC 0-126 (hardware)
 static const uint8_t e12_oh_tuning[] PROGMEM = {
-  3, 6, 10, 13, 16, 19, 22, 25, 29, 32, 35, 38, 41
+  3, 6, 9, 13, 16, 19, 22, 25, 29, 32, 35, 38, 41, 45, 48, 51, 54, 57, 61, 64, 67, 70, 73, 77,
+  80, 83, 86, 89, 93, 96, 99, 102, 105, 109, 112, 115, 118, 121, 125
 };
-// E12-HT: spectral, 0.341 st/cc, max err 0.40 st, CC 1-87 (emulator, OS 1.63)
+// E12-HT: autocorr, 0.347 st/cc, max err 0.43 st, CC 0-103 (hardware)
 static const uint8_t e12_ht_tuning[] PROGMEM = {
-  3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 38, 41, 44, 47, 50, 53, 56, 59, 62, 65, 68, 71,
-  74, 77, 80, 82, 85
+  1, 4, 7, 9, 12, 15, 18, 21, 24, 27, 30, 32, 35, 38, 41, 44, 47, 50, 53, 56, 58, 61, 64, 67,
+  70, 73, 76, 79, 81, 84, 87, 90, 93, 96, 99, 102
 };
-// E12-CC: autocorr, 0.326 st/cc, max err 0.13 st, CC 12-53 (emulator, OS 1.63)
+// E12-CC: autocorr, 0.318 st/cc, max err 0.14 st, CC 12-72 (hardware)
 static const uint8_t e12_cc_tuning[] PROGMEM = {
-  15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51
+  14, 18, 21, 24, 27, 30, 33, 36, 40, 43, 46, 49, 52, 55, 58, 62, 65, 68, 71
+};
+// E12-RC: autocorr, 0.311 st/cc, max err 0.13 st, CC 0-45 (hardware)
+static const uint8_t e12_rc_tuning[] PROGMEM = {
+  3, 6, 9, 13, 16, 19, 22, 26, 29, 32, 35, 38, 42, 45
 };
 // E12-BR: spectral, 0.375 st/cc, max err 0.17 st, CC 0-57 (emulator, OS 1.63)
 static const uint8_t e12_br_tuning[] PROGMEM = {
@@ -591,8 +596,9 @@ static const tuning_t tunings[] = {
   { E12_CB_MODEL, MIDI_NOTE_DS3, sizeof(e12_cb_tuning), 4, e12_cb_tuning },
   { E12_LT_MODEL, MIDI_NOTE_FS5, sizeof(e12_lt_tuning), 4, e12_lt_tuning },
   { E12_OH_MODEL, 54, sizeof(e12_oh_tuning), 2, e12_oh_tuning },
-  { E12_HT_MODEL, 28, sizeof(e12_ht_tuning), 1, e12_ht_tuning },
+  { E12_HT_MODEL, 27, sizeof(e12_ht_tuning), 1, e12_ht_tuning },
   { E12_CC_MODEL, 80, sizeof(e12_cc_tuning), 2, e12_cc_tuning },
+  { E12_RC_MODEL, 78, sizeof(e12_rc_tuning), 2, e12_rc_tuning },
   { E12_BR_MODEL, 34, sizeof(e12_br_tuning), 1, e12_br_tuning },
   { E12_TA_MODEL, 73, sizeof(e12_ta_tuning), 3, e12_ta_tuning },
   { E12_TR_MODEL, 35, sizeof(e12_tr_tuning), 2, e12_tr_tuning },
