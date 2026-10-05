@@ -57,9 +57,9 @@ def param_cc(track, param):
 PRESETS = {13: {2: 0, 5: 0, 6: 0, 7: 0}, 175: {4: 0, 6: 0, 7: 0}, 47: {4: 0, 5: 0}}
 
 
-def probe_events(model, args):
+def probe_events(model, args, assign=True):
     """List of (time_s, kind, payload) for one machine; probe k starts at t0+k*SLOT_S."""
-    ev = [(0.0, "sysex", assign_machine_sysex(0, model))]
+    ev = [(0.0, "sysex", assign_machine_sysex(0, model))] if assign else []
     t = 0.2
     ev.append((t, "cc", (param_cc(0, 23), 127)))              # level
     ev.append((t, "cc", (param_cc(0, 1), args.decay)))        # decay
@@ -371,8 +371,8 @@ def cmd_assign(a):
             input()
 
 
-def cmd_live(a):
-    """Probe a real MachineDrum: MIDI out to the MD, audio from one input channel."""
+def _open_live(a):
+    """Open MIDI + audio for a real MachineDrum, run the sound check, return play(events, seconds)."""
     import mido, sounddevice as sd, time
     global CH
     CH = a.channel - 1
@@ -386,7 +386,6 @@ def cmd_live(a):
         raise SystemExit("audio device has only %d input channels" % nch)
     print("MIDI out: %s | audio in: %s, input %d | MIDI channel %d" % (midi_name, anames[adev], a.audio_channel, a.channel))
     out = mido.open_output(midi_name)
-    outdir = Path(a.outdir); outdir.mkdir(parents=True, exist_ok=True)
 
     def play(ev, total):
         rec = sd.rec(int(total * SR), samplerate=SR, channels=nch, device=adev, dtype="float32")
@@ -416,22 +415,83 @@ def cmd_live(a):
                          "(--channel, --note), MD set to receive MIDI, input gain/phantom off.")
     if peak > 0.98:
         print("WARNING: the signal clips. Lower the interface input gain; clipped audio hurts pitch detection.")
+    return play
 
+
+def _select(a):
     ids = machine_ids()
     if a.ids:
         want = set(a.ids.split(","))
         ids = {n: i for n, i in ids.items() if n in want or str(i) in want}
-    for name, mid in ids.items():
-        f = outdir / ("m%d.f32" % mid)
-        if f.exists() and not a.redo:
+    return ids
+
+
+def _sweep(play, mid, a, outdir, tonal=False, assign=True):
+    f = outdir / ("m%d%s.f32" % (mid, "t" if tonal else ""))
+    ev, t0 = probe_events(mid, a, assign=assign)
+    audio = play(ev, t0 + 128 * SLOT_S + 0.5)
+    audio.tofile(f)  # raw take kept so analysis can be redone: from-audio <outdir>
+    pk = float(np.max(np.abs(audio)))
+    r = build_tuning(analyse_slots(audio / (pk + 1e-9), t0)) if pk > 1e-4 else {"verdict": "silent"}
+    return pk, r
+
+
+def cmd_live(a):
+    """Probe a real MachineDrum: MIDI out to the MD, audio from one input channel."""
+    play = _open_live(a)
+    outdir = Path(a.outdir); outdir.mkdir(parents=True, exist_ok=True)
+    for name, mid in _select(a).items():
+        if (outdir / ("m%d.f32" % mid)).exists() and not a.redo:
             print("%-8s id %3d  already measured (use --redo)" % (name, mid)); continue
-        ev, t0 = probe_events(mid, a)
-        audio = play(ev, t0 + 128 * SLOT_S + 0.5)
-        audio.tofile(f)  # raw take kept so analysis can be redone: from-audio <outdir>
-        pk = float(np.max(np.abs(audio)))
-        r = build_tuning(analyse_slots(audio / (pk + 1e-9), t0)) if pk > 1e-4 else {"verdict": "silent"}
+        pk, r = _sweep(play, mid, a, outdir)
         print("%-8s id %3d  peak %.2f  %s" % (name, mid, pk, r["verdict"]), flush=True)
     print("done. Now: python measure_tunings.py from-audio %s --out tunings.json && python measure_tunings.py report tunings.json" % outdir)
+
+
+def untabled_ids():
+    """Machines (name -> id) that MCL has no chromatic table for yet: neither a stock/new table nor the ROM range."""
+    src = (REPO / "src/mcl/Drivers/MD/MDParams.cpp").read_text()
+    hdr = (REPO / "src/mcl/Drivers/MD/MDParams.h").read_text()
+    macro_id = {k: int(v) for k, v in re.findall(r"#define (\w+_MODEL) (\d+)", hdr)}
+    start = src.index("static const tuning_t tunings[]")
+    body = src[start:src.index("};", start)]
+    have = {macro_id[k] for k in re.findall(r"\{\s*(\w+_MODEL),", body) if k in macro_id}
+    patcher = {6, 10, 11, 12, 13, 14, 15, 30, 31, 40, 41, 42, 43, 44, 45, 46, 47, 73, 74, 75, 76, 124, 126, 127, 175}
+    return {n: i for n, i in machine_ids().items()
+            if i not in have and i not in patcher and not (128 <= i <= 191) and i != 0}
+
+
+def cmd_guided(a):
+    """Walk through machines one by one. Pass 1 (normal mode) is automatic; the tonal pass (--tonal) pauses
+    per machine so you can switch the machine's TUNING to TONAL on the MD, then records it."""
+    play = _open_live(a)
+    outdir = Path(a.outdir); outdir.mkdir(parents=True, exist_ok=True)
+    ids = _select(a) if a.ids else untabled_ids()
+    todo = list(ids.items())
+    print("%d machines to do: %s" % (len(todo), ", ".join(n for n, _ in todo)))
+    for k, (name, mid) in enumerate(todo, 1):
+        print("\n[%d/%d] NEXT: %s (id %d)" % (k, len(todo), name, mid))
+        if not a.tonal:
+            if (outdir / ("m%d.f32" % mid)).exists() and not a.redo:
+                print("   already measured, skipping (use --redo)"); continue
+            pk, r = _sweep(play, mid, a, outdir)
+            print("   peak %.2f  %s" % (pk, r["verdict"]), flush=True)
+            continue
+        if (outdir / ("m%dt.f32" % mid)).exists() and not a.redo:
+            print("   tonal take exists, skipping (use --redo)"); continue
+        play([(0.0, "sysex", assign_machine_sysex(0, mid))], 0.6)   # put the machine on track 1
+        ans = input("   Track 1 now has %s. Set its TUNING to TONAL on the MD, then press Enter to record "
+                    "(s = this machine has no tonal option, q = quit): " % name).strip().lower()
+        if ans == "q":
+            break
+        if ans == "s":
+            continue
+        pk, r = _sweep(play, mid, a, outdir, tonal=True, assign=False)
+        print("   tonal: peak %.2f  %s" % (pk, r["verdict"]), flush=True)
+    print("\ndone. Analyse with: python measure_tunings.py from-audio %s --out tunings.json && "
+          "python measure_tunings.py report tunings.json" % outdir)
+    if a.tonal:
+        print("Remember to set the machines you changed back to their normal tuning.")
 
 
 def cmd_fromaudio(a):
@@ -506,6 +566,12 @@ def main():
             s.add_argument("--channel", type=int, default=1, help="MD base MIDI channel 1-16 (track 1)")
             s.add_argument("--outdir", default="takes", help="raw takes are kept here")
             s.add_argument("--redo", action="store_true", help="re-measure machines that already have a take")
+    gd = sub.add_parser("guided", help="step through machines one by one on a real MD (older machines without a table by default)")
+    gd.add_argument("--ids", help="machines to do (names or ids); default: every machine MCL has no table for")
+    gd.add_argument("--tonal", action="store_true", help="tonal pass: pauses so you can switch the machine to TONAL")
+    gd.add_argument("--note", type=int, default=36); gd.add_argument("--decay", type=int, default=100)
+    gd.add_argument("--midi-out"); gd.add_argument("--audio-in"); gd.add_argument("--audio-channel", type=int, default=1)
+    gd.add_argument("--channel", type=int, default=1); gd.add_argument("--outdir", default="takes"); gd.add_argument("--redo", action="store_true")
     sub.add_parser("devices", help="list MIDI outputs and audio inputs")
     asg = sub.add_parser("assign", help="put machines on track 1 one by one to check ids against the MD display")
     asg.add_argument("--midi-out"); asg.add_argument("--ids", required=True); asg.add_argument("--channel", type=int, default=1)
@@ -518,7 +584,7 @@ def main():
     sub.add_parser("report").add_argument("file")
     sub.add_parser("selftest")
     a = p.parse_args()
-    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "diag": cmd_diag, "assign": cmd_assign, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
+    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "guided": cmd_guided, "diag": cmd_diag, "assign": cmd_assign, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
 
 
 if __name__ == "__main__":
