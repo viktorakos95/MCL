@@ -528,16 +528,22 @@ def cmd_latency(a):
             out.send(mido.Message("note_off", channel=ch, note=a.note, velocity=0))
     sd.wait()
     x = np.abs(rec[:, a.audio_channel - 1])
-    floor = float(np.percentile(x, 50))
-    thr = max(floor * 8, 0.01)
+    # Per-hit threshold: the level just before the message (a long or looping
+    # sound can keep the global level high) plus 30% of the rise in the window.
     lat = []
+    pre = int(0.02 * SR)
     for t in sent:
         s0, s1 = int(t * SR), int((t + gap * 0.8) * SR)
-        hit = np.nonzero(x[s0:s1] > thr)[0]
+        base = float(x[max(0, s0 - pre):s0].max()) if s0 > 0 else 0.0
+        peak = float(x[s0:s1].max())
+        if peak < max(base * 1.5, 0.002):
+            continue
+        hit = np.nonzero(x[s0:s1] > base + 0.3 * (peak - base))[0]
         if len(hit):
             lat.append(hit[0] * 1000.0 / SR)
     if not lat:
-        raise SystemExit("no onsets heard - check channel/note/input")
+        levels = ", ".join("in%d %.4f" % (c + 1, float(np.abs(rec[:, c]).max())) for c in range(nch))
+        raise SystemExit("no onsets heard on input %d - peak levels: %s" % (a.audio_channel, levels))
     lat = np.array(lat)
     print("notes heard: %d/%d  latency ms: median %.2f  min %.2f  max %.2f  jitter(sd) %.2f"
           % (len(lat), a.count, np.median(lat), lat.min(), lat.max(), lat.std()))
