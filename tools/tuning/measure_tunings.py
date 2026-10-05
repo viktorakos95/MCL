@@ -265,6 +265,34 @@ def cmd_devices(a):
             print("  [%d] %s  (%d input channels)" % (i, d["name"], d["max_input_channels"]))
 
 
+def cmd_diag(a):
+    """Find out why a live run hears nothing: sends notes to the MD while metering EVERY input channel."""
+    import mido, sounddevice as sd, time
+    mnames = mido.get_output_names()
+    out = mido.open_output(mnames[_pick(mnames, a.midi_out, "MIDI output")])
+    devs = sd.query_devices()
+    adev = _pick([d["name"] for d in devs], a.audio_in, "Audio input")
+    nch = devs[adev]["max_input_channels"]
+    print("Part 1 (3 s): do NOT trigger anything - measuring the noise floor...")
+    rec = sd.rec(int(3 * SR), samplerate=SR, channels=nch, device=adev, dtype="float32"); sd.wait()
+    floor = np.max(np.abs(rec), axis=0)
+    print("  noise floor per input:", ["in%d=%.4f" % (i + 1, f) for i, f in enumerate(floor)])
+    for note, label in ((a.note, "trig note %d" % a.note),):
+        for ch in sorted({a.channel, 1, 2, 10}):
+            rec = sd.rec(int(2.5 * SR), samplerate=SR, channels=nch, device=adev, dtype="float32")
+            for k in range(4):
+                out.send(mido.Message("note_on", channel=ch - 1, note=note, velocity=127)); time.sleep(0.2)
+                out.send(mido.Message("note_off", channel=ch - 1, note=note, velocity=0)); time.sleep(0.4)
+            sd.wait()
+            pk = np.max(np.abs(rec), axis=0)
+            print("  MIDI channel %2d, %s -> peaks:" % (ch, label), ["in%d=%.4f" % (i + 1, f) for i, f in enumerate(pk)])
+    print("Part 3 (6 s): now PRESS TRIG KEYS ON THE MD YOURSELF for 6 seconds...")
+    rec = sd.rec(int(6 * SR), samplerate=SR, channels=nch, device=adev, dtype="float32"); sd.wait()
+    print("  peaks:", ["in%d=%.4f" % (i + 1, f) for i, f in enumerate(np.max(np.abs(rec), axis=0))])
+    print("Reading: if Part 3 shows a loud input, use that as --audio-channel. If only Part 3 is loud, MIDI is not "
+          "reaching the MD (cable/port/channel/trig note). If neither, the MD output isn't connected to the M4.")
+
+
 def cmd_live(a):
     """Probe a real MachineDrum: MIDI out to the MD, audio from one input channel."""
     import mido, sounddevice as sd, time
@@ -401,13 +429,16 @@ def main():
             s.add_argument("--outdir", default="takes", help="raw takes are kept here")
             s.add_argument("--redo", action="store_true", help="re-measure machines that already have a take")
     sub.add_parser("devices", help="list MIDI outputs and audio inputs")
+    dg = sub.add_parser("diag", help="meter every input while sending MIDI notes, to find the problem")
+    dg.add_argument("--midi-out"); dg.add_argument("--audio-in")
+    dg.add_argument("--note", type=int, default=36); dg.add_argument("--channel", type=int, default=1)
     fa = sub.add_parser("from-audio", help="analyse m<id>[t].f32 files from md_pitch_probe")
     fa.add_argument("dir"); fa.add_argument("--out", default="tunings.json")
     fa.add_argument("--names", help="json {id: name} for ids missing from machine_names_long.cpp")
     sub.add_parser("report").add_argument("file")
     sub.add_parser("selftest")
     a = p.parse_args()
-    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
+    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "diag": cmd_diag, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
 
 
 if __name__ == "__main__":
