@@ -6,6 +6,10 @@
 #include "mdLib/mddevice.h"
 #include "mdLib/mdromloader.h"
 #include "mdLib/mdtypes.h"
+#if __has_include("mdLib/mdosvariant.h")
+#include "mdLib/mdosvariant.h"
+#define PROBE_HAS_VARIANTS 1
+#endif
 
 #include "baseLib/filesystem.h"
 #include "synthLib/plugin.h"
@@ -53,6 +57,22 @@ int main(int argc, char** argv)
 	{ std::cerr << "firmware not accepted by RomLoader (is the custom-OS patch applied?)\n"; return 2; }
 
 	synthLib::DeviceCreateParams params;
+#ifdef PROBE_HAS_VARIANTS
+	// PROBE_VARIANT=<full 8 MiB OS image>: register it as an OS variant (needs a build with
+	// joelanders/gearmulator-md-mm PR #100) and boot it on top of the stock ROM given above.
+	if(const char* v = std::getenv("PROBE_VARIANT"))
+	{
+		const std::string home = outDir + "/home/";
+		std::system(("mkdir -p '" + home + "'").c_str());
+		md::OsVariant variant;
+		std::string vfile, err;
+		if(!md::loadOsVariant(variant, v, md::MachineModel::Machinedrum)) { std::cerr << "cannot load variant image\n"; return 2; }
+		if(!md::saveOsVariant(vfile, home, variant, err)) { std::cerr << "saveOsVariant: " << err << "\n"; return 2; }
+		params.homePath = home;
+		params.osVariantFingerprint = variant.fingerprint;
+		std::cerr << "booting OS variant " << v << "\n";
+	}
+#endif
 	params.romData = std::move(firmware);
 	params.romName = fw;
 	params.customData = md::deviceCustomData(md::MachineModel::Machinedrum);
@@ -93,10 +113,10 @@ int main(int argc, char** argv)
 		}
 		std::cerr << "audioReady=" << device->getHardware().isAudioReady() << " midiReady=" << device->getHardware().isFirmwareMidiReady() << "\n";
 		const auto panel = device->getHardware().getFrontPanelSnapshot();
-		for(uint32_t y = 0; y < 64; y += 2)
+		for(uint32_t y = 0; y < 64; ++y) // full-resolution dump, one row per line
 		{
 			for(uint32_t x = 0; x < 128; ++x)
-				std::cout << ((panel.getLcdPixel(x, y) || panel.getLcdPixel(x, y + 1)) ? '#' : ' ');
+				std::cout << (panel.getLcdPixel(x, y) ? '#' : '.');
 			std::cout << '\n';
 		}
 		return 0;
@@ -132,8 +152,12 @@ int main(int argc, char** argv)
 	for(const int id : ids)
 	{
 		std::vector<Ev> ev;
-		ev.push_back({0, 0, {0xF0, 0x00, 0x20, 0x3C, 0x02, 0x00, 0x5B, 0x00,
-			static_cast<uint8_t>(id & 0x7F), static_cast<uint8_t>((id >= 128 ? 1 : 0) | (tonal ? 2 : 0)), 0x00, 0xF7}}); // flags: bit0 UW, bit1 tonal
+		if(tonal) // bulk assign as MCL's assignMachineBulk(mode 0): flags bit1 = tonal
+			ev.push_back({0, 0, {0xF0, 0x00, 0x20, 0x3C, 0x02, 0x00, 0x70, 0x5B, 0x05, 0x00,
+				static_cast<uint8_t>(id & 0x7F), static_cast<uint8_t>((id >= 128 ? 1 : 0) + 2), 0xF7}});
+		else
+			ev.push_back({0, 0, {0xF0, 0x00, 0x20, 0x3C, 0x02, 0x00, 0x5B, 0x00,
+				static_cast<uint8_t>(id & 0x7F), static_cast<uint8_t>(id >= 128 ? 1 : 0), 0x00, 0xF7}});
 		ev.push_back({S(0.2), 1, {0xB0, 16 + 23, 127}});
 		ev.push_back({S(0.2), 1, {0xB0, 16 + 1, static_cast<uint8_t>(decay)}});
 		for(int v = 0; v < 128; ++v)
