@@ -232,9 +232,15 @@ void MidiActivePeering::run() {
 
   // Setting USB turbo speed too early can cause OS upload to fail
 #if defined(__AVR__) && !defined(DEBUGMODE)
-  if (turbo_light.tmSpeeds[turbo_light.lookup_speed(mcl_cfg.usb_turbo_speed)] !=
-          MidiUartUSB.speed &&
-      read_clock_ms() > 4000 && usb_set_speed) {
+  if (read_clock_ms() > 4000 && usb_set_speed) {
+    // The USB chip is powered by the computer, so after MCL power cycles it
+    // can still be at the turbo speed of the last session. Send "1x" at every
+    // turbo speed it could be at, then set the configured speed from 1x.
+    for (uint8_t s = 2; s <= 7; s++) {
+      if (s == 3 || s == 5 || s == 6) continue;  // AVR speeds: 2x, 4x, 8x
+      MidiUartUSB.set_speed(turbo_light.tmSpeeds[s]);
+      turbo_light.set_speed(1, MidiUSB.uart);
+    }
     turbo_light.set_speed(turbo_light.lookup_speed(mcl_cfg.usb_turbo_speed),
                           MidiUSB.uart);
     usb_set_speed = false;
