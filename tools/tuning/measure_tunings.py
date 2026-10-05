@@ -81,10 +81,16 @@ def detect_pitch(x, sr=SR, fmin=18.0, fmax=6000.0):
     seg = ac[lo:hi]
     if len(seg) < 3:
         return None, 0.0
-    # first strong local maximum, not just the global one (avoids octave errors down)
-    peak_thr = 0.9 * np.max(seg)
+    # skip the lobe around lag 0 (it stays ~1.0 for very low tones), then take the first
+    # strong local maximum, not just the global one (avoids octave errors down)
+    neg = np.nonzero(seg < 0)[0]
+    start = int(neg[0]) if len(neg) else 0
+    rest = seg[start:]
+    if len(rest) < 3:
+        return None, 0.0
+    peak_thr = 0.9 * np.max(rest)
     idx = None
-    for i in range(1, len(seg) - 1):
+    for i in range(start + 1, len(seg) - 1):
         if seg[i] >= peak_thr and seg[i] >= seg[i - 1] and seg[i] >= seg[i + 1]:
             idx = i
             break
@@ -98,8 +104,10 @@ def detect_pitch(x, sr=SR, fmin=18.0, fmax=6000.0):
 
 
 def hz_to_mcl_note(f):
-    """MCL note numbers are MIDI-12 (MIDI_NOTE_B1 == 23 is Elektron B1 == MIDI 35)."""
-    return 69 + 12 * math.log2(f / 440.0) - 12
+    """MCL note numbers are plain MIDI numbers of the sounding pitch (MIDI_NOTE_B1 == 23
+    == 30.9 Hz). Checked against TRX-BD: the emulator's cc 44 sounds 49 Hz == MIDI 31,
+    and MCL's stock table has note 31 at cc 44."""
+    return 69 + 12 * math.log2(f / 440.0)
 
 
 def analyse_slots(audio, t0, sr=SR):
@@ -290,8 +298,8 @@ def cmd_selftest(a):
         r = build_tuning(analyse_slots(synth(c), 0.5))
         print(nm, {k: r.get(k) for k in ("verdict", "semitones_per_cc", "max_linear_error", "base_note")},
               "table len", len(r.get("table", [])), "monotonic", r.get("monotonic"))
-    # stock sanity: TRX-BD tuning in MDParams.cpp starts at 1 -> B1 (61.7 Hz)
-    print("B1 61.74 Hz ->", round(hz_to_mcl_note(61.74), 2), "(MIDI_NOTE_B1 = 23)")
+    # TRX-BD in MDParams.cpp starts at cc 1 -> MIDI_NOTE_B1 (30.87 Hz)
+    print("30.87 Hz ->", round(hz_to_mcl_note(30.87), 2), "(MIDI_NOTE_B1 = 23)")
 
 
 def main():
