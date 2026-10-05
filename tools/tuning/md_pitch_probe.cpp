@@ -80,12 +80,34 @@ int main(int argc, char** argv)
 		<< device->getHardware().isFirmwareMidiReady() << "\n";
 	for(int i = 0; i < 400; ++i) plugin.process(inputs, outputs, BLOCK, 120.0f, 0.0f, true);
 
+	if(std::getenv("PROBE_LCD")) // debug: print the emulated LCD after boot, then exit
+	{
+		const int secs = std::atoi(std::getenv("PROBE_LCD"));
+		for(uint64_t pos = 0; pos < S(secs); pos += BLOCK)
+			plugin.process(inputs, outputs, BLOCK, 120.0f, 0.0f, true);
+		for(int i = 0; i < 12; ++i) // debug: sample the emulated CPU's program counter
+		{
+			for(int b2 = 0; b2 < 200; ++b2) plugin.process(inputs, outputs, BLOCK, 120.0f, 0.0f, true);
+			std::cerr << "PC=" << std::hex << device->getHardware().getUC().getPC() << std::dec << "\n";
+		}
+		std::cerr << "audioReady=" << device->getHardware().isAudioReady() << " midiReady=" << device->getHardware().isFirmwareMidiReady() << "\n";
+		const auto panel = device->getHardware().getFrontPanelSnapshot();
+		for(uint32_t y = 0; y < 64; y += 2)
+		{
+			for(uint32_t x = 0; x < 128; ++x)
+				std::cout << ((panel.getLcdPixel(x, y) || panel.getLcdPixel(x, y + 1)) ? '#' : ' ');
+			std::cout << '\n';
+		}
+		return 0;
+	}
+
+	const int maxWarm = std::getenv("PROBE_WARMUP_S") ? std::atoi(std::getenv("PROBE_WARMUP_S")) * 4 : 240;
 	// warm-up: the emulated OS stays silent for a while after boot. Trigger track 1 until sound
 	// comes out so the sweep never starts in the silent phase.
 	{
 		uint64_t pos = 0;
 		bool heard = false;
-		for(int attempt = 0; attempt < 240 && !heard; ++attempt)
+		for(int attempt = 0; attempt < maxWarm && !heard; ++attempt)
 		{
 			plugin.addMidiEvent({synthLib::MidiEventSource::Host, 0x90, static_cast<uint8_t>(note), 127, 0});
 			float energy = 0;
