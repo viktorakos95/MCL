@@ -518,10 +518,14 @@ def cmd_latency(a):
         t = 0.5 + k * gap
         while time.perf_counter() - start < t:
             time.sleep(0.0002)
-        out.send(mido.Message("note_on", channel=ch, note=a.note, velocity=127))
-        sent.append(time.perf_counter() - start)
-        time.sleep(0.05)
-        out.send(mido.Message("note_off", channel=ch, note=a.note, velocity=0))
+        if a.cc is not None:   # e.g. MCL manual step: one CC advances the sequencer one step
+            out.send(mido.Message("control_change", channel=ch, control=a.cc, value=127))
+            sent.append(time.perf_counter() - start)
+        else:
+            out.send(mido.Message("note_on", channel=ch, note=a.note, velocity=127))
+            sent.append(time.perf_counter() - start)
+            time.sleep(0.05)
+            out.send(mido.Message("note_off", channel=ch, note=a.note, velocity=0))
     sd.wait()
     x = np.abs(rec[:, a.audio_channel - 1])
     floor = float(np.percentile(x, 50))
@@ -696,6 +700,7 @@ def main():
     lt.add_argument("--midi-out"); lt.add_argument("--audio-in"); lt.add_argument("--audio-channel", type=int, default=1)
     lt.add_argument("--channel", type=int, default=1); lt.add_argument("--note", type=int, default=36)
     lt.add_argument("--count", type=int, default=30)
+    lt.add_argument("--cc", type=int, help="send this CC (value 127) instead of a note, e.g. 110 for MCL manual step")
     sub.add_parser("devices", help="list MIDI outputs and audio inputs")
     asg = sub.add_parser("assign", help="put machines on track 1 one by one to check ids against the MD display")
     asg.add_argument("--midi-out"); asg.add_argument("--ids", required=True); asg.add_argument("--channel", type=int, default=1)
