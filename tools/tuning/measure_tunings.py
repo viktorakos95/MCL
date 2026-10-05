@@ -175,7 +175,7 @@ def cpp_snippet(name, model_macro, r):
     if "table" not in r:
         return "// %s: %s\n" % (name, r.get("verdict"))
     t = ", ".join(str(x) for x in r["table"])
-    var = name.lower().replace("-", "_") + "_tuning"
+    var = re.sub(r"[^a-z0-9]+", "_", name.lower()).strip("_") + "_tuning"
     return ("// %s: %s, %.3f st/cc, max linear error %.2f st\n"
             "static const uint8_t %s[] PROGMEM = {\n  %s\n};\n"
             "  { %s, %s, sizeof(%s), %d, %s },\n") % (
@@ -270,6 +270,27 @@ def cmd_live(a):
     Path(a.out).write_text(json.dumps(results, indent=1))
 
 
+def cmd_fromaudio(a):
+    """Analyse a directory of m<id>[t].f32 files written by md_pitch_probe."""
+    names = {i: n for n, i in machine_ids().items()}
+    extra = json.loads(Path(a.names).read_text()) if a.names else {}
+    names.update({int(k): v for k, v in extra.items()})
+    results = {}
+    for f in sorted(Path(a.dir).glob("m*.f32"), key=lambda p: (int(re.sub(r"\D", "", p.stem)), p.stem)):
+        tonal = f.stem.endswith("t")
+        mid = int(re.sub(r"\D", "", f.stem))
+        audio = np.fromfile(f, dtype=np.float32)
+        peak = float(np.max(np.abs(audio))) if len(audio) else 0.0
+        key = "%s%s" % (names.get(mid, "ID%d" % mid), " (tonal)" if tonal else "")
+        if peak < 1e-4:
+            results[key] = {"id": mid, "tonal": tonal, "points": [], "tuning": {"verdict": "silent"}}
+            continue
+        pts = analyse_slots(audio / peak, 0.5)
+        results[key] = {"id": mid, "tonal": tonal, "points": pts, "tuning": build_tuning(pts)}
+    Path(a.out).write_text(json.dumps(results, indent=1))
+    print("analysed", len(results), "->", a.out)
+
+
 def cmd_report(a):
     res = json.loads(Path(a.file).read_text())
     for name, r in res.items():
@@ -278,7 +299,7 @@ def cmd_report(a):
               {k: t[k] for k in ("semitones_per_cc", "max_linear_error", "base_note") if k in t})
     print()
     for name, r in res.items():
-        macro = re.sub(r"[^A-Z0-9]", "_", name.upper()) + "_MODEL"
+        macro = re.sub(r"[^A-Z0-9]", "_", name.split(" (")[0].upper()) + "_MODEL"
         print(cpp_snippet(name, macro, r["tuning"]))
 
 
@@ -317,10 +338,13 @@ def main():
         else:
             s.add_argument("--midi-out", required=True)
             s.add_argument("--audio-in")
+    fa = sub.add_parser("from-audio", help="analyse m<id>[t].f32 files from md_pitch_probe")
+    fa.add_argument("dir"); fa.add_argument("--out", default="tunings.json")
+    fa.add_argument("--names", help="json {id: name} for ids missing from machine_names_long.cpp")
     sub.add_parser("report").add_argument("file")
     sub.add_parser("selftest")
     a = p.parse_args()
-    {"offline": cmd_offline, "live": cmd_live, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
+    {"offline": cmd_offline, "live": cmd_live, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
 
 
 if __name__ == "__main__":

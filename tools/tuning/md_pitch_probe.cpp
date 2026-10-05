@@ -39,6 +39,7 @@ int main(int argc, char** argv)
 	const std::string fw = argv[1], outDir = argv[2];
 	const int note = argc > 4 ? std::atoi(argv[4]) : 36;
 	const int decay = argc > 5 ? std::atoi(argv[5]) : 100;
+	const bool tonal = std::getenv("PROBE_TONAL") != nullptr; // sweep with the machine's TONAL tuning
 	const bool reverse = argc > 6 && std::string(argv[6]) == "rev"; // sweep 127 -> 0 (debug)
 	std::vector<int> ids;
 	{
@@ -132,7 +133,7 @@ int main(int argc, char** argv)
 	{
 		std::vector<Ev> ev;
 		ev.push_back({0, 0, {0xF0, 0x00, 0x20, 0x3C, 0x02, 0x00, 0x5B, 0x00,
-			static_cast<uint8_t>(id & 0x7F), static_cast<uint8_t>(id >= 128 ? 1 : 0), 0x00, 0xF7}});
+			static_cast<uint8_t>(id & 0x7F), static_cast<uint8_t>((id >= 128 ? 1 : 0) | (tonal ? 2 : 0)), 0x00, 0xF7}}); // flags: bit0 UW, bit1 tonal
 		ev.push_back({S(0.2), 1, {0xB0, 16 + 23, 127}});
 		ev.push_back({S(0.2), 1, {0xB0, 16 + 1, static_cast<uint8_t>(decay)}});
 		for(int v = 0; v < 128; ++v)
@@ -172,7 +173,7 @@ int main(int argc, char** argv)
 		}
 		const double secs = std::chrono::duration<double>(std::chrono::steady_clock::now() - t1).count();
 		float peak = 0; for(float f : mono) peak = std::max(peak, std::abs(f));
-		std::ofstream f(outDir + "/m" + std::to_string(id) + ".f32", std::ios::binary);
+		std::ofstream f(outDir + "/m" + std::to_string(id) + (tonal ? "t" : "") + ".f32", std::ios::binary);
 		f.write(reinterpret_cast<const char*>(mono.data()), static_cast<std::streamsize>(mono.size() * sizeof(float)));
 		std::printf("id %d: %.1f s audio in %.1f s (x%.2f realtime), peak %.3f\n", id, total / SR, secs, (total / SR) / secs, peak);
 		std::fflush(stdout);
