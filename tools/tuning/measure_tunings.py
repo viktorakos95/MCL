@@ -456,9 +456,10 @@ def untabled_ids():
     start = src.index("static const tuning_t tunings[]")
     body = src[start:src.index("};", start)]
     have = {macro_id[k] for k in re.findall(r"\{\s*(\w+_MODEL),", body) if k in macro_id}
+    effects = {2, 3, 7, 8, 9, 80, 81, 82, 83, 84, 85, 86, 87}   # GND-NS/IM, NFX-*, INP-*: effects / inputs, not pitched
     patcher = {6, 10, 11, 12, 13, 14, 15, 30, 31, 40, 41, 42, 43, 44, 45, 46, 47, 73, 74, 75, 76, 124, 126, 127, 175}
     return {n: i for n, i in machine_ids().items()
-            if i not in have and i not in patcher and not (128 <= i <= 191) and i != 0}
+            if i not in have and i not in patcher and i not in effects and not (128 <= i <= 191) and i != 0}
 
 
 def cmd_guided(a):
