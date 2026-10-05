@@ -370,6 +370,66 @@ static const uint8_t e12_lt_tuning[] PROGMEM = {
   73, 76, 79, 82, 85, 89, 92, 95, 98, 101, 105, 108, 111, 114, 118, 121, 124, 127
 };
 
+// Older machines that had no table. Measured by sweeping the pitch knob in the emulator running the stock 1.63 OS
+// (tools/tuning); percussion notes are relative, the CC ladder is what matters.
+// E12-OH: autocorr, 0.314 st/cc, max err 0.08 st, CC 0-42 (emulator, OS 1.63)
+static const uint8_t e12_oh_tuning[] PROGMEM = {
+  3, 6, 10, 13, 16, 19, 22, 25, 29, 32, 35, 38, 41
+};
+// E12-HT: spectral, 0.341 st/cc, max err 0.40 st, CC 1-87 (emulator, OS 1.63)
+static const uint8_t e12_ht_tuning[] PROGMEM = {
+  3, 6, 9, 12, 15, 18, 21, 24, 27, 30, 33, 36, 38, 41, 44, 47, 50, 53, 56, 59, 62, 65, 68, 71,
+  74, 77, 80, 82, 85
+};
+// E12-CC: autocorr, 0.326 st/cc, max err 0.13 st, CC 12-53 (emulator, OS 1.63)
+static const uint8_t e12_cc_tuning[] PROGMEM = {
+  15, 18, 21, 24, 27, 30, 33, 36, 39, 42, 45, 48, 51
+};
+// E12-BR: spectral, 0.375 st/cc, max err 0.17 st, CC 0-57 (emulator, OS 1.63)
+static const uint8_t e12_br_tuning[] PROGMEM = {
+  2, 5, 7, 10, 13, 15, 18, 21, 23, 26, 29, 31, 34, 37, 39, 42, 45, 47, 50, 53, 55
+};
+// E12-TA: autocorr, 0.190 st/cc, max err 0.15 st, CC 1-127 (emulator, OS 1.63)
+static const uint8_t e12_ta_tuning[] PROGMEM = {
+  2, 8, 13, 18, 23, 29, 34, 39, 44, 50, 55, 60, 65, 71, 76, 81, 86, 92, 97, 102, 107, 113, 118,
+  123
+};
+// E12-TR: autocorr, 0.312 st/cc, max err 0.08 st, CC 3-122 (emulator, OS 1.63)
+static const uint8_t e12_tr_tuning[] PROGMEM = {
+  6, 9, 12, 16, 19, 22, 25, 28, 32, 35, 38, 41, 44, 48, 51, 54, 57, 60, 64, 67, 70, 73, 76, 80,
+  83, 86, 89, 92, 96, 99, 102, 105, 109, 112, 115, 118, 121
+};
+// P-I-BD: autocorr, 0.184 st/cc, max err 0.29 st, CC 12-126 (emulator, OS 1.63)
+static const uint8_t p_i_bd_tuning[] PROGMEM = {
+  17, 22, 28, 33, 39, 44, 49, 55, 60, 66, 71, 77, 82, 88, 93, 98, 104, 109, 115, 120, 126
+};
+// P-I-SD: spectral, 0.188 st/cc, max err 0.20 st, CC 8-121 (emulator, OS 1.63)
+static const uint8_t p_i_sd_tuning[] PROGMEM = {
+  9, 14, 19, 25, 30, 35, 40, 46, 51, 56, 62, 67, 72, 78, 83, 88, 94, 99, 104, 109, 115, 120
+};
+// P-I-MT: autocorr, 0.188 st/cc, max err 0.25 st, CC 0-126 (emulator, OS 1.63)
+static const uint8_t p_i_mt_tuning[] PROGMEM = {
+  2, 8, 13, 18, 24, 29, 34, 40, 45, 50, 56, 61, 66, 72, 77, 82, 88, 93, 98, 104, 109, 114, 119,
+  125
+};
+// P-I-ML: autocorr, 0.188 st/cc, max err 0.15 st, CC 0-105 (emulator, OS 1.63)
+static const uint8_t p_i_ml_tuning[] PROGMEM = {
+  5, 10, 15, 21, 26, 31, 37, 42, 47, 53, 58, 63, 69, 74, 79, 85, 90, 95, 101
+};
+// P-I-RC: autocorr, 0.182 st/cc, max err 0.16 st, CC 0-120 (emulator, OS 1.63)
+static const uint8_t p_i_rc_tuning[] PROGMEM = {
+  3, 8, 14, 19, 25, 30, 36, 41, 47, 52, 58, 63, 69, 74, 80, 85, 91, 96, 102, 107, 113, 118
+};
+// P-I-CC: autocorr, 0.184 st/cc, max err 0.12 st, CC 0-120 (emulator, OS 1.63)
+static const uint8_t p_i_cc_tuning[] PROGMEM = {
+  2, 7, 13, 18, 24, 29, 34, 40, 45, 51, 56, 62, 67, 73, 78, 83, 89, 94, 100, 105, 111, 116
+};
+// P-I-HH: autocorr, 0.184 st/cc, max err 0.13 st, CC 2-127 (emulator, OS 1.63)
+static const uint8_t p_i_hh_tuning[] PROGMEM = {
+  7, 13, 18, 24, 29, 34, 40, 45, 51, 56, 62, 67, 72, 78, 83, 89, 94, 100, 105, 110, 116, 121,
+  127
+};
+
 #if !defined(__AVR__)
 // OS X.14 model patcher machines, measured on hardware (tools/tuning/measure_tunings.py).
 // table[i] = CC that sounds note base+i. Sub-oscillators / unison / chorus were off for MM-SAW, MM-PLS, SAWPW.
@@ -530,6 +590,19 @@ static const tuning_t tunings[] = {
   { E12_BC_MODEL, MIDI_NOTE_D3, sizeof(e12_bc_tuning), 4, e12_bc_tuning },
   { E12_CB_MODEL, MIDI_NOTE_DS3, sizeof(e12_cb_tuning), 4, e12_cb_tuning },
   { E12_LT_MODEL, MIDI_NOTE_FS5, sizeof(e12_lt_tuning), 4, e12_lt_tuning },
+  { E12_OH_MODEL, 54, sizeof(e12_oh_tuning), 2, e12_oh_tuning },
+  { E12_HT_MODEL, 28, sizeof(e12_ht_tuning), 1, e12_ht_tuning },
+  { E12_CC_MODEL, 80, sizeof(e12_cc_tuning), 2, e12_cc_tuning },
+  { E12_BR_MODEL, 34, sizeof(e12_br_tuning), 1, e12_br_tuning },
+  { E12_TA_MODEL, 73, sizeof(e12_ta_tuning), 3, e12_ta_tuning },
+  { E12_TR_MODEL, 35, sizeof(e12_tr_tuning), 2, e12_tr_tuning },
+  { P_I_BD_MODEL, 25, sizeof(p_i_bd_tuning), 3, p_i_bd_tuning },
+  { P_I_SD_MODEL, 30, sizeof(p_i_sd_tuning), 3, p_i_sd_tuning },
+  { P_I_MT_MODEL, 38, sizeof(p_i_mt_tuning), 3, p_i_mt_tuning },
+  { P_I_ML_MODEL, 33, sizeof(p_i_ml_tuning), 3, p_i_ml_tuning },
+  { P_I_RC_MODEL, 46, sizeof(p_i_rc_tuning), 3, p_i_rc_tuning },
+  { P_I_CC_MODEL, 39, sizeof(p_i_cc_tuning), 3, p_i_cc_tuning },
+  { P_I_HH_MODEL, 40, sizeof(p_i_hh_tuning), 3, p_i_hh_tuning },
 #if !defined(__AVR__)
   { MM_DEN_MODEL, 16, sizeof(mm_den_tuning), 1, mm_den_tuning },
   { MM_FMDY_MODEL, 15, sizeof(fm_dy_tuning), 1, fm_dy_tuning },
