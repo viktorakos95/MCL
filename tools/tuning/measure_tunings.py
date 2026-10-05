@@ -51,12 +51,20 @@ def param_cc(track, param):
     return 16 + 24 * (track % 4) + param
 
 
+# Parameters forced to 0 before sweeping, so the pitch knob is measured on the main oscillator only.
+# {model id: {param index: value}} - indices come from the model packs' knob labels.
+#   MM-SAW 13: UNIL=2, SUBX=5, SUB1=6, SUB2=7   MM-PLS 175: UNIL=4, SUB1=6, SUB2=7   SAWPW 47: SUB=4, CHOR=5
+PRESETS = {13: {2: 0, 5: 0, 6: 0, 7: 0}, 175: {4: 0, 6: 0, 7: 0}, 47: {4: 0, 5: 0}}
+
+
 def probe_events(model, args):
     """List of (time_s, kind, payload) for one machine; probe k starts at t0+k*SLOT_S."""
     ev = [(0.0, "sysex", assign_machine_sysex(0, model))]
     t = 0.2
     ev.append((t, "cc", (param_cc(0, 23), 127)))              # level
     ev.append((t, "cc", (param_cc(0, 1), args.decay)))        # decay
+    for idx, val in PRESETS.get(model, {}).items():
+        ev.append((t, "cc", (param_cc(0, idx), val)))
     t0 = 0.5
     for v in range(128):
         ts = t0 + v * SLOT_S
@@ -122,45 +130,97 @@ def analyse_slots(audio, t0, sr=SR):
 
 # --- curve -> tuning table ---------------------------------------------------
 
-def build_tuning(points, min_conf=0.6, max_err=0.35):
-    """points: [{cc, hz, conf}]. Returns dict describing the pitch knob."""
-    good = [(p["cc"], hz_to_mcl_note(p["hz"])) for p in points
-            if p["hz"] and p["conf"] >= min_conf]
+def _longest_rising_chain(pts, max_slope=4.0):
+    """pts: sorted [(cc, note, conf)]. Longest chain with note rising with cc (slope <= max_slope st/cc).
+    Detection glitches (octave errors, noise) break monotonicity and fall out of the chain."""
+    n = len(pts)
+    best = [1] * n
+    prev = [-1] * n
+    for i in range(n):
+        for j in range(i):
+            dc = pts[i][0] - pts[j][0]
+            dn = pts[i][1] - pts[j][1]
+            if dc > 0 and 0 <= dn <= max_slope * dc and best[j] + 1 > best[i]:
+                best[i], prev[i] = best[j] + 1, j
+    k = max(range(n), key=lambda x: best[x])
+    chain = []
+    while k >= 0:
+        chain.append(pts[k])
+        k = prev[k]
+    return chain[::-1]
+
+
+def build_tuning(points, min_conf=0.5, max_err=0.35):
+    """points: [{cc, hz, conf}] from a 0..127 pitch-knob sweep -> description + MCL table.
+
+    The note law is recovered from the longest monotonic run of confident points, so isolated
+    detection glitches do not corrupt the table. table[i] is the CC that sounds note base_note+i.
+    """
+    good = sorted((p["cc"], hz_to_mcl_note(p["hz"]), p["conf"]) for p in points
+                  if p["hz"] and p["conf"] >= min_conf)
     res = {"pitched_points": len(good)}
     if len(good) < 8:
-        res["verdict"] = "unpitched"      # nothing to tune; chromatic makes no sense
+        res["verdict"] = "unpitched"
         return res
-    cc = np.array([g[0] for g in good], float)
-    st = np.array([g[1] for g in good])
-    a, b = np.polyfit(cc, st, 1)
-    resid = np.max(np.abs(st - (a * cc + b)))
+    chain = _longest_rising_chain(good)
+    res["chain_points"] = len(chain)
+    if len(chain) < 8:
+        res["verdict"] = "unpitched"
+        return res
+    cc = np.array([c[0] for c in chain], float)
+    nt = np.array([c[1] for c in chain])
+    # robust (Theil-Sen) line: ignores isolated glitches that still happen to be monotonic
+    slopes = [(nt[j] - nt[i]) / (cc[j] - cc[i]) for i in range(len(cc)) for j in range(i + 1, len(cc))]
+    a = float(np.median(slopes))
+    b = float(np.median(nt - a * cc))
+    inl = np.abs(nt - (a * cc + b)) <= 0.4
+    law_is_line = inl.sum() >= 0.8 * len(cc) and inl.sum() >= 8
+    if law_is_line:
+        cc, nt = cc[inl], nt[inl]
+        a, b = np.polyfit(cc, nt, 1)
+    resid = float(np.max(np.abs(nt - (a * cc + b))))
     res.update(semitones_per_cc=round(float(a), 5), offset=round(float(b), 3),
-               max_linear_error=round(float(resid), 3))
-    res["verdict"] = "linear" if resid < max_err else "table"
-    # table: for each whole semitone find the cc whose measured pitch is closest
-    order = np.argsort(st)
-    st_s, cc_s = st[order], cc[order]
-    notes = list(range(int(math.ceil(st_s[0])), int(math.floor(st_s[-1])) + 1))
+               max_linear_error=round(resid, 3), cc_range=[int(cc[0]), int(cc[-1])],
+               note_range=[round(float(nt[0]), 2), round(float(nt[-1]), 2)],
+               outliers_dropped=int(len(chain) - len(cc)))
+    if abs(a) < 0.05 or nt[-1] - nt[0] < 6:
+        res["verdict"] = "flat"          # pitch knob does not move the pitch (or hardly)
+        return res
+    res["verdict"] = "linear" if resid < 0.45 else "curve"
+    if law_is_line:
+        lo, hi = int(cc[0]), int(cc[-1])
+        entries = []
+        for n in range(int(math.ceil(a * lo + b)), int(math.floor(a * hi + b)) + 1):
+            c = int(round((n - b) / a))
+            if lo <= c <= hi and abs(a * c + b - n) <= 0.5:
+                entries.append((n, c))
+        if entries:
+            res["base_note"] = entries[0][0]
+            res["table"] = [c for _, c in entries]
+            res["tolerance_cc"] = int(max(1, round(0.5 / max(abs(a), 0.05))))
+            res["monotonic"] = all(x < y for x, y in zip(res["table"], res["table"][1:]))
+        return res
+    # whole-semitone table by inverting the measured law (piecewise linear between chain points)
+    allcc = np.arange(int(cc[0]), int(cc[-1]) + 1)
+    law = np.interp(allcc, cc, nt)
     entries = []
-    for n in notes:
-        j = int(np.argmin(np.abs(st_s - n)))
-        err = abs(st_s[j] - n)
-        entries.append((n, int(cc_s[j]), float(err)))
-    # keep the longest contiguous run of in-tune notes
+    for n in range(int(math.ceil(nt[0])), int(math.floor(nt[-1])) + 1):
+        j = int(np.argmin(np.abs(law - n)))
+        err = abs(float(law[j]) - n)
+        entries.append((n, int(allcc[j]), err))
     best, cur = [], []
     for e in entries:
-        if e[2] <= max_err:
+        if e[2] <= max_err and (not cur or e[1] > cur[-1][1]):
             cur.append(e)
             if len(cur) > len(best):
                 best = list(cur)
         else:
-            cur = []
+            cur = [e] if e[2] <= max_err else []
     if best:
-        ccs = [e[1] for e in best]
         res["base_note"] = best[0][0]
-        res["table"] = ccs
-        res["tolerance_cc"] = int(max(1, math.ceil(1 / max(abs(a), 1e-6) * max_err)))
-        res["monotonic"] = all(x < y for x, y in zip(ccs, ccs[1:]))
+        res["table"] = [e[1] for e in best]
+        res["tolerance_cc"] = int(max(1, round(0.5 / max(abs(a), 0.05))))
+        res["monotonic"] = True
     return res
 
 

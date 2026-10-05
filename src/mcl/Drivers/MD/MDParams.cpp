@@ -370,12 +370,6 @@ static const uint8_t e12_lt_tuning[] PROGMEM = {
   73, 76, 79, 82, 85, 89, 92, 95, 98, 101, 105, 108, 111, 114, 118, 121, 124, 127
 };
 
-// MM-PLS (patcher machine): measured on hardware, exactly one semitone per CC step,
-// CC 40 sounds MIDI note 16 and CC 127 sounds note 103.
-static const uint8_t mm_pls_tuning[] PROGMEM = {
-  40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126, 127
-};
-
 static const tuning_t rom_tuning_t = { ROM_MODEL,    45, 
 				       sizeof(rom_tuning), 4,   rom_tuning };
 
@@ -437,7 +431,6 @@ static const tuning_t tunings[] = {
   { E12_BC_MODEL, MIDI_NOTE_D3, sizeof(e12_bc_tuning), 4, e12_bc_tuning },
   { E12_CB_MODEL, MIDI_NOTE_DS3, sizeof(e12_cb_tuning), 4, e12_cb_tuning },
   { E12_LT_MODEL, MIDI_NOTE_FS5, sizeof(e12_lt_tuning), 4, e12_lt_tuning },
-  { MM_PLS_MODEL, MIDI_NOTE_E1, sizeof(mm_pls_tuning), 1, mm_pls_tuning },
 };
 
 
