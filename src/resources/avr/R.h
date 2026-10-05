@@ -341,11 +341,11 @@ struct __T_machine_param_names {
   static constexpr size_t sizeofof_mnm_model_param_names = 955;
   union {
     model_param_name_t md_model_param_names[0];
-    char zz__md_model_param_names[4180];
+    char zz__md_model_param_names[3090];
   };
-  static constexpr size_t countof_md_model_param_names = 4180 / sizeof(model_param_name_t);
-  static constexpr size_t sizeofof_md_model_param_names = 4180;
-  static constexpr size_t __total_size = 5135;
+  static constexpr size_t countof_md_model_param_names = 3090 / sizeof(model_param_name_t);
+  static constexpr size_t sizeofof_md_model_param_names = 3090;
+  static constexpr size_t __total_size = 4045;
 };
 
 extern const unsigned char __R_menu_layouts[] PROGMEM;

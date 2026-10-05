@@ -688,6 +688,7 @@ model_param_name_t md_model_param_names[] = {
     {"IVL", 6},
     {"MKU", 7},
     {"", 127},
+#ifndef AVR  // AVR: keeps this resource small enough for the 6500-byte resource buffer (see ResourceManager.cpp)
     // 618 - mm_den_model_names
     {"PTC", 0},
     {"DEC", 1},
@@ -931,6 +932,7 @@ model_param_name_t md_model_param_names[] = {
     {"SUB", 6},
     {"SUB", 7},
     {"", 127},
+#endif
     // 836 - end
 };
 

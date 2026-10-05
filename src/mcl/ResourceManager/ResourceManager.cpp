@@ -127,6 +127,23 @@ static void set_menu_layout(MenuBase *menu, const void *layout,
 #undef MENU_LAYOUT_NEXT
 #endif
 
+#if defined(__AVR__)
+// Pages unpack several resources into m_buffer at once and nothing checks the
+// size at run time: an overrun silently corrupts RAM (seen as "SD CARD ERROR"
+// at boot). Keep the largest combinations below RM_BUFSIZE.
+#define RM_FITS(sum) static_assert((sum) <= RM_BUFSIZE, "resource set exceeds RM_BUFSIZE")
+RM_FITS(__T_icons_knob::__total_size + __T_machine_names_short::__total_size +
+        __T_machine_param_names::__total_size);                     // SeqPage
+RM_FITS(__T_icons_knob::__total_size + __T_icons_page::__total_size +
+        __T_machine_param_names::__total_size);                     // FXPage
+RM_FITS(__T_icons_knob::__total_size + __T_machine_names_short::__total_size +
+        __T_menu_layouts::__total_size + __T_menu_options::__total_size +
+        256);                                                       // MenuPage + options
+RM_FITS(__T_icons_knob::__total_size + __T_icons_logo::__total_size +
+        __T_machine_names_short::__total_size);                     // GridPage
+#undef RM_FITS
+#endif
+
 void ResourceManager::Clear() {
     DEBUG_PRINTLN("resource clear");
 	m_bufsize = m_persistent_size;
