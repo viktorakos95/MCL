@@ -23,6 +23,7 @@
 #include "MDPages.h"
 #include "GUI/Pages/Project/ProjectPages.h"
 #include "GUI/Pages/Sequencer/SeqPages.h"
+#include "Sequencer/Euclidean.h"
 #include "Sequencer/SeqTrackUtil.h"
 #include "Devices/DeviceManager.h"
 
@@ -191,6 +192,7 @@ const lightpage_ptr_t MCL::pages_table[NUM_PAGES] PROGMEM = {
 
     // Additional feature pages
     { .ptr = &arp_page },
+    { .ptr = &euc_page },
     { .ptr = &md_import_page },
 
     // MIDI menu pages
@@ -230,6 +232,8 @@ const lightpage_ptr_t MCL::pages_table[NUM_PAGES] PROGMEM = {
 void mcl_setup() { mcl.current_page = NULL_PAGE; } //Exit blocking loop in mcl_setup
 
 void MCL::setup() {
+
+  euc_slots_init();
 
   DEBUG_PRINTLN(F("Welcome to MegaCommand Live"));
   DEBUG_PRINTLN(VERSION);

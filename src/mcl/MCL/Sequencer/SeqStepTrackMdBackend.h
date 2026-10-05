@@ -2,6 +2,7 @@
 
 #include "../Drivers/DeviceContext.h"
 #include "../Drivers/MD/MD.h"
+#include "Sequencer/Euclidean.h"
 #include "Sequencer/SeqDefines.h"
 #include <stddef.h>
 #include <stdint.h>
@@ -18,6 +19,9 @@ public:
   bool clears_mute_on_pattern_clear() const { return false; }
   bool shows_lock_value_popup() const { return true; }
   bool uses_kit_sound() const { return true; }
+  bool euc_enabled() const {
+    return euc_slot_find(track_->track_number)->enabled;
+  }
   bool selects_track_locally() const { return false; }
   bool uses_step_pitch() const { return true; }
 

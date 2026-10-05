@@ -7,6 +7,7 @@
 #include "MCLMemory.h"
 #include "GUI/MCLMenus.h"
 #include "GUI/Pages/Sequencer/ArpPage.h"
+#include "GUI/Pages/Sequencer/EucPage.h"
 
 #define ENCODER_RES_SEQ 2
 #define ENCODER_RES_PARAM 2
@@ -44,6 +45,7 @@
 #define SEQ_MENU_STEP_MODE 27
 #define SEQ_MENU_STEP_CC 28
 #define SEQ_MENU_STEP_PORT 29
+#define SEQ_MENU_EUC 30
 
 extern MCLEncoder seq_param1;
 extern MCLEncoder seq_param2;
@@ -86,6 +88,7 @@ extern MCLEncoder ptc_param_scale;
 
 extern SeqPtcPage seq_ptc_page;
 extern ArpPage arp_page;
+extern EucPage euc_page;
 
 extern void mcl_save_sound();
 extern void mcl_load_sound();

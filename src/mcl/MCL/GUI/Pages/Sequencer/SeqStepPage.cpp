@@ -241,6 +241,7 @@ void SeqStepPage::init() {
                                   active_track.uses_kit_sound());
   seq_menu_page.menu.enable_entry(SEQ_MENU_LENGTH_PRIMARY, true);
   seq_menu_page.menu.enable_entry(SEQ_MENU_SWING, true);
+  seq_menu_page.menu.enable_entry(SEQ_MENU_EUC, true);
 
   midi_events.setup_callbacks();
   key_interface.on();
@@ -574,7 +575,14 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       seq_param2.min = active_track.timing_encoder_min();
       seq_param2.max = active_track.timing_encoder_max();
       resetEncoderFocus();
-      if (!active_track.get_step(step, mask_type)) {
+      // While EUC mode is on for this track, pressing a step (whether or
+      // not it currently shows a generated trig) never creates a new
+      // manual trig -- matches Elektron: you can still p-lock a generated
+      // trig (send_locks(step) above already ran unconditionally), you
+      // just can't hand-place new ones alongside the generator.
+      bool blocks_manual_add =
+          mask_type == MASK_PATTERN && active_track.euc_enabled();
+      if (!active_track.get_step(step, mask_type) && !blocks_manual_add) {
         reset_undo();
         if (mask_type == MASK_PATTERN) {
           bool cond_plock;

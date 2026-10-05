@@ -39,6 +39,7 @@ enum PageIndex : uint8_t {
     MCL_CONFIG_PAGE,
     // Additional feature pages
     ARP_PAGE,
+    EUC_PAGE,
     MD_IMPORT_PAGE,
     // MIDI menu pages
     MIDIDEVICE_MENU_PAGE,
