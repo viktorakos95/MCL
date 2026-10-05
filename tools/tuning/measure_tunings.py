@@ -526,12 +526,27 @@ def untabled_ids():
             if i not in have and i not in patcher and i not in effects and not (128 <= i <= 191) and i != 0}
 
 
+def tonal_candidates():
+    """Machines that have a normal chromatic table in MCL but no tonal one yet (candidates for a tonal pass)."""
+    src = (REPO / "src/mcl/Drivers/MD/MDParams.cpp").read_text()
+    hdr = (REPO / "src/mcl/Drivers/MD/MDParams.h").read_text()
+    macro_id = {k: int(v) for k, v in re.findall(r"#define (\w+_MODEL) (\d+)", hdr)}
+
+    def ids_in(array):
+        st = src.index(array)
+        body = src[st:src.index("};", st)]
+        return {macro_id[k] for k in re.findall(r"\{\s*(\w+_MODEL),", body) if k in macro_id}
+    normal = ids_in("static const tuning_t tunings[]")
+    tonal = ids_in("static const tuning_t tunings_tonal[]")
+    return {n: i for n, i in machine_ids().items() if i in normal and i not in tonal and not (128 <= i <= 191 and i != 175)}
+
+
 def cmd_guided(a):
     """Walk through machines one by one. Pass 1 (normal mode) is automatic; the tonal pass (--tonal) pauses
     per machine so you can switch the machine's TUNING to TONAL on the MD, then records it."""
     play = _open_live(a)
     outdir = Path(a.outdir); outdir.mkdir(parents=True, exist_ok=True)
-    ids = _select(a) if a.ids else untabled_ids()
+    ids = _select(a) if a.ids else (tonal_candidates() if a.tonal else untabled_ids())
     todo = list(ids.items())
     print("%d machines to do: %s" % (len(todo), ", ".join(n for n, _ in todo)))
     for k, (name, mid) in enumerate(todo, 1):
