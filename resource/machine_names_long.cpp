@@ -1,6 +1,6 @@
 #include "ElektronModelTypes.h"
 
-md_machine_name_t machine_names[142] = {
+md_machine_name_t machine_names[] = {
     {"GND---", 0},   {"GND-SN", 1},   {"GND-NS", 2},   {"GND-IM", 3},
     {"GND-SW", 4},   {"GND-PU", 5},   {"NFX-EV", 7},   {"NFX-CO", 8},  {"NFX-UC", 9},
     {"TRX-BD", 16},  {"TRX-SD", 17},  {"TRX-XT", 18},  {"TRX-CP", 19},
@@ -36,7 +36,33 @@ md_machine_name_t machine_names[142] = {
     {"ROM-36", 179}, {"ROM-37", 180}, {"ROM-38", 181}, {"ROM-39", 182},
     {"ROM-40", 183}, {"ROM-41", 184}, {"ROM-42", 185}, {"ROM-43", 186},
     {"ROM-44", 187}, {"ROM-45", 188}, {"ROM-46", 189}, {"ROM-47", 190},
-    {"ROM-48", 191}};
+    {"ROM-48", 191},
+    // OS X.14 model patcher machines
+    {"MM-DEN", 6},
+    {"FM-DY", 10},
+    {"FM-ST", 11},
+    {"FM-PA", 12},
+    {"MM-SAW", 13},
+    {"MM-ENS", 14},
+    {"MM-BOX", 15},
+    {"MM-DDR", 30},
+    {"AN-BD", 31},
+    {"AN-CY", 40},
+    {"AN-HH", 41},
+    {"AN-PC", 42},
+    {"AN-RC", 43},
+    {"AN-SD", 44},
+    {"AN-SY", 45},
+    {"ACID", 46},
+    {"SAWPW", 47},
+    {"SPECT", 73},
+    {"FM4OP", 74},
+    {"FORMT", 75},
+    {"NOISE", 76},
+    {"MM-WAV", 124},
+    {"MM-SID", 126},
+    {"MM-VO6", 127},
+    {"MM-PLS", 175}};
 
 mnm_machine_name_t mnm_machine_names[] = {
     {"GND-GND", 0},    {"GND-SIN", 1},    {"GND-NOIS", 2},

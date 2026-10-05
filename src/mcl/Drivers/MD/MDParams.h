@@ -233,6 +233,34 @@
 
 #define ROM_MODEL 128
 
+// Machines added by the OS X.14 model patcher (ids follow the patcher layout:
+// stock machines first; AN drums in DRM, FM machines in FM, the rest in MM+).
+#define MM_DEN_MODEL 6
+#define MM_FMDY_MODEL 10
+#define MM_FMST_MODEL 11
+#define MM_FMPA_MODEL 12
+#define MM_SAW_MODEL 13
+#define MM_ENS_MODEL 14
+#define MM_BOX_MODEL 15
+#define MM_DDR_MODEL 30
+#define AN_BD_MODEL 31
+#define AN_CY_MODEL 40
+#define AN_HH_MODEL 41
+#define AN_PC_MODEL 42
+#define AN_RC_MODEL 43
+#define AN_SD_MODEL 44
+#define AN_SY_MODEL 45
+#define CM_ACID_MODEL 46
+#define CM_SAWPW_MODEL 47
+#define CM_SPECT_MODEL 73
+#define CM_FM4OP_MODEL 74
+#define CM_FORMT_MODEL 75
+#define NP_NOISE_MODEL 76
+#define MM_WAV_MODEL 124
+#define MM_SID_MODEL 126
+#define MM_VO6_MODEL 127
+#define MM_PLS_MODEL 175
+
 #define MD_ECHO_TIME 0
 #define MD_ECHO_MOD 1
 #define MD_ECHO_MFRQ 2

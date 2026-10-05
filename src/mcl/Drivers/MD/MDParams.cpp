@@ -136,6 +136,33 @@ model_to_param_names_t model_param_names[] = {
   { CTR_GB_MODEL, 515},
   { CTR_EQ_MODEL, 523},
   { CTR_DX_MODEL, 531},
+
+  // OS X.14 model patcher machines
+  { MM_DEN_MODEL, 618},
+  { MM_FMDY_MODEL, 627},
+  { MM_FMST_MODEL, 636},
+  { MM_FMPA_MODEL, 645},
+  { MM_SAW_MODEL, 654},
+  { MM_ENS_MODEL, 663},
+  { MM_BOX_MODEL, 672},
+  { MM_DDR_MODEL, 679},
+  { AN_BD_MODEL, 688},
+  { AN_CY_MODEL, 697},
+  { AN_HH_MODEL, 705},
+  { AN_PC_MODEL, 714},
+  { AN_RC_MODEL, 723},
+  { AN_SD_MODEL, 732},
+  { AN_SY_MODEL, 741},
+  { CM_ACID_MODEL, 750},
+  { CM_SAWPW_MODEL, 759},
+  { CM_SPECT_MODEL, 766},
+  { CM_FM4OP_MODEL, 774},
+  { CM_FORMT_MODEL, 783},
+  { NP_NOISE_MODEL, 791},
+  { MM_WAV_MODEL, 800},
+  { MM_SID_MODEL, 809},
+  { MM_VO6_MODEL, 818},
+  { MM_PLS_MODEL, 827},
 };
 
 #if defined(__AVR__)

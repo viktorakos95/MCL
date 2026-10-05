@@ -1,6 +1,6 @@
 #include "ElektronModelTypes.h"
 
-short_machine_name_t md_machine_names_short[142] = {
+short_machine_name_t md_machine_names_short[] = {
     {"GN", "--", 0},   {"GN", "SN", 1},   {"GN", "NS", 2},   {"GN", "IM", 3},
     {"GN", "SW", 4},   {"GN", "PU", 5},   {"NF", "EV", 7},   {"NF", "CO", 8},  {"NF", "UC", 9},
     {"TR", "BD", 16},  {"TR", "SD", 17},  {"TR", "XT", 18},  {"TR", "CP", 19},
@@ -36,7 +36,33 @@ short_machine_name_t md_machine_names_short[142] = {
     {"RO", "36", 179}, {"RO", "37", 180}, {"RO", "38", 181}, {"RO", "39", 182},
     {"RO", "40", 183}, {"RO", "41", 184}, {"RO", "42", 185}, {"RO", "43", 186},
     {"RO", "44", 187}, {"RO", "45", 188}, {"RO", "46", 189}, {"RO", "47", 190},
-    {"RO", "48", 191}};
+    {"RO", "48", 191},
+    // OS X.14 model patcher machines
+    {"MM", "DN", 6},
+    {"FM", "DY", 10},
+    {"FM", "ST", 11},
+    {"FM", "PA", 12},
+    {"MM", "SW", 13},
+    {"MM", "EN", 14},
+    {"MM", "BX", 15},
+    {"MM", "DD", 30},
+    {"AN", "BD", 31},
+    {"AN", "CY", 40},
+    {"AN", "HH", 41},
+    {"AN", "PC", 42},
+    {"AN", "RC", 43},
+    {"AN", "SD", 44},
+    {"AN", "SY", 45},
+    {"AC", "ID", 46},
+    {"SA", "PW", 47},
+    {"SP", "CT", 73},
+    {"F4", "OP", 74},
+    {"FO", "RM", 75},
+    {"NO", "IS", 76},
+    {"MM", "WV", 124},
+    {"MM", "SD", 126},
+    {"MM", "VO", 127},
+    {"MM", "PL", 175}};
 
 short_machine_name_t mnm_machine_names_short[] = {
     {"GN", "--", 0},  {"GN", "SN", 1},  {"GN", "NS", 2},
