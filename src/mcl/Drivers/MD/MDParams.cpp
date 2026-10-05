@@ -437,7 +437,9 @@ static const tuning_t tunings[] = {
 const tuning_t PROGMEM *MDClass::getModelTuning(uint8_t model, bool tonal) {
   uint8_t i;
 
-  if ((model >= 128) && (model <= 191)) {
+  // 128..191 is the ROM/RAM sample range, but patcher machines can sit in its
+  // gaps (MM-PLS is 175) and must not inherit the ROM sample tuning.
+  if ((model >= 128) && (model <= 191) && (model != MM_PLS_MODEL)) {
     //if (tonal) {
     //  return &rom_tonal_tuning_t;
    // }
