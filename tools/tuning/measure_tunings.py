@@ -293,6 +293,24 @@ def cmd_diag(a):
           "reaching the MD (cable/port/channel/trig note). If neither, the MD output isn't connected to the M4.")
 
 
+def cmd_assign(a):
+    """Put one machine on track 1 and stop, so you can read the MD display and confirm the id mapping."""
+    import mido
+    global CH
+    CH = a.channel - 1
+    mnames = mido.get_output_names()
+    out = mido.open_output(mnames[_pick(mnames, a.midi_out, "MIDI output")])
+    ids = machine_ids()
+    for tok in a.ids.split(","):
+        mid = ids.get(tok, int(tok) if tok.isdigit() else None)
+        if mid is None:
+            raise SystemExit("unknown machine %r" % tok)
+        out.send(mido.Message("sysex", data=assign_machine_sysex(0, mid)))
+        print("sent %s (id %d) to track 1 - check the MD display. Press Enter for the next one." % (tok, mid))
+        if len(a.ids.split(",")) > 1:
+            input()
+
+
 def cmd_live(a):
     """Probe a real MachineDrum: MIDI out to the MD, audio from one input channel."""
     import mido, sounddevice as sd, time
@@ -429,6 +447,8 @@ def main():
             s.add_argument("--outdir", default="takes", help="raw takes are kept here")
             s.add_argument("--redo", action="store_true", help="re-measure machines that already have a take")
     sub.add_parser("devices", help="list MIDI outputs and audio inputs")
+    asg = sub.add_parser("assign", help="put machines on track 1 one by one to check ids against the MD display")
+    asg.add_argument("--midi-out"); asg.add_argument("--ids", required=True); asg.add_argument("--channel", type=int, default=1)
     dg = sub.add_parser("diag", help="meter every input while sending MIDI notes, to find the problem")
     dg.add_argument("--midi-out"); dg.add_argument("--audio-in")
     dg.add_argument("--note", type=int, default=36); dg.add_argument("--channel", type=int, default=1)
@@ -438,7 +458,7 @@ def main():
     sub.add_parser("report").add_argument("file")
     sub.add_parser("selftest")
     a = p.parse_args()
-    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "diag": cmd_diag, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
+    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "diag": cmd_diag, "assign": cmd_assign, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
 
 
 if __name__ == "__main__":
