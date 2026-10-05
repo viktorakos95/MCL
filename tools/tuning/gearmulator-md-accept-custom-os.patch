@@ -1,0 +1,43 @@
+diff --git a/source/elektron/md/mdLib/mdromloader.cpp b/source/elektron/md/mdLib/mdromloader.cpp
+index 455634b..b2ff2f7 100644
+--- a/source/elektron/md/mdLib/mdromloader.cpp
++++ b/source/elektron/md/mdLib/mdromloader.cpp
+@@ -46,7 +46,21 @@ namespace md
+ 			fingerprint *= 1099511628211ull;
+ 		}
+ 
+-		// Accept only a supported image for the requested product.
+-		return isSupportedImage(_data.size(), fingerprint, _model);
++		// Accept a supported image for the requested product.
++		if(isSupportedImage(_data.size(), fingerprint, _model))
++			return true;
++
++		// Also accept a custom Machinedrum OS that keeps the stock 1.63 boot block
++		// (e.g. a model-patched image written over the OS area of the 1.63 flash).
++		if(_model != MachineModel::Machinedrum)
++			return false;
++
++		uint64_t bootFingerprint = 14695981039346656037ull;
++		for(size_t i = 0; i < g_mdBootAreaSize; ++i)
++		{
++			bootFingerprint ^= _data[i];
++			bootFingerprint *= 1099511628211ull;
++		}
++		return bootFingerprint == g_mdOs163BootFingerprint;
+ 	}
+ }
+diff --git a/source/elektron/md/mdLib/mdtypes.h b/source/elektron/md/mdLib/mdtypes.h
+index c238d7e..82729e5 100644
+--- a/source/elektron/md/mdLib/mdtypes.h
++++ b/source/elektron/md/mdLib/mdtypes.h
+@@ -54,4 +54,10 @@ namespace md
+ 	//   elektron_sfx6-60_os1.32b.bin: 11a37460a5f47fd1a4d911414288690e6e7da605
+ 	static constexpr uint64_t g_mdOs163Fingerprint = 0x33b7c1a9e29f43fdull;
+ 	static constexpr uint64_t g_mmOs132bFingerprint = 0xe1c1b461b6d0f21bull;
++
++	// FNV-1a of the first g_mdBootAreaSize bytes (the boot block) of the 1.63 image.
++	// Custom Machinedrum OS builds that keep this boot block are accepted as the
++	// Machinedrum ROM even though their full-image fingerprint differs.
++	static constexpr size_t g_mdBootAreaSize = 0x4000;
++	static constexpr uint64_t g_mdOs163BootFingerprint = 0x17b4e9af660cd177ull;
+ }
