@@ -6,13 +6,23 @@ flashing.
 
 ## 1. Flash (program size)
 
-- Shown by PlatformIO as `Flash: ... used N bytes from 262144`.
+- **Hard limit in practice: 960 pages = 245,760 bytes (240 KB).** A bigger image
+  flashes fine but then shows "SD CARD ERROR" or loops on the boot screen
+  (seen with 968 pages = 247,654 bytes; 245,744 and smaller boot). The cause is not
+  known (the chip and bootloader would allow more), so treat it as fixed.
+  `board_upload.maximum_size = 245760` in `platformio.ini` makes the `megacommand` build
+  fail above it (observed on a MegaCommand; the MegaCMD build keeps PlatformIO's default). The web flasher shows the page count before writing.
+- Shown by PlatformIO as `Flash: ... used N bytes from 245760`.
 - Past trade-offs made in this fork to fit features:
   - Project conversion disabled on AVR (`MCL_DISABLE_PROJECT_CONVERSION`), so older
     project formats can't be opened (see README warning). Made room for manual step.
   - File browser MOVE disabled on AVR. Made room for the Euclidean sequencer.
   - WAV Designer was disabled for a while, then swapped for the project-conversion
     flag at the maintainer's request.
+- Ways used to save flash without losing features: chromatic tables that are exact
+  straight lines are stored as 4-byte formulas (`TUNING_FORMULA` in `MDParams.h`),
+  identical formulas are shared, and the note/CC conversion lives in one place
+  (`tuning_note_from_cc` / `tuning_cc_from_note`).
 - Read-only data read with `pgm_read_byte` must stay in the first 64 KB of flash.
   Today all PROGMEM data ends below ~16 KB, so this is not close, but check with
   `avr-nm -n firmware.elf` if a lot of tables are added.

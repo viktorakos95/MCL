@@ -369,14 +369,7 @@ private:
       return 255;
     }
     pitch -= ptc_param_fine_tune.getValue() - 32;
-    for (uint8_t i = 0; i < TUNING_LEN(tuning); i++) {
-      uint8_t cc = pgm_read_byte(&TUNING_TAB(tuning)[i]);
-      if (cc >= pitch) {
-        uint8_t note_offset = TUNING_BASE(tuning) - ((TUNING_BASE(tuning) / 12) * 12);
-        return i + note_offset;
-      }
-    }
-    return 255;
+    return tuning_note_from_cc(tuning, pitch);
   }
 
   uint8_t md_kit_pitch_from_note(uint8_t note, uint8_t fine_tune) const {
@@ -393,17 +386,7 @@ private:
     if (tuning == nullptr) {
       return 255;
     }
-    uint8_t note_offset = TUNING_BASE(tuning) - ((TUNING_BASE(tuning) / 12) * 12);
-    note -= note_offset;
-    if (note >= TUNING_LEN(tuning)) {
-      return 255;
-    }
-    int8_t pitch =
-        (int8_t)pgm_read_byte(&TUNING_TAB(tuning)[note]) + (int8_t)fine_tune - 32;
-    if (pitch < 0) {
-      return 0;
-    }
-    return pitch > 127 ? 127 : (uint8_t)pitch;
+    return tuning_cc_from_note(tuning, note, fine_tune);
   }
 
   bool md_param_from_key(uint8_t key, uint8_t *param) const {

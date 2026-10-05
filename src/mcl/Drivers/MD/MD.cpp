@@ -851,14 +851,7 @@ uint8_t MDStepEditCapability::kit_sound_note_from_pitch(
     return 255;
   }
   pitch -= ptc_param_fine_tune.getValue() - 32;
-  for (uint8_t i = 0; i < TUNING_LEN(tuning); i++) {
-    uint8_t cc = pgm_read_byte(&TUNING_TAB(tuning)[i]);
-    if (cc >= pitch) {
-      uint8_t note_offset = TUNING_BASE(tuning) - ((TUNING_BASE(tuning) / 12) * 12);
-      return i + note_offset;
-    }
-  }
-  return 255;
+  return tuning_note_from_cc(tuning, pitch);
 }
 
 uint8_t MDStepEditCapability::kit_sound_pitch_from_note(
@@ -879,17 +872,7 @@ uint8_t MDStepEditCapability::kit_sound_pitch_from_note(
   if (tuning == nullptr) {
     return 255;
   }
-  uint8_t note_offset = TUNING_BASE(tuning) - ((TUNING_BASE(tuning) / 12) * 12);
-  note -= note_offset;
-  if (note >= TUNING_LEN(tuning)) {
-    return 255;
-  }
-  int8_t pitch = (int8_t)pgm_read_byte(&TUNING_TAB(tuning)[note]) +
-                 (int8_t)fine_tune - 32;
-  if (pitch < 0) {
-    return 0;
-  }
-  return pitch > 127 ? 127 : (uint8_t)pitch;
+  return tuning_cc_from_note(tuning, note, fine_tune);
 }
 
 bool MDStepEditCapability::param_from_key(const DeviceContext &ctx,
@@ -1754,7 +1737,7 @@ uint8_t MDClass::trackGetCCPitch(uint8_t track, uint8_t cc, int8_t *offset) {
   uint8_t i;
   int8_t off = 0;
   for (i = 0; i < TUNING_LEN(tuning); i++) {
-    uint8_t ccStored = pgm_read_byte(&TUNING_TAB(tuning)[i]);
+    uint8_t ccStored = tuning_cc(tuning, i);
     off = ccStored - cc;
     if (ccStored >= cc) {
       if (offset != NULL) {
@@ -1766,7 +1749,7 @@ uint8_t MDClass::trackGetCCPitch(uint8_t track, uint8_t cc, int8_t *offset) {
         return 128;
     }
   }
-  off = ABS(pgm_read_byte(&TUNING_TAB(tuning)[TUNING_LEN(tuning) - 1]) - cc);
+  off = ABS(tuning_cc(tuning, TUNING_LEN(tuning) - 1) - cc);
   if (offset != NULL)
     *offset = off;
   if (off <= TUNING_OFFSET(tuning))
@@ -1788,7 +1771,7 @@ uint8_t MDClass::trackGetPitch(uint8_t track, uint8_t pitch) {
     return 128;
   }
 
-  return pgm_read_byte(&TUNING_TAB(tuning)[pitch - base]);
+  return tuning_cc(tuning, pitch - base);
 }
 
 void MDClass::sliceTrack32(uint8_t track, uint8_t from, uint8_t to,

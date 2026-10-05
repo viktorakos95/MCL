@@ -137,6 +137,7 @@ model_to_param_names_t model_param_names[] = {
   { CTR_EQ_MODEL, 523},
   { CTR_DX_MODEL, 531},
 
+#if !defined(__AVR__)  // labels for these are not in the AVR resource
   // OS X.14 model patcher machines
   { MM_DEN_MODEL, 618},
   { MM_FMDY_MODEL, 627},
@@ -163,6 +164,7 @@ model_to_param_names_t model_param_names[] = {
   { MM_SID_MODEL, 809},
   { MM_VO6_MODEL, 818},
   { MM_PLS_MODEL, 827},
+#endif
 };
 
 #if defined(__AVR__)
@@ -275,46 +277,17 @@ const char* fx_param_name(uint8_t fx_type, uint8_t param) {
    return model_param_name(map_fx_to_model(fx_type), param);
 }
 
-static const uint8_t efm_rs_tuning[] PROGMEM = {
-   1,  3, 6, 9, 11, 14, 17, 19, 22, 25, 27, 30, 33, 35, 38, 41, 43,
-  46, 49, 51, 54, 57, 59, 62, 65, 67, 70, 73, 75, 78, 81, 83, 86,
-  89, 91, 94, 97, 99, 102, 105, 107, 110, 113, 115, 118, 121, 123,
-  126
-};
-static const uint8_t efm_hh_tuning[] PROGMEM = {
-  1, 5, 9, 14, 18, 22, 27, 31, 35, 39, 44, 48, 52, 56, 61, 65, 69,
-  73, 78, 82, 86, 91, 95, 99, 103, 108, 112, 116, 120, 125
-};
-static const uint8_t efm_cp_tuning[] PROGMEM = {
-  0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 29, 31, 33,
-  35, 37, 39, 41, 43, 45, 47, 49, 51, 53, 55, 57, 59, 61, 62, 64, 66,
-  68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92, 94, 95, 97, 99, 101,
-  103, 105, 107, 109, 111, 113, 115, 117, 119, 121, 123, 125, 127};
+static const uint8_t efm_rs_tuning[] PROGMEM = { 1, 8, 0, 3 };  // formula, 48 notes
+static const uint8_t efm_hh_tuning[] PROGMEM = { 1, 64, 6, 15 };  // formula, 30 notes
+static const uint8_t efm_cp_tuning[] PROGMEM = { 0, 33, 14, 17 };  // formula, 66 notes
 
-static const uint8_t efm_xt_tuning[] PROGMEM = {
-  1, 7, 12, 17, 23, 28, 33, 39, 44, 49, 55, 60, 65, 71, 76, 81, 87, 92, 97, 102, 
-  108, 113, 118, 124, 
-};
+static const uint8_t efm_xt_tuning[] PROGMEM = { 1, 101, 18, 19 };  // formula, 24 notes
 
-static const uint8_t trx_cl_tuning[] PROGMEM = {
-  5, 11, 17, 23, 29, 36, 42, 48, 54, 60, 66, 72, 78, 84, 91, 97, 103, 109, 115, 121, 
-  127, 
-};
-static const uint8_t trx_sd_tuning[] PROGMEM = {
-  3, 13, 24, 35, 45, 56, 67, 77, 88, 98, 109, 120, 
-};
-static const uint8_t trx_xc_tuning[] PROGMEM = {
-  1, 6, 11, 17, 22, 27, 33, 38, 43, 49, 54, 60, 65, 70, 76, 81, 86, 92, 97, 102, 
-  108, 113, 118, 124, 
-};
-static const uint8_t trx_xt_tuning[] PROGMEM = {
-  2, 7, 12, 18, 23, 28, 34, 39, 44, 49, 55, 60, 65, 71, 76, 81, 87, 92, 97, 103, 
-  108, 113, 118, 124,
-};
-static const uint8_t trx_bd_tuning[] PROGMEM = {
-  1, 7, 12, 17, 23, 28, 33, 39, 44, 49, 55, 60, 66, 71, 76, 82, 87, 92, 98, 103, 
-  108, 114, 119, 124, 
-};
+static const uint8_t trx_cl_tuning[] PROGMEM = { 5, 55, 4, 9 };  // formula, 21 notes
+static const uint8_t trx_sd_tuning[] PROGMEM = { 3, 85, 2, 8 };  // formula, 12 notes
+static const uint8_t trx_xc_tuning[] PROGMEM = { 1, 75, 1, 14 };  // formula, 24 notes
+static const uint8_t trx_xt_tuning[] PROGMEM = { 2, 69, 2, 13 };  // formula, 24 notes
+static const uint8_t trx_bd_tuning[] PROGMEM = { 1, 75, 10, 14 };  // formula, 24 notes
 
 static const uint8_t trx_s2_tuning[] PROGMEM = {
   3, 7, 11, 15, 20, 24, 30, 35, 41, 47, 54, 60, 68, 76, 84, 92, 101, 111, 121
@@ -326,14 +299,7 @@ static const uint8_t rom_tuning[] PROGMEM = {
   109, (112), 114, 116, 119, 121, 123, 125, 
 };
 
-static const uint8_t gnd_sn_tuning[] PROGMEM = {
-  0, 2, 3, 4, 6, 7, 8, 10, 11, 12, 14, 15, 16, 18, 19, 20,
-  22, 23, 24, 26, 27, 28, 30, 31, 32, 34, 35, 36, 38, 39, 40, 42, 43, 44, 46, 47, 48,
-  50, 51, 52, 54, 55, 56, 58, 59, 60, 62, 63, 64, 66, 67, 68, 70, 71, 72, 74, 75, 76,
-  78, 79, 80, 82, 83, 84, 86, 87, 88, 90, 91, 92, 94, 95, 96, 98, 99, 100,
-  102, 103, 104, 106, 107, 108, 110, 111, 112, 114, 115, 116, 118, 119, 120,
-  122, 123, 124, 126, 127
-};
+static const uint8_t gnd_sn_tuning[] PROGMEM = { 0, 4, 2, 3 };  // formula, 96 notes
 
 static const uint8_t trx_b2_tuning[] PROGMEM = {
   31, 33, 36, 39, 43, 45, 48, 51, 56, 60, 62, 66, 70, 74, 79, 83, 89, 94, 97, 104, 108, 113, 120, 125
@@ -373,217 +339,104 @@ static const uint8_t e12_lt_tuning[] PROGMEM = {
 // Older machines that had no table. Measured by sweeping the pitch knob (tools/tuning), on the real MD or in the
 // emulator running the stock 1.63 OS. Percussion notes are relative; the CC ladder is what matters.
 // E12-OH: autocorr, 0.313 st/cc, max err 0.13 st, CC 0-126 (hardware)
-static const uint8_t e12_oh_tuning[] PROGMEM = {
-  3, 6, 9, 13, 16, 19, 22, 25, 29, 32, 35, 38, 41, 45, 48, 51, 54, 57, 61, 64, 67, 70, 73, 77,
-  80, 83, 86, 89, 93, 96, 99, 102, 105, 109, 112, 115, 118, 121, 125
-};
+static const uint8_t e12_oh_tuning[] PROGMEM = { 3, 16, 2, 5 };  // formula, 39 notes
 // E12-HT: autocorr, 0.347 st/cc, max err 0.43 st, CC 0-103 (hardware)
-static const uint8_t e12_ht_tuning[] PROGMEM = {
-  1, 4, 7, 9, 12, 15, 18, 21, 24, 27, 30, 32, 35, 38, 41, 44, 47, 50, 53, 56, 58, 61, 64, 67,
-  70, 73, 76, 79, 81, 84, 87, 90, 93, 96, 99, 102
-};
+static const uint8_t e12_ht_tuning[] PROGMEM = { 1, 49, 4, 17 };  // formula, 36 notes
 // E12-CC: autocorr, 0.318 st/cc, max err 0.14 st, CC 12-72 (hardware)
-static const uint8_t e12_cc_tuning[] PROGMEM = {
-  14, 18, 21, 24, 27, 30, 33, 36, 40, 43, 46, 49, 52, 55, 58, 62, 65, 68, 71
-};
+static const uint8_t e12_cc_tuning[] PROGMEM = { 14, 22, 6, 7 };  // formula, 19 notes
 // E12-RC: autocorr, 0.311 st/cc, max err 0.13 st, CC 0-45 (hardware)
-static const uint8_t e12_rc_tuning[] PROGMEM = {
-  3, 6, 9, 13, 16, 19, 22, 26, 29, 32, 35, 38, 42, 45
-};
+static const uint8_t e12_rc_tuning[] PROGMEM = { 3, 29, 4, 9 };  // formula, 14 notes
 // E12-BR: spectral, 0.375 st/cc, max err 0.17 st, CC 0-57 (emulator, OS 1.63)
-static const uint8_t e12_br_tuning[] PROGMEM = {
-  2, 5, 7, 10, 13, 15, 18, 21, 23, 26, 29, 31, 34, 37, 39, 42, 45, 47, 50, 53, 55
-};
+static const uint8_t e12_br_tuning[] PROGMEM = { 2, 8, 1, 3 };  // formula, 21 notes
 // E12-TA: autocorr, 0.190 st/cc, max err 0.15 st, CC 1-127 (emulator, OS 1.63)
-static const uint8_t e12_ta_tuning[] PROGMEM = {
-  2, 8, 13, 18, 23, 29, 34, 39, 44, 50, 55, 60, 65, 71, 76, 81, 86, 92, 97, 102, 107, 113, 118,
-  123
-};
+static const uint8_t e12_ta_tuning[] PROGMEM = { 2, 21, 3, 4 };  // formula, 24 notes
 // E12-TR: autocorr, 0.312 st/cc, max err 0.08 st, CC 3-122 (emulator, OS 1.63)
-static const uint8_t e12_tr_tuning[] PROGMEM = {
-  6, 9, 12, 16, 19, 22, 25, 28, 32, 35, 38, 41, 44, 48, 51, 54, 57, 60, 64, 67, 70, 73, 76, 80,
-  83, 86, 89, 92, 96, 99, 102, 105, 109, 112, 115, 118, 121
-};
+static const uint8_t e12_tr_tuning[] PROGMEM = { 6, 93, 11, 29 };  // formula, 37 notes
 // P-I-BD: autocorr, 0.184 st/cc, max err 0.29 st, CC 12-126 (emulator, OS 1.63)
-static const uint8_t p_i_bd_tuning[] PROGMEM = {
-  17, 22, 28, 33, 39, 44, 49, 55, 60, 66, 71, 77, 82, 88, 93, 98, 104, 109, 115, 120, 126
-};
+static const uint8_t p_i_bd_tuning[] PROGMEM = { 17, 49, 2, 9 };  // formula, 21 notes
 // P-I-SD: spectral, 0.188 st/cc, max err 0.20 st, CC 8-121 (emulator, OS 1.63)
-static const uint8_t p_i_sd_tuning[] PROGMEM = {
-  9, 14, 19, 25, 30, 35, 40, 46, 51, 56, 62, 67, 72, 78, 83, 88, 94, 99, 104, 109, 115, 120
-};
+static const uint8_t p_i_sd_tuning[] PROGMEM = { 9, 69, 1, 13 };  // formula, 22 notes
 // P-I-MT: autocorr, 0.188 st/cc, max err 0.25 st, CC 0-126 (emulator, OS 1.63)
-static const uint8_t p_i_mt_tuning[] PROGMEM = {
-  2, 8, 13, 18, 24, 29, 34, 40, 45, 50, 56, 61, 66, 72, 77, 82, 88, 93, 98, 104, 109, 114, 119,
-  125
-};
+static const uint8_t p_i_mt_tuning[] PROGMEM = { 2, 117, 21, 22 };  // formula, 24 notes
 // P-I-ML: autocorr, 0.188 st/cc, max err 0.15 st, CC 0-105 (emulator, OS 1.63)
-static const uint8_t p_i_ml_tuning[] PROGMEM = {
-  5, 10, 15, 21, 26, 31, 37, 42, 47, 53, 58, 63, 69, 74, 79, 85, 90, 95, 101
-};
+static const uint8_t p_i_ml_tuning[] PROGMEM = { 5, 16, 0, 3 };  // formula, 19 notes
 // P-I-RC: autocorr, 0.182 st/cc, max err 0.16 st, CC 0-120 (emulator, OS 1.63)
-static const uint8_t p_i_rc_tuning[] PROGMEM = {
-  3, 8, 14, 19, 25, 30, 36, 41, 47, 52, 58, 63, 69, 74, 80, 85, 91, 96, 102, 107, 113, 118
-};
+static const uint8_t p_i_rc_tuning[] PROGMEM = { 3, 11, 0, 2 };  // formula, 22 notes
 // P-I-CC: autocorr, 0.184 st/cc, max err 0.12 st, CC 0-120 (emulator, OS 1.63)
-static const uint8_t p_i_cc_tuning[] PROGMEM = {
-  2, 7, 13, 18, 24, 29, 34, 40, 45, 51, 56, 62, 67, 73, 78, 83, 89, 94, 100, 105, 111, 116
-};
+static const uint8_t p_i_cc_tuning[] PROGMEM = { 2, 49, 2, 9 };  // formula, 22 notes
 // P-I-HH: autocorr, 0.184 st/cc, max err 0.13 st, CC 2-127 (emulator, OS 1.63)
-static const uint8_t p_i_hh_tuning[] PROGMEM = {
-  7, 13, 18, 24, 29, 34, 40, 45, 51, 56, 62, 67, 72, 78, 83, 89, 94, 100, 105, 110, 116, 121,
-  127
-};
+static const uint8_t p_i_hh_tuning[] PROGMEM = { 7, 38, 5, 7 };  // formula, 23 notes
 
 // OS X.14 model patcher machines, measured on hardware (tools/tuning/measure_tunings.py).
 // table[i] = CC that sounds note base+i. Sub-oscillators / unison / chorus were off for MM-SAW, MM-PLS, SAWPW.
 // MM-DEN: 0.99787 st/cc, max err 0.295 st
-static const uint8_t mm_den_tuning[] PROGMEM = {
-  16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38,
-  39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61,
-  62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84,
-  85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
-  106, 107, 108, 109
-};
+static const uint8_t mm_den_tuning[] PROGMEM = { 16, 1, 0, 1 };  // formula, 94 notes
 // FM-DY: 0.99926 st/cc, max err 0.239 st
-static const uint8_t fm_dy_tuning[] PROGMEM = {
-  34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56,
-  57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79,
-  80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101,
-  102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114, 115, 116, 117, 118, 119,
-  120, 121, 122, 123, 124, 125
-};
+static const uint8_t fm_dy_tuning[] PROGMEM = { 34, 1, 0, 1 };  // formula, 92 notes
 // FM-ST: 0.99981 st/cc, max err 0.105 st
-static const uint8_t fm_st_tuning[] PROGMEM = {
-  27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-  50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
-  73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
-  96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110, 111, 112, 113, 114,
-  115, 116, 117, 118, 119, 120, 121, 122
-};
+static const uint8_t fm_st_tuning[] PROGMEM = { 27, 1, 0, 1 };  // formula, 96 notes
 // FM-PA: 1.00005 st/cc, max err 0.058 st
-static const uint8_t fm_pa_tuning[] PROGMEM = {
-  26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48,
-  49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71,
-  72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94,
-  95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105
-};
+static const uint8_t fm_pa_tuning[] PROGMEM = { 26, 1, 0, 1 };  // formula, 80 notes
 // MM-ENS: 0.99988 st/cc, max err 0.077 st
-static const uint8_t mm_ens_tuning[] PROGMEM = {
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-  38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-  61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
-  84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
-  106, 107, 108
-};
+static const uint8_t mm_ens_tuning[] PROGMEM = { 15, 1, 0, 1 };  // formula, 94 notes
 // AN-PC: 0.99726 st/cc, max err 0.264 st
-static const uint8_t an_pc_tuning[] PROGMEM = {
-  45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67,
-  68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90,
-  91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105, 106, 107, 108, 109, 110,
-  111, 112, 113, 114, 115, 116, 117, 118, 119, 120, 121, 122, 123, 124, 125, 126
-};
+static const uint8_t an_pc_tuning[] PROGMEM = { 45, 1, 0, 1 };  // formula, 82 notes
 // AN-RC: 0.99963 st/cc, max err 0.149 st
-static const uint8_t an_rc_tuning[] PROGMEM = {
-  27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49,
-  50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60, 61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72,
-  73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83, 84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95,
-  96, 97, 98, 99, 100, 101, 102, 103, 104
-};
 // ACID: 0.375 st/cc, max err 0.004 st
-static const uint8_t acid_tuning[] PROGMEM = {
-  1, 3, 6, 9, 11, 14, 17, 19, 22, 25, 27, 30, 33, 35, 38, 41, 43, 46, 49, 51, 54, 57, 59, 62,
-  65, 67, 70, 73, 75, 78, 81, 83, 86, 89, 91, 94, 97, 99, 102, 105, 107, 110, 113, 115, 118,
-  121, 123, 126
-};
 // FM4OP: 0.99861 st/cc, max err 0.179 st
-static const uint8_t fm4op_tuning[] PROGMEM = {
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-  38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-  61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
-  84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
-  106, 107, 108, 109
-};
 // FORMT: 0.5 st/cc, max err 0.013 st
-static const uint8_t formt_tuning[] PROGMEM = {
-  0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46,
-  48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92,
-  94, 96, 98, 100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126
-};
+static const uint8_t formt_tuning[] PROGMEM = { 0, 2, 0, 1 };  // formula, 64 notes
 // MM-VO6: 1.00001 st/cc, max err 0.03 st
-static const uint8_t mm_vo6_tuning[] PROGMEM = {
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-  38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-  61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
-  84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100
-};
 // MM-SAW: 1.000 st/cc (CC = note), max err 0.08 st, subs off
-static const uint8_t mm_saw_tuning[] PROGMEM = {
-  15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37,
-  38, 39, 40, 41, 42, 43, 44, 45, 46, 47, 48, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58, 59, 60,
-  61, 62, 63, 64, 65, 66, 67, 68, 69, 70, 71, 72, 73, 74, 75, 76, 77, 78, 79, 80, 81, 82, 83,
-  84, 85, 86, 87, 88, 89, 90, 91, 92, 93, 94, 95, 96, 97, 98, 99, 100, 101, 102, 103, 104, 105,
-  106, 107, 108, 109, 110
-};
 // SAWPW: 0.500 st/cc, max err 0.01 st, sub/chorus off
-static const uint8_t sawpw_tuning[] PROGMEM = {
-  0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46,
-  48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92,
-  94, 96, 98, 100, 102, 104, 106, 108
-};
 
 static const tuning_t rom_tuning_t PROGMEM = { ROM_MODEL,    45, 
 				       sizeof(rom_tuning), 4,   rom_tuning };
 
-static const uint8_t tonal_tuning[] PROGMEM = {
-0, 2, 4, 6, 8, 10, 12, 14, 16, 18, 20, 22, 24, 26, 28, 30, 32, 34, 36, 38, 40, 42, 44, 46,
-48, 50, 52, 54, 56, 58, 60, 62, 64, 66, 68, 70, 72, 74, 76, 78, 80, 82, 84, 86, 88, 90, 92,
-94, 96, 98, 100, 102, 104, 106, 108, 110, 112, 114, 116, 118, 120, 122, 124, 126
-};
 
-static const tuning_t rom_tonal_tuning_t PROGMEM = { ROM_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning };
+static const tuning_t rom_tonal_tuning_t PROGMEM = { ROM_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning };
 
 
 static const tuning_t tunings_tonal[] PROGMEM = {
 
-  { EFM_BD_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_SD_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_XT_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_CP_MODEL, MIDI_NOTE_CS2, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_RS_MODEL, MIDI_NOTE_CS2, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_CB_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_HH_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { EFM_CY_MODEL, MIDI_NOTE_CS3, sizeof(tonal_tuning), 0, tonal_tuning },
+  { EFM_BD_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_SD_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_XT_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_CP_MODEL, MIDI_NOTE_CS2, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_RS_MODEL, MIDI_NOTE_CS2, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_CB_MODEL, MIDI_NOTE_CS1, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_HH_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { EFM_CY_MODEL, MIDI_NOTE_CS3, 64, TUNING_FORMULA | 0, formt_tuning },
 
-  { TRX_BD_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { TRX_SD_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
-  { TRX_XT_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { TRX_RS_MODEL, MIDI_NOTE_CS2, sizeof(tonal_tuning), 0, tonal_tuning },
-  { TRX_XC_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
-  { TRX_B2_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
-  { TRX_S2_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
+  { TRX_BD_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { TRX_SD_MODEL, MIDI_NOTE_CS1, 64, TUNING_FORMULA | 0, formt_tuning },
+  { TRX_XT_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { TRX_RS_MODEL, MIDI_NOTE_CS2, 64, TUNING_FORMULA | 0, formt_tuning },
+  { TRX_XC_MODEL, MIDI_NOTE_CS1, 64, TUNING_FORMULA | 0, formt_tuning },
+  { TRX_B2_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 0, formt_tuning },
+  { TRX_S2_MODEL, MIDI_NOTE_CS1, 64, TUNING_FORMULA | 0, formt_tuning },
 
-  { GND_SN_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 3, tonal_tuning },
-  { GND_SW_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 3, tonal_tuning },
-  { GND_PU_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 3, tonal_tuning },
-  { NFX_UC_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 3, tonal_tuning },
+  { GND_SN_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 3, formt_tuning },
+  { GND_SW_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 3, formt_tuning },
+  { GND_PU_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 3, formt_tuning },
+  { NFX_UC_MODEL, MIDI_NOTE_CS0, 64, TUNING_FORMULA | 3, formt_tuning },
 };
 
 static const tuning_t tunings[] PROGMEM = {
-  { EFM_RS_MODEL, MIDI_NOTE_B4, sizeof(efm_rs_tuning), 4, efm_rs_tuning },
-  { EFM_HH_MODEL, MIDI_NOTE_B4, sizeof(efm_hh_tuning), 8, efm_hh_tuning },
-  { EFM_CP_MODEL, MIDI_NOTE_B3, sizeof(efm_cp_tuning), 3, efm_cp_tuning },
-  { EFM_SD_MODEL, MIDI_NOTE_B3, sizeof(efm_hh_tuning), 5, efm_hh_tuning },
-  { EFM_XT_MODEL, MIDI_NOTE_F2, sizeof(efm_xt_tuning), 7, efm_xt_tuning },
-  { EFM_BD_MODEL, MIDI_NOTE_AB1, sizeof(efm_rs_tuning), 4, efm_rs_tuning },
-  { TRX_CL_MODEL, MIDI_NOTE_B6, sizeof(trx_cl_tuning), 7, trx_cl_tuning },
-  { TRX_SD_MODEL, MIDI_NOTE_F4, sizeof(trx_sd_tuning), 12, trx_sd_tuning },
-  { TRX_XC_MODEL, MIDI_NOTE_F3, sizeof(trx_xc_tuning), 6, trx_xc_tuning },
-  { TRX_XT_MODEL, MIDI_NOTE_B3, sizeof(trx_xt_tuning), 6, trx_xt_tuning },
-  { TRX_BD_MODEL, MIDI_NOTE_B1, sizeof(trx_bd_tuning), 7, trx_bd_tuning },
-  { GND_SN_MODEL, MIDI_NOTE_F2, sizeof(gnd_sn_tuning), 3, gnd_sn_tuning },
-  { GND_SW_MODEL, MIDI_NOTE_F2, sizeof(gnd_sn_tuning), 3, gnd_sn_tuning },
-  { GND_PU_MODEL, MIDI_NOTE_F2, sizeof(gnd_sn_tuning), 3, gnd_sn_tuning },
+  { EFM_RS_MODEL, MIDI_NOTE_B4, 48, TUNING_FORMULA | 4, efm_rs_tuning },
+  { EFM_HH_MODEL, MIDI_NOTE_B4, 30, TUNING_FORMULA | 8, efm_hh_tuning },
+  { EFM_CP_MODEL, MIDI_NOTE_B3, 66, TUNING_FORMULA | 3, efm_cp_tuning },
+  { EFM_SD_MODEL, MIDI_NOTE_B3, 30, TUNING_FORMULA | 5, efm_hh_tuning },
+  { EFM_XT_MODEL, MIDI_NOTE_F2, 24, TUNING_FORMULA | 7, efm_xt_tuning },
+  { EFM_BD_MODEL, MIDI_NOTE_AB1, 48, TUNING_FORMULA | 4, efm_rs_tuning },
+  { TRX_CL_MODEL, MIDI_NOTE_B6, 21, TUNING_FORMULA | 7, trx_cl_tuning },
+  { TRX_SD_MODEL, MIDI_NOTE_F4, 12, TUNING_FORMULA | 12, trx_sd_tuning },
+  { TRX_XC_MODEL, MIDI_NOTE_F3, 24, TUNING_FORMULA | 6, trx_xc_tuning },
+  { TRX_XT_MODEL, MIDI_NOTE_B3, 24, TUNING_FORMULA | 6, trx_xt_tuning },
+  { TRX_BD_MODEL, MIDI_NOTE_B1, 24, TUNING_FORMULA | 7, trx_bd_tuning },
+  { GND_SN_MODEL, MIDI_NOTE_F2, 96, TUNING_FORMULA | 3, gnd_sn_tuning },
+  { GND_SW_MODEL, MIDI_NOTE_F2, 96, TUNING_FORMULA | 3, gnd_sn_tuning },
+  { GND_PU_MODEL, MIDI_NOTE_F2, 96, TUNING_FORMULA | 3, gnd_sn_tuning },
   { TRX_B2_MODEL, MIDI_NOTE_A1, sizeof(trx_b2_tuning), 8, trx_b2_tuning },
   { TRX_RS_MODEL, MIDI_NOTE_F4, sizeof(trx_rs_tuning), 13, trx_rs_tuning },
   { TRX_S2_MODEL, MIDI_NOTE_F2, sizeof(trx_s2_tuning), 0, trx_s2_tuning },
@@ -593,40 +446,86 @@ static const tuning_t tunings[] PROGMEM = {
   { E12_BC_MODEL, MIDI_NOTE_D3, sizeof(e12_bc_tuning), 4, e12_bc_tuning },
   { E12_CB_MODEL, MIDI_NOTE_DS3, sizeof(e12_cb_tuning), 4, e12_cb_tuning },
   { E12_LT_MODEL, MIDI_NOTE_FS5, sizeof(e12_lt_tuning), 4, e12_lt_tuning },
-  { E12_OH_MODEL, 54, sizeof(e12_oh_tuning), 2, e12_oh_tuning },
-  { E12_HT_MODEL, 27, sizeof(e12_ht_tuning), 1, e12_ht_tuning },
-  { E12_CC_MODEL, 80, sizeof(e12_cc_tuning), 2, e12_cc_tuning },
-  { E12_RC_MODEL, 78, sizeof(e12_rc_tuning), 2, e12_rc_tuning },
-  { E12_BR_MODEL, 34, sizeof(e12_br_tuning), 1, e12_br_tuning },
-  { E12_TA_MODEL, 73, sizeof(e12_ta_tuning), 3, e12_ta_tuning },
-  { E12_TR_MODEL, 35, sizeof(e12_tr_tuning), 2, e12_tr_tuning },
-  { P_I_BD_MODEL, 25, sizeof(p_i_bd_tuning), 3, p_i_bd_tuning },
-  { P_I_SD_MODEL, 30, sizeof(p_i_sd_tuning), 3, p_i_sd_tuning },
-  { P_I_MT_MODEL, 38, sizeof(p_i_mt_tuning), 3, p_i_mt_tuning },
-  { P_I_ML_MODEL, 33, sizeof(p_i_ml_tuning), 3, p_i_ml_tuning },
-  { P_I_RC_MODEL, 46, sizeof(p_i_rc_tuning), 3, p_i_rc_tuning },
-  { P_I_CC_MODEL, 39, sizeof(p_i_cc_tuning), 3, p_i_cc_tuning },
-  { P_I_HH_MODEL, 40, sizeof(p_i_hh_tuning), 3, p_i_hh_tuning },
-  { MM_DEN_MODEL, 16, sizeof(mm_den_tuning), 1, mm_den_tuning },
-  { MM_FMDY_MODEL, 15, sizeof(fm_dy_tuning), 1, fm_dy_tuning },
-  { MM_FMST_MODEL, 15, sizeof(fm_st_tuning), 1, fm_st_tuning },
-  { MM_FMPA_MODEL, 14, sizeof(fm_pa_tuning), 1, fm_pa_tuning },
-  { MM_ENS_MODEL, 15, sizeof(mm_ens_tuning), 1, mm_ens_tuning },
-  { MM_DDR_MODEL, 15, sizeof(mm_ens_tuning), 1, mm_ens_tuning },
-  { AN_PC_MODEL, 16, sizeof(an_pc_tuning), 1, an_pc_tuning },
-  { AN_RC_MODEL, 27, sizeof(an_rc_tuning), 1, an_rc_tuning },
-  { CM_ACID_MODEL, 29, sizeof(acid_tuning), 1, acid_tuning },
-  { CM_SPECT_MODEL, 41, sizeof(acid_tuning), 1, acid_tuning },
-  { CM_FM4OP_MODEL, 15, sizeof(fm4op_tuning), 1, fm4op_tuning },
-  { CM_FORMT_MODEL, 24, sizeof(formt_tuning), 1, formt_tuning },
-  { MM_WAV_MODEL, 15, sizeof(fm4op_tuning), 1, fm4op_tuning },
-  { MM_SID_MODEL, 15, sizeof(mm_ens_tuning), 1, mm_ens_tuning },
-  { MM_VO6_MODEL, 15, sizeof(mm_vo6_tuning), 1, mm_vo6_tuning },
-  { MM_SAW_MODEL, 15, sizeof(mm_saw_tuning), 1, mm_saw_tuning },
-  { MM_PLS_MODEL, 15, sizeof(fm4op_tuning), 1, fm4op_tuning },
-  { CM_SAWPW_MODEL, 24, sizeof(sawpw_tuning), 1, sawpw_tuning },
+  { E12_OH_MODEL, 54, 39, TUNING_FORMULA | 2, e12_oh_tuning },
+  { E12_HT_MODEL, 27, 36, TUNING_FORMULA | 1, e12_ht_tuning },
+  { E12_CC_MODEL, 80, 19, TUNING_FORMULA | 2, e12_cc_tuning },
+  { E12_RC_MODEL, 78, 14, TUNING_FORMULA | 2, e12_rc_tuning },
+  { E12_BR_MODEL, 34, 21, TUNING_FORMULA | 1, e12_br_tuning },
+  { E12_TA_MODEL, 73, 24, TUNING_FORMULA | 3, e12_ta_tuning },
+  { E12_TR_MODEL, 35, 37, TUNING_FORMULA | 2, e12_tr_tuning },
+  { P_I_BD_MODEL, 25, 21, TUNING_FORMULA | 3, p_i_bd_tuning },
+  { P_I_SD_MODEL, 30, 22, TUNING_FORMULA | 3, p_i_sd_tuning },
+  { P_I_MT_MODEL, 38, 24, TUNING_FORMULA | 3, p_i_mt_tuning },
+  { P_I_ML_MODEL, 33, 19, TUNING_FORMULA | 3, p_i_ml_tuning },
+  { P_I_RC_MODEL, 46, 22, TUNING_FORMULA | 3, p_i_rc_tuning },
+  { P_I_CC_MODEL, 39, 22, TUNING_FORMULA | 3, p_i_cc_tuning },
+  { P_I_HH_MODEL, 40, 23, TUNING_FORMULA | 3, p_i_hh_tuning },
+  { MM_DEN_MODEL, 16, 94, TUNING_FORMULA | 1, mm_den_tuning },
+  { MM_FMDY_MODEL, 15, 92, TUNING_FORMULA | 1, fm_dy_tuning },
+  { MM_FMST_MODEL, 15, 96, TUNING_FORMULA | 1, fm_st_tuning },
+  { MM_FMPA_MODEL, 14, 80, TUNING_FORMULA | 1, fm_pa_tuning },
+  { MM_ENS_MODEL, 15, 94, TUNING_FORMULA | 1, mm_ens_tuning },
+  { MM_DDR_MODEL, 15, 94, TUNING_FORMULA | 1, mm_ens_tuning },
+  { AN_PC_MODEL, 16, 82, TUNING_FORMULA | 1, an_pc_tuning },
+  { AN_RC_MODEL, 27, 78, TUNING_FORMULA | 1, fm_st_tuning },
+  { CM_ACID_MODEL, 29, 48, TUNING_FORMULA | 1, efm_rs_tuning },
+  { CM_SPECT_MODEL, 41, 48, TUNING_FORMULA | 1, efm_rs_tuning },
+  { CM_FM4OP_MODEL, 15, 95, TUNING_FORMULA | 1, mm_ens_tuning },
+  { CM_FORMT_MODEL, 24, 64, TUNING_FORMULA | 1, formt_tuning },
+  { MM_WAV_MODEL, 15, 95, TUNING_FORMULA | 1, mm_ens_tuning },
+  { MM_SID_MODEL, 15, 94, TUNING_FORMULA | 1, mm_ens_tuning },
+  { MM_VO6_MODEL, 15, 86, TUNING_FORMULA | 1, mm_ens_tuning },
+  { MM_SAW_MODEL, 15, 96, TUNING_FORMULA | 1, mm_ens_tuning },
+  { MM_PLS_MODEL, 15, 95, TUNING_FORMULA | 1, mm_ens_tuning },
+  { CM_SAWPW_MODEL, 24, 55, TUNING_FORMULA | 1, formt_tuning },
 };
 
+
+#if defined(__AVR__)
+#define TUNING_RD(p) pgm_read_byte(p)
+#define TUNING_PTR(t) ((const uint8_t *)pgm_read_word(&(t)->tuning))
+#else
+#define TUNING_RD(p) (*(p))
+#define TUNING_PTR(t) ((t)->tuning)
+#endif
+
+uint8_t tuning_base(const tuning_t *t) { return TUNING_RD(&t->base); }
+uint8_t tuning_len(const tuning_t *t) { return TUNING_RD(&t->len); }
+uint8_t tuning_offset(const tuning_t *t) {
+  return TUNING_RD(&t->offset) & ~TUNING_FORMULA;
+}
+
+uint8_t tuning_cc(const tuning_t *t, uint8_t i) {
+  const uint8_t *p = TUNING_PTR(t);
+  if (!(TUNING_RD(&t->offset) & TUNING_FORMULA)) {
+    return pgm_read_byte(p + i);
+  }
+  uint16_t x = (uint16_t)i * pgm_read_byte(p + 1) + pgm_read_byte(p + 2);
+  return pgm_read_byte(p) + x / pgm_read_byte(p + 3);
+}
+
+uint8_t tuning_note_from_cc(const tuning_t *t, uint8_t cc) {
+  for (uint8_t i = 0; i < tuning_len(t); i++) {
+    if (tuning_cc(t, i) >= cc) {
+      uint8_t base = tuning_base(t);
+      return i + (base - ((base / 12) * 12));
+    }
+  }
+  return 255;
+}
+
+uint8_t tuning_cc_from_note(const tuning_t *t, uint8_t note, uint8_t fine_tune) {
+  uint8_t base = tuning_base(t);
+  note -= base - ((base / 12) * 12);
+  if (note >= tuning_len(t)) {
+    return 255;
+  }
+  int8_t pitch = (int8_t)tuning_cc(t, note) + (int8_t)fine_tune - 32;
+  if (pitch < 0) {
+    return 0;
+  }
+  return pitch > 127 ? 127 : (uint8_t)pitch;
+}
 
 const tuning_t PROGMEM *MDClass::getModelTuning(uint8_t model, bool tonal) {
   uint8_t i;

@@ -1085,21 +1085,28 @@ typedef struct tuning_s {
   /* @} */
 } tuning_t;
 
-// On AVR the tuning index lives in flash (PROGMEM), so its fields must be read with pgm_read_*.
-// Everywhere else these are plain member reads.
+// The tuning index lives in flash (PROGMEM) so it costs no RAM on AVR; read its
+// fields through these helpers. A table whose CC ladder is an exact straight line
+// is stored as a formula to save flash: TUNING_FORMULA is set in `offset` and
+// `tuning` points to 4 bytes {c0, num, r, den}, cc(i) = c0 + (i * num + r) / den.
+#define TUNING_FORMULA 0x80
 #if defined(__AVR__)
 #define TUNING_MODEL(t) pgm_read_byte(&(t)->model)
-#define TUNING_BASE(t) pgm_read_byte(&(t)->base)
-#define TUNING_LEN(t) pgm_read_byte(&(t)->len)
-#define TUNING_OFFSET(t) pgm_read_byte(&(t)->offset)
-#define TUNING_TAB(t) ((const uint8_t *)pgm_read_word(&(t)->tuning))
 #else
 #define TUNING_MODEL(t) ((t)->model)
-#define TUNING_BASE(t) ((t)->base)
-#define TUNING_LEN(t) ((t)->len)
-#define TUNING_OFFSET(t) ((t)->offset)
-#define TUNING_TAB(t) ((t)->tuning)
 #endif
+uint8_t tuning_base(const tuning_t *t);
+uint8_t tuning_len(const tuning_t *t);
+uint8_t tuning_offset(const tuning_t *t);
+/** CC value that plays the i-th note of the table (note = base + i). **/
+uint8_t tuning_cc(const tuning_t *t, uint8_t i);
+/** Note for a pitch CC (already fine-tune adjusted), or 255. **/
+uint8_t tuning_note_from_cc(const tuning_t *t, uint8_t cc);
+/** Pitch CC for a note with fine tune (32 = centre), clamped to 0..127, or 255. **/
+uint8_t tuning_cc_from_note(const tuning_t *t, uint8_t note, uint8_t fine_tune);
+#define TUNING_BASE(t) tuning_base(t)
+#define TUNING_LEN(t) tuning_len(t)
+#define TUNING_OFFSET(t) tuning_offset(t)
 
 
 /* @} @} */
