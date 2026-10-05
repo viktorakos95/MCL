@@ -35,7 +35,7 @@ import numpy as np
 SR = 44100
 NOTE_ON_S = 0.30      # how long the key is held
 SLOT_S = 0.45         # time per probe (hold + release tail)
-ANALYSIS = (0.04, 0.26)  # seconds after note-on used for pitch detection
+ANALYSIS = (0.08, 0.27)  # seconds after the slot start used for pitch detection (tolerates ~50 ms latency)
 REPO = Path(__file__).resolve().parents[2]
 
 # --- MachineDrum MIDI --------------------------------------------------------
@@ -201,6 +201,9 @@ def machine_ids():
 
 # --- backends ----------------------------------------------------------------
 
+CH = 0  # MIDI channel (0-based) of track 1; set from --channel
+
+
 def render_offline(plugin, events, total_s):
     import mido
     msgs = []
@@ -208,11 +211,11 @@ def render_offline(plugin, events, total_s):
         if kind == "sysex":
             m = mido.Message("sysex", data=p)
         elif kind == "cc":
-            m = mido.Message("control_change", channel=0, control=p[0], value=p[1])
+            m = mido.Message("control_change", channel=CH, control=p[0], value=p[1])
         elif kind == "on":
-            m = mido.Message("note_on", channel=0, note=p, velocity=127)
+            m = mido.Message("note_on", channel=CH, note=p, velocity=127)
         else:
-            m = mido.Message("note_off", channel=0, note=p, velocity=0)
+            m = mido.Message("note_off", channel=CH, note=p, velocity=0)
         msgs.append((m.bytes(), t))
     out = plugin(msgs, duration=total_s, sample_rate=SR, num_channels=2, reset=False)
     return out.mean(axis=0)
@@ -239,35 +242,90 @@ def cmd_offline(a):
     print("wrote", a.out)
 
 
+def _pick(names, wanted, what):
+    """Resolve a device by index or case-insensitive substring."""
+    if wanted is None:
+        raise SystemExit("%s not given. Run `devices` to list them." % what)
+    if str(wanted).isdigit() and int(wanted) < len(names):
+        return int(wanted)
+    hits = [i for i, n in enumerate(names) if str(wanted).lower() in n.lower()]
+    if len(hits) != 1:
+        raise SystemExit("%s %r matched %d devices: %s" % (what, wanted, len(hits), [names[i] for i in hits] or names))
+    return hits[0]
+
+
+def cmd_devices(a):
+    import mido, sounddevice as sd
+    print("MIDI outputs:")
+    for i, n in enumerate(mido.get_output_names()):
+        print("  [%d] %s" % (i, n))
+    print("Audio inputs:")
+    for i, d in enumerate(sd.query_devices()):
+        if d["max_input_channels"] > 0:
+            print("  [%d] %s  (%d input channels)" % (i, d["name"], d["max_input_channels"]))
+
+
 def cmd_live(a):
+    """Probe a real MachineDrum: MIDI out to the MD, audio from one input channel."""
     import mido, sounddevice as sd, time
-    out = mido.open_output(a.midi_out)
+    global CH
+    CH = a.channel - 1
+    mnames = mido.get_output_names()
+    midi_name = mnames[_pick(mnames, a.midi_out, "MIDI output")]
+    devs = sd.query_devices()
+    anames = [d["name"] for d in devs]
+    adev = _pick(anames, a.audio_in, "Audio input")
+    nch = devs[adev]["max_input_channels"]
+    if a.audio_channel > nch:
+        raise SystemExit("audio device has only %d input channels" % nch)
+    print("MIDI out: %s | audio in: %s, input %d | MIDI channel %d" % (midi_name, anames[adev], a.audio_channel, a.channel))
+    out = mido.open_output(midi_name)
+    outdir = Path(a.outdir); outdir.mkdir(parents=True, exist_ok=True)
+
+    def play(ev, total):
+        rec = sd.rec(int(total * SR), samplerate=SR, channels=nch, device=adev, dtype="float32")
+        start = time.perf_counter()
+        for t, kind, p in sorted(ev, key=lambda e: e[0]):
+            while time.perf_counter() - start < t:
+                time.sleep(0.0002)
+            if kind == "sysex":
+                out.send(mido.Message("sysex", data=p))
+            elif kind == "cc":
+                out.send(mido.Message("control_change", channel=CH, control=p[0], value=p[1]))
+            elif kind == "on":
+                out.send(mido.Message("note_on", channel=CH, note=p, velocity=127))
+            else:
+                out.send(mido.Message("note_off", channel=CH, note=p, velocity=0))
+        sd.wait()
+        return rec[:, a.audio_channel - 1].copy()
+
+    # sound check on a stock machine (TRX-BD) so a wrong input / channel fails fast
+    sc = [(0.0, "sysex", assign_machine_sysex(0, 16)), (0.3, "cc", (param_cc(0, 23), 127)),
+          (0.3, "cc", (param_cc(0, 1), a.decay)), (0.6, "cc", (param_cc(0, 0), 90)),
+          (0.7, "on", a.note), (1.2, "off", a.note)]
+    peak = float(np.max(np.abs(play(sc, 1.6))))
+    print("sound check: peak level %.3f" % peak)
+    if peak < 0.005:
+        raise SystemExit("No sound on that input. Check: MD audio out -> that interface input, MIDI channel/trig note "
+                         "(--channel, --note), MD set to receive MIDI, input gain/phantom off.")
+    if peak > 0.98:
+        print("WARNING: the signal clips. Lower the interface input gain; clipped audio hurts pitch detection.")
+
     ids = machine_ids()
     if a.ids:
         want = set(a.ids.split(","))
         ids = {n: i for n, i in ids.items() if n in want or str(i) in want}
-    results = {}
     for name, mid in ids.items():
+        f = outdir / ("m%d.f32" % mid)
+        if f.exists() and not a.redo:
+            print("%-8s id %3d  already measured (use --redo)" % (name, mid)); continue
         ev, t0 = probe_events(mid, a)
-        total = t0 + 128 * SLOT_S + 0.5
-        rec = sd.rec(int(total * SR), samplerate=SR, channels=1, device=a.audio_in)
-        start = time.perf_counter()
-        for t, kind, p in sorted(ev, key=lambda e: e[0]):
-            while time.perf_counter() - start < t:
-                time.sleep(0.0005)
-            if kind == "sysex":
-                out.send(mido.Message("sysex", data=p))
-            elif kind == "cc":
-                out.send(mido.Message("control_change", channel=0, control=p[0], value=p[1]))
-            elif kind == "on":
-                out.send(mido.Message("note_on", channel=0, note=p, velocity=127))
-            else:
-                out.send(mido.Message("note_off", channel=0, note=p))
-        sd.wait()
-        pts = analyse_slots(rec[:, 0], t0)
-        results[name] = {"id": mid, "points": pts, "tuning": build_tuning(pts)}
-        print("%-8s id %3d  %s" % (name, mid, results[name]["tuning"]["verdict"]), flush=True)
-    Path(a.out).write_text(json.dumps(results, indent=1))
+        audio = play(ev, t0 + 128 * SLOT_S + 0.5)
+        audio.tofile(f)  # raw take kept so analysis can be redone: from-audio <outdir>
+        pk = float(np.max(np.abs(audio)))
+        r = build_tuning(analyse_slots(audio / (pk + 1e-9), t0)) if pk > 1e-4 else {"verdict": "silent"}
+        print("%-8s id %3d  peak %.2f  %s" % (name, mid, pk, r["verdict"]), flush=True)
+    print("done. Now: python measure_tunings.py from-audio %s --out tunings.json && python measure_tunings.py report tunings.json" % outdir)
 
 
 def cmd_fromaudio(a):
@@ -336,15 +394,20 @@ def main():
             s.add_argument("--plugin", required=True)
             s.add_argument("--state")
         else:
-            s.add_argument("--midi-out", required=True)
-            s.add_argument("--audio-in")
+            s.add_argument("--midi-out", help="MIDI output name (substring) or index")
+            s.add_argument("--audio-in", help="audio input device name (substring) or index")
+            s.add_argument("--audio-channel", type=int, default=1, help="1-based input channel of that device")
+            s.add_argument("--channel", type=int, default=1, help="MD base MIDI channel 1-16 (track 1)")
+            s.add_argument("--outdir", default="takes", help="raw takes are kept here")
+            s.add_argument("--redo", action="store_true", help="re-measure machines that already have a take")
+    sub.add_parser("devices", help="list MIDI outputs and audio inputs")
     fa = sub.add_parser("from-audio", help="analyse m<id>[t].f32 files from md_pitch_probe")
     fa.add_argument("dir"); fa.add_argument("--out", default="tunings.json")
     fa.add_argument("--names", help="json {id: name} for ids missing from machine_names_long.cpp")
     sub.add_parser("report").add_argument("file")
     sub.add_parser("selftest")
     a = p.parse_args()
-    {"offline": cmd_offline, "live": cmd_live, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
+    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
 
 
 if __name__ == "__main__":
