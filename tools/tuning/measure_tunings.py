@@ -500,6 +500,46 @@ def _sweep(play, mid, a, outdir, tonal=False, assign=True):
     return pk, r
 
 
+def cmd_latency(a):
+    """Time from sending a note to hearing it, so a direct MD path can be compared with a path through MCL."""
+    import mido, sounddevice as sd, time
+    mnames = mido.get_output_names()
+    out = mido.open_output(mnames[_pick(mnames, a.midi_out, "MIDI output")])
+    devs = sd.query_devices()
+    adev = _pick([d["name"] for d in devs], a.audio_in, "Audio input")
+    nch = devs[adev]["max_input_channels"]
+    ch = a.channel - 1
+    gap = 0.5
+    total = 0.5 + a.count * gap + 0.5
+    rec = sd.rec(int(total * SR), samplerate=SR, channels=nch, device=adev, dtype="float32")
+    start = time.perf_counter()
+    sent = []
+    for k in range(a.count):
+        t = 0.5 + k * gap
+        while time.perf_counter() - start < t:
+            time.sleep(0.0002)
+        out.send(mido.Message("note_on", channel=ch, note=a.note, velocity=127))
+        sent.append(time.perf_counter() - start)
+        time.sleep(0.05)
+        out.send(mido.Message("note_off", channel=ch, note=a.note, velocity=0))
+    sd.wait()
+    x = np.abs(rec[:, a.audio_channel - 1])
+    floor = float(np.percentile(x, 50))
+    thr = max(floor * 8, 0.01)
+    lat = []
+    for t in sent:
+        s0, s1 = int(t * SR), int((t + gap * 0.8) * SR)
+        hit = np.nonzero(x[s0:s1] > thr)[0]
+        if len(hit):
+            lat.append(hit[0] * 1000.0 / SR)
+    if not lat:
+        raise SystemExit("no onsets heard - check channel/note/input")
+    lat = np.array(lat)
+    print("notes heard: %d/%d  latency ms: median %.2f  min %.2f  max %.2f  jitter(sd) %.2f"
+          % (len(lat), a.count, np.median(lat), lat.min(), lat.max(), lat.std()))
+    print("(includes the audio interface's input latency, which is the same for every run - compare runs)")
+
+
 def cmd_live(a):
     """Probe a real MachineDrum: MIDI out to the MD, audio from one input channel."""
     play = _open_live(a)
@@ -652,6 +692,10 @@ def main():
     gd.add_argument("--note", type=int, default=36); gd.add_argument("--decay", type=int, default=100)
     gd.add_argument("--midi-out"); gd.add_argument("--audio-in"); gd.add_argument("--audio-channel", type=int, default=1)
     gd.add_argument("--channel", type=int, default=1); gd.add_argument("--outdir", default="takes"); gd.add_argument("--redo", action="store_true")
+    lt = sub.add_parser("latency", help="time from MIDI note to sound (compare direct-to-MD vs through MCL)")
+    lt.add_argument("--midi-out"); lt.add_argument("--audio-in"); lt.add_argument("--audio-channel", type=int, default=1)
+    lt.add_argument("--channel", type=int, default=1); lt.add_argument("--note", type=int, default=36)
+    lt.add_argument("--count", type=int, default=30)
     sub.add_parser("devices", help="list MIDI outputs and audio inputs")
     asg = sub.add_parser("assign", help="put machines on track 1 one by one to check ids against the MD display")
     asg.add_argument("--midi-out"); asg.add_argument("--ids", required=True); asg.add_argument("--channel", type=int, default=1)
@@ -664,7 +708,7 @@ def main():
     sub.add_parser("report").add_argument("file")
     sub.add_parser("selftest")
     a = p.parse_args()
-    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "guided": cmd_guided, "diag": cmd_diag, "assign": cmd_assign, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
+    {"offline": cmd_offline, "live": cmd_live, "devices": cmd_devices, "latency": cmd_latency, "guided": cmd_guided, "diag": cmd_diag, "assign": cmd_assign, "from-audio": cmd_fromaudio, "report": cmd_report, "selftest": cmd_selftest}[a.cmd](a)
 
 
 if __name__ == "__main__":
