@@ -253,11 +253,39 @@ void MCLSeqMidiEvents::onControlChangeCallback_Midi(uint8_t *msg) {
 
 // Every message on the configured CC — any value, no debounce, no on/off
 // gating — advances the MD sequencer exactly one step.
+#if defined(__AVR__)
+uint16_t manual_cc_ms = 0;  // USB diagnostic, see GuiClass::display()
+#endif
+
 void MCLSeqMidiEvents::onManualStepCC_Midi(uint8_t *msg) {
+#if defined(__AVR__)
+  manual_cc_ms = read_clock_ms() | 1;
+#endif
   if (!mcl_cfg.manual_step_enabled || msg[1] != mcl_cfg.manual_step_cc) {
     return;
   }
   mcl_seq.manual_step_advance();
+}
+
+// After boot the listener was sometimes missing until manual step was toggled
+// in the menu (which re-registers it via cfg_ports()). add() skips duplicates,
+// so calling this regularly just restores it when it is gone.
+#if defined(__AVR__)
+bool manual_step_readded = false;  // USB diagnostic: ensure had to re-add it
+#endif
+
+void MCLSeqMidiEvents::ensure_manual_step() {
+  if (state) {
+#if defined(__AVR__)
+    uint8_t n = MidiUSB.midiCallbacks[MIDI_CC_CB].size;
+#endif
+    setup_mcl_seq_manual_step(this);
+#if defined(__AVR__)
+    if (MidiUSB.midiCallbacks[MIDI_CC_CB].size != n) {
+      manual_step_readded = true;
+    }
+#endif
+  }
 }
 
 void MCLSeqMidiEvents::onControlChangeCallback_Midi2(uint8_t *msg) {

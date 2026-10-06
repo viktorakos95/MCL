@@ -316,6 +316,16 @@ void GuiClass::display() {
     oled_display.fillRect(
         118, 0, 4, 4,
         (ferr && clock_diff(ferr, read_clock_ms()) < 1000) ? WHITE : BLACK);
+    // Third square: the manual-step handler got a CC in the last 300 ms.
+    extern uint16_t manual_cc_ms;
+    uint16_t mcc = manual_cc_ms;
+    oled_display.fillRect(
+        112, 0, 4, 4,
+        (mcc && clock_diff(mcc, read_clock_ms()) < 300) ? WHITE : BLACK);
+    // Fourth square (stays lit): the manual-step listener was missing and
+    // had to be added back.
+    extern bool manual_step_readded;
+    oled_display.fillRect(106, 0, 4, 4, manual_step_readded ? WHITE : BLACK);
   }
 #endif
   oled_display.display();

@@ -1,6 +1,7 @@
 #include "Devices/MidiActivePeering.h"
 #include "MCLGUI.h"
 #include "MCLSysConfig.h"
+#include "Sequencer/MCLSeq.h"
 #include "MidiClock.h"
 #include "MidiID.h"
 #include "MidiIDSysex.h"
@@ -246,6 +247,7 @@ void MidiActivePeering::run() {
     usb_set_speed = false;
   }
 #endif
+  mcl_seq.midi_events.ensure_manual_step();
 
 #ifdef PLATFORM_TBD
   PortSlot s[SLOT_COUNT];

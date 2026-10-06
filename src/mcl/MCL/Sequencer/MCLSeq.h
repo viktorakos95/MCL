@@ -49,6 +49,8 @@ public:
   void onControlChangeCallback_Midi(uint8_t *msg);
   void onControlChangeCallback_Midi2(uint8_t *msg);
   void onManualStepCC_Midi(uint8_t *msg);
+  // Re-adds the manual-step CC listener if it went missing (no-op if present).
+  void ensure_manual_step();
 };
 
 class MCLSeq : public ClockCallback {
