@@ -107,8 +107,16 @@ void MidiUartClass::realtime_isr(uint8_t c) {
   return;
 }
 
+// USB diagnostic: time of the last framing error on the USB link (a sign of a
+// speed mismatch with the USB chip), shown on screen by GuiClass::display().
+extern volatile uint16_t g_clock_ms;
+volatile uint16_t usb_ferr_ms = 0;
+
 ISR(USART0_RX_vect) {
   select_bank_fast();
+  if (UCSR0A & _BV(FE0)) {
+    usb_ferr_ms = g_clock_ms | 1;
+  }
   MidiUartUSB.rx_isr();
 }
 

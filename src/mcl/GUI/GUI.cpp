@@ -303,6 +303,21 @@ void GuiClass::display() {
 #if defined(PLATFORM_WASM)
   mcl_gui.draw_async_infobox();
 #endif
+#if defined(__AVR__)
+  // USB diagnostic, top right: right square = bytes received on USB in the
+  // last 300 ms, left square = garbled bytes (speed mismatch) in the last 1 s.
+  {
+    extern volatile uint16_t usb_ferr_ms;
+    // Drawn black when idle too, since not every page redraws the corner.
+    oled_display.fillRect(124, 0, 4, 4,
+                          MidiUartUSB.recvActiveSenseTimer < 300 ? WHITE
+                                                                 : BLACK);
+    uint16_t ferr = usb_ferr_ms;
+    oled_display.fillRect(
+        118, 0, 4, 4,
+        (ferr && clock_diff(ferr, read_clock_ms()) < 1000) ? WHITE : BLACK);
+  }
+#endif
   oled_display.display();
 }
 
