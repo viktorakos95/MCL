@@ -138,11 +138,20 @@ void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
 void upgrade_all_projects() {
   char path[PRJ_PATH_LEN] = "";
   uint8_t upgraded = 0;
-  upgrade_projects_in(path, 1, &upgraded);
+  // Nothing on the card is touched until the user agrees.
+  const bool confirmed =
+      mcl_gui.wait_for_confirm("Upgrade", "Convert all projects?");
+  if (confirmed) {
+    upgrade_projects_in(path, 1, &upgraded);
+  }
   oled_display.clearDisplay();
   oled_display.setCursor(0, 8);
-  oled_display.print(upgraded);
-  oled_display.println(F(" PROJECTS READY"));
+  if (confirmed) {
+    oled_display.print(upgraded);
+    oled_display.println(F(" PROJECTS READY"));
+  } else {
+    oled_display.println(F("NOTHING CHANGED"));
+  }
   oled_display.println(F("INSTALL MCL " VERSION_STR));
   oled_display.display();
   while (1) {
