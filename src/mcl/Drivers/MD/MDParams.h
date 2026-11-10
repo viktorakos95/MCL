@@ -818,8 +818,13 @@ constexpr bool spsExtendedParamToCc(uint8_t baseChannel, uint8_t track,
     return false;
   }
   const unsigned channel = unsigned(baseChannel) + 4u + (track >> 2);
+  // The Machinedrum puts every hardware control before the reserved groups:
+  // ENV DEST takes wire slot 34 and parameters 34-36 follow it. Stored kit
+  // and lock parameter IDs keep their own order.
+  const unsigned wireParam = param == MODEL_ENVDEST ? MODEL_BUS1
+      : param >= MODEL_BUS1 ? unsigned(param) + 1u : param;
   const unsigned cc =
-      unsigned(param - MD_PARAMS_PER_TRACK) * 4u + (track & 3u);
+      (wireParam - MD_PARAMS_PER_TRACK) * 4u + (track & 3u);
   if (channel > 15 || cc > SPS_EXTENDED_CC_MAX)
     return false;
   result.channel = (uint8_t)channel;
@@ -836,7 +841,9 @@ constexpr bool spsExtendedCcToParam(uint8_t baseChannel, uint8_t channel,
   if (channel < first || channel >= first + 4u)
     return false;
   result.track = (uint8_t)((channel - first) * 4u + cc % 4u);
-  result.param = (uint8_t)(MD_PARAMS_PER_TRACK + cc / 4u);
+  const unsigned wireParam = MD_PARAMS_PER_TRACK + cc / 4u;
+  result.param = (uint8_t)(wireParam == MODEL_BUS1 ? MODEL_ENVDEST
+      : wireParam > MODEL_BUS1 ? wireParam - 1u : wireParam);
   return result.track < 16 && result.param < SPS_PARAMS_PER_TRACK;
 }
 
@@ -881,18 +888,28 @@ constexpr bool spsExtendedCcContractIsBijective() {
 static_assert(spsExtendedCcContractIsBijective(),
               "SPS-X extended CC mapping must round-trip uniquely");
 
+// Fixed points of the Machinedrum's table: ENV DEST is CC 40+b, RENV 36+b.
+constexpr uint8_t spsExtendedCcOf(uint8_t param) {
+  SpsExtendedCcAddress address{};
+  return spsExtendedParamToCc(0, 0, param, address) ? address.cc : 255;
+}
+
 // Virtual param IDs (not array indices, used by parseCC/setTrackParam)
 #define MODEL_MUTE  40
 #define MODEL_LEVEL 41
 
-#if 1
+static_assert(spsExtendedCcOf(MODEL_ENVATT) == 0 &&
+                  spsExtendedCcOf(MODEL_RENV) == 36 &&
+                  spsExtendedCcOf(MODEL_ENVDEST) == 40 &&
+                  spsExtendedCcOf(MODEL_BUS1) == 44 &&
+                  spsExtendedCcOf(MODEL_BUS3) == 52,
+              "extended CC table differs from the Machinedrum's");
 static_assert(MODEL_BUS1 == SPS_PARAMS_V1_PER_TRACK,
               "BUS parameters must append the SPS-X v1 layout");
 static_assert(MODEL_ENVDEST + 1 == SPS_PARAMS_PER_TRACK,
               "current SPS-X parameter count must include ENV DEST");
 static_assert(MODEL_ENVDEST < MODEL_MUTE,
               "real track parameters must not overlap virtual IDs");
-#endif
 
 #define MD_ECHO_TIME 0
 #define MD_ECHO_MOD 1
