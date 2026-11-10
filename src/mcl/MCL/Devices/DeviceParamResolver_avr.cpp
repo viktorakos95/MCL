@@ -42,9 +42,15 @@ bool copy_short_label(const char *label, char *out, uint8_t len,
   return true;
 }
 
+// Parameters a track offers: 38 with an X.20 peer, 24 otherwise.
+uint8_t md_track_param_count() NOINLINE();
+uint8_t md_track_param_count() {
+  return MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+}
+
 uint8_t md_param_count(uint8_t target) {
   if (target < NUM_MD_TRACKS) {
-    return MD_PARAMS_PER_TRACK;
+    return md_track_param_count();
   }
   if (target < NUM_MD_TRACKS + 4) {
     return 8;
@@ -181,7 +187,7 @@ uint8_t DeviceParamTarget::lock_param_count() const {
   if (device_idx == DeviceIdx::Secondary || target >= NUM_MD_TRACKS) {
     return 0;
   }
-  return MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+  return md_track_param_count();
 }
 
 bool DeviceParamTarget::lock_param_info(uint8_t param,
@@ -267,10 +273,10 @@ bool DevicePerfTarget::begin_param_editor(uint8_t *editor_params,
                                           uint8_t count) const {
   if (params.device_idx != DeviceIdx::Primary ||
       params.target >= NUM_MD_TRACKS || editor_params == nullptr ||
-      count < MD_PARAMS_PER_TRACK) {
+      count < md_track_param_count()) {
     return false;
   }
-  MD.activate_encoder_interface(editor_params);
+  MD.activate_encoder_interface(editor_params, md_track_param_count());
   return true;
 }
 
@@ -327,8 +333,7 @@ bool perf_scene_autofill(PerfData *data, uint8_t scene) {
     return false;
   }
   bool filled = false;
-  uint8_t num_params =
-      mcl_seq.using_spsx_tracks ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+  uint8_t num_params = md_track_param_count();
   for (uint8_t track = 0; track < NUM_MD_TRACKS; track++) {
     uint8_t dest = track;
     for (uint8_t param = 0; param < num_params; param++) {

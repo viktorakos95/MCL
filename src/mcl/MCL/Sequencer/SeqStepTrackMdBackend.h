@@ -71,10 +71,13 @@ public:
   }
 
   bool begin_param_editor(uint8_t *params, uint8_t count) const {
-    if (params == nullptr || count < MD_PARAMS_PER_TRACK) {
+    // An X.20 peer shows locks on all 38 parameters.
+    const uint8_t wanted =
+        MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+    if (params == nullptr || count < wanted) {
       return false;
     }
-    MD.activate_encoder_interface(params);
+    MD.activate_encoder_interface(params, wanted);
     return true;
   }
 

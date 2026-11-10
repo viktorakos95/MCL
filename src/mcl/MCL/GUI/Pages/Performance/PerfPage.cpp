@@ -9,14 +9,10 @@
 #include "GUI/Pages/Sequencer/SeqPages.h"
 #include "MCLStrings.h"
 
-// AVR/classic MD encoder-interface packets only carry the 24 legacy params.
-// Hosted SPS-X builds can preview the complete negotiated SPS parameter set.
-#if defined(__AVR__)
-static constexpr uint8_t PERF_PARAM_EDITOR_PARAM_COUNT = 24;
-#else
+// The editor buffer holds every parameter; how many are sent to the
+// Machinedrum depends on the peer (24 before X.20, 38 with it).
 static constexpr uint8_t PERF_PARAM_EDITOR_PARAM_COUNT =
     SPS_PARAMS_PER_TRACK;
-#endif
 static constexpr uint8_t PERF_LEARN_OFF = 0;
 
 static PerfEncoder *cur_enc(PerfPage *p) NOINLINE();
