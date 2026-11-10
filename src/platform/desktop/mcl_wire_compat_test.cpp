@@ -206,8 +206,12 @@ bool checkTonalOctaveMessages() {
                 output.init();MD.assignMachineBulk(track+16*cached,&legacy,59,count,true);
                 const size_t n=output.desktop_egress(packet.data(),packet.size());
                 const uint8_t expected=spsx?flags:uint8_t(high|(mode?2:0));
-                ok &= n==unsigned(count==0?13:count==1?37:45) && packet[6]==0x70 &&
-                      packet[7]==0x5b && packet[9]==track+16*cached && packet[10]==16 && packet[11]==expected;
+                // The stored machine record carries all 38 parameters, LFO-B
+                // and the route, so an X.20 peer gets the wide message too.
+                const bool wide=spsx && count==255;
+                ok &= n==unsigned(count==0?13:count==1?(spsx?51:37):(spsx?65:45)) && packet[6]==0x70 &&
+                      packet[7]==0x5b && packet[9]==track+16*cached && packet[10]==16 &&
+                      packet[11]==uint8_t(expected|(wide?4:0));
                 output.init();MD.assignMachineBulk(track+16*cached,&native,59,count,true);
                 const size_t nativeSize=output.desktop_egress(packet.data(),packet.size());
                 const bool routed=spsx && count==255;
