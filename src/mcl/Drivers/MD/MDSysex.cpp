@@ -179,7 +179,7 @@ void MDSysexListenerClass::end() {
       // Current SPS-X parameters, or the stock 24-byte payload.
       if (data_flags & 0x01) {
 #if defined(__AVR__)
-        // A peer with this capability always sends the whole parameter row.
+        // The extended form always carries the whole parameter row.
         const uint8_t num_params = MD.extendedMachineUpdates()
                                        ? SPS_PARAMS_PER_TRACK
                                        : MD_PARAMS_PER_TRACK;
@@ -212,7 +212,7 @@ void MDSysexListenerClass::end() {
         }
       }
 
-      // LFO-B settings (5 bytes) follow LFO-A when the peer sends them.
+      // LFO-B settings (5 bytes) follow LFO-A in the extended form.
       MDMachine ext;
       if (data_flags & 0x30) {
         MD.kit.get_ext(track, &ext);
@@ -236,7 +236,7 @@ void MDSysexListenerClass::end() {
         MD.kit.muteGroups[track] = (mute == 0x7F) ? 255 : mute;
       }
 
-      // The kit output route (1 byte), sent when it changes.
+      // The kit output route (1 byte) arrives only in the extended form.
       if (data_flags & 0x20) {
         ext.outputRouting = view.getByte(offset++);
       }

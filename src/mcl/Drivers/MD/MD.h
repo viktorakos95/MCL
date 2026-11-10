@@ -69,8 +69,8 @@ public:
   virtual void on_ui_slot_button(uint8_t slot, bool pressed) override;
 #endif
 
-  // True when the peer's $63 notifications carry 38 parameters, LFO-B and
-  // the output route. Older X.20 revisions send 24 parameters and no more.
+  // True when setup() asked the peer for extended machine updates ($70/$45):
+  // 38 parameters, LFO-B and the output route in every $63 notification.
   bool extendedMachineUpdates() const {
     return x20() && (fw_caps & FW_CAP_MACHINE_UPDATE_EXT) != 0;
   }
