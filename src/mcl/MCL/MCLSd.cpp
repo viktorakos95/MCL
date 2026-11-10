@@ -94,7 +94,69 @@ bool wait_for_project_or_headless_boot() {
 #define wait_for_project_or_headless_boot() (mcl_gui.wait_for_project(), true)
 #endif
 
+#ifdef MCL_PROJECT_UPGRADER
+// Opening a project converts it, so open every folder under the projects
+// folder once. A folder that is not a project is searched one level down.
+void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
+  File dir;
+  File entry;
+  proj.chdir_projects();
+  if (!dir.open(path[0] ? path : ".", O_READ)) {
+    return;
+  }
+  const uint8_t base = strlen(path);
+  while (entry.openNext(&dir, O_READ)) {
+    const bool is_dir = entry.isDirectory();
+    uint8_t at = base;
+    if (base) {
+      path[at++] = '/';
+    }
+    if (is_dir && at + 14 <= PRJ_PATH_LEN) {
+      entry.getName(path + at, PRJ_PATH_LEN - at);
+    } else {
+      path[at] = '\0';
+    }
+    entry.close();
+    if (path[at] != '\0' && path[at] != '.') {
+      oled_display.clearDisplay();
+      oled_display.setCursor(0, 8);
+      oled_display.println(F("UPGRADING"));
+      oled_display.println(path);
+      oled_display.display();
+      if (proj.load_project(path)) {
+        (*upgraded)++;
+      } else if (depth) {
+        upgrade_projects_in(path, depth - 1, upgraded);
+      }
+      proj.chdir_projects();
+    }
+    path[base] = '\0';
+  }
+  dir.close();
+}
+
+void upgrade_all_projects() {
+  char path[PRJ_PATH_LEN] = "";
+  uint8_t upgraded = 0;
+  upgrade_projects_in(path, 1, &upgraded);
+  oled_display.clearDisplay();
+  oled_display.setCursor(0, 8);
+  oled_display.print(upgraded);
+  oled_display.println(F(" PROJECTS READY"));
+  oled_display.println(F("INSTALL MCL " VERSION_STR));
+  oled_display.display();
+  while (1) {
+  }
+}
+#endif
+
 } // namespace
+
+#ifdef MCL_PROJECT_UPGRADER
+// The menu tables still name the WAV designer entry points.
+void wavdesign_menu_handler() {}
+void wav_render() {}
+#endif
 
 bool MCLSd::join_path(char *dst, uint8_t dst_len, const char *dir,
                       const char *entry) {
@@ -240,6 +302,9 @@ bool MCLSd::load_init() {
         }
         ptc_groups.load(mcl_cfg.ptc_group);
 
+#ifdef MCL_PROJECT_UPGRADER
+        upgrade_all_projects();
+#endif
         if (mcl_cfg.number_projects > 0) {
           DEBUG_PRINTLN(
               F("Project count greater than 0, try to load existing"));

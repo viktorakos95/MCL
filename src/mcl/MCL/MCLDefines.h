@@ -2,7 +2,14 @@
 
 #include "platform.h"
 
+/*
+ * MCL_PROJECT_UPGRADER builds the one-off firmware that converts every
+ * project on the card to the current format. It leaves out the WAV designer
+ * to make room for the conversion code.
+ */
+#ifndef MCL_PROJECT_UPGRADER
 #define WAV_DESIGNER
+#endif
 #define SOUND_PAGE
 
 /*
@@ -107,6 +114,6 @@
  * to keep project version checks but remove automatic conversion of older
  * readable project formats.
  */
-#ifndef MCL_DISABLE_PROJECT_CONVERSION
+#if !defined(MCL_DISABLE_PROJECT_CONVERSION) || defined(MCL_PROJECT_UPGRADER)
 #define MCL_HAS_PROJECT_CONVERSION 1
 #endif
