@@ -213,9 +213,7 @@ public:
     if (!that->GridTrack::load_from_mem(col)) {
       return nullptr;
     }
-#if !defined(__AVR__)
     that->on_storage_loaded();
-#endif
     return _dynamik_kast<T>(that);
   }
 };

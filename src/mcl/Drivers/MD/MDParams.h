@@ -790,17 +790,11 @@
 #define MODEL_RENV    33
 
 #define SPS_PARAMS_V1_PER_TRACK 34
-#if !defined(__AVR__)
 #define MODEL_BUS1    34
 #define MODEL_BUS2    35
 #define MODEL_BUS3    36
 #define MODEL_ENVDEST 37
 #define SPS_PARAMS_PER_TRACK    38
-#else
-// The AVR product retains its existing storage and packet dimensions. The
-// 38-parameter SPS-X contract is implemented only by the hosted/RP2040 build.
-#define SPS_PARAMS_PER_TRACK    SPS_PARAMS_V1_PER_TRACK
-#endif
 #define MD_PARAMS_PER_TRACK     24
 #define SPS_EXTENDED_PARAM_COUNT (SPS_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK)
 #define SPS_EXTENDED_CC_MAX      (SPS_EXTENDED_PARAM_COUNT * 4 - 1)
@@ -893,7 +887,7 @@ static_assert(spsExtendedCcContractIsBijective(),
 #define MODEL_MUTE  40
 #define MODEL_LEVEL 41
 
-#if !defined(__AVR__)
+#if 1
 static_assert(MODEL_BUS1 == SPS_PARAMS_V1_PER_TRACK,
               "BUS parameters must append the SPS-X v1 layout");
 static_assert(MODEL_ENVDEST + 1 == SPS_PARAMS_PER_TRACK,

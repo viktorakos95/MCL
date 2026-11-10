@@ -13,15 +13,16 @@ namespace {
 
 void copy_md_machine_to_spsx(const MDMachine &src, SPSMachine &dest) {
   dest.init();
-  memset(dest.params, 0, sizeof(dest.params));
-  memcpy(dest.params, src.params, MD_PARAMS_PER_TRACK);
+  memcpy(dest.params, src.params, sizeof(dest.params));
   dest.track = src.track;
   dest.level = src.level;
   dest.model = src.model;
   dest.lfos[0] = src.lfo;
   dest.lfos[1].init(src.track);
+  memcpy(&dest.lfos[1].destinationTrack, src.lfoB, sizeof(src.lfoB));
   dest.trigGroup = src.trigGroup;
   dest.muteGroup = src.muteGroup;
+  dest.outputRouting = src.outputRouting;
 }
 
 } // namespace
@@ -180,7 +181,8 @@ void MDTrack::load_immediate_cleared(uint8_t tracknumber, SeqTrack *seq_track) {
 
 void MDTrack::get_machine_from_kit(uint8_t tracknumber) {
   //  trackName[0] = '\0';
-  memcpy(machine.params, MD.kit.params[tracknumber], MD_PARAMS_PER_TRACK);
+  memcpy(machine.params, MD.kit.params[tracknumber], SPS_PARAMS_PER_TRACK);
+  MD.kit.get_ext(tracknumber, &machine);
 
   machine.track = tracknumber;
   machine.level = MD.kit.levels[tracknumber];
@@ -225,6 +227,19 @@ static void merge_md_pattern_to_seq(MDTrack &track, MDSeqTrack *md_seq_track,
   temp_seq_track.speed = track.link.speed_value();
   temp_seq_track.merge_from_md(tracknumber, &(MD.pattern));
   copy_md_seqdata(track.seq_data.data(), temp_seq_track.data());
+}
+
+void MDTrack::on_storage_loaded() {
+  if (version >= MD_TRACK_STORAGE_VERSION) {
+    return;
+  }
+  // Older tracks hold the 24-parameter machine record. Move what follows it
+  // up, then widen the record itself.
+  uint8_t *after = reinterpret_cast<uint8_t *>(&machine) + sizeof(MDMachineV1);
+  memmove(&mod_data, after,
+          sizeof(mod_data) + sizeof(seq_data) + sizeof(load_fade));
+  machine.upgrade_v1();
+  version = MD_TRACK_STORAGE_VERSION;
 }
 
 void MDTrack::init() {

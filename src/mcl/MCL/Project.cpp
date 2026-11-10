@@ -279,13 +279,13 @@ class ATTR_PACKED() LegacyMDTrackStorage {
 public:
   LegacyGridTrackHeader header;
   LegacyMDSeqTrackData seq;
-  MDMachine machine;
+  MDMachineV1 machine;
 };
 
 class ATTR_PACKED() MigratedMDTrackStorage {
 public:
   LegacyGridTrackHeader header;
-  MDMachine machine;
+  MDMachineV1 machine;
   SeqTrackModData mod_data;
   MDSeqTrackData seq_data;
   TrackLoadFadeData load_fade;
@@ -383,13 +383,15 @@ static_assert(sizeof(LegacyFixedPayloadTrackStorage) ==
                   LEGACY_GRID_TRACK_HEADER_SIZE + sizeof(MDFXData),
               "fixed payload migration scratch size changed");
 static_assert(LEGACY_GRID_TRACK_HEADER_SIZE + sizeof(LegacyMDSeqTrackData) +
-                      sizeof(MDMachine) ==
+                      sizeof(MDMachineV1) ==
                   534,
               "origin/dev MDTrack storage size changed");
 static_assert(sizeof(LegacyMDTrackStorage) == 534,
               "origin/dev MDTrack storage size changed");
+// The migration writes track storage version 5; MDTrack widens it on load.
 static_assert(sizeof(MigratedMDTrackStorage) ==
-                  sizeof(MDTrack) - sizeof(void *),
+                  sizeof(MDTrack) - sizeof(void *) -
+                      (sizeof(MDMachine) - sizeof(MDMachineV1)),
               "MDTrack migration storage layout changed");
 constexpr uint16_t PROJECT_RENAME_SUFFIXES =
     256;
@@ -653,7 +655,7 @@ bool migrate_empty_track_header(Grid &src_grid, Grid &dst_grid,
 
 void init_upgraded_md_track(MigratedMDTrackStorage &dst, const GridLink &link,
                             const LegacyMDSeqTrackData &seq,
-                            const MDMachine &machine) {
+                            const MDMachineV1 &machine) {
   dst.header.version[0] = SEQ_TRACK_LOAD_FADE_STORAGE_VERSION;
   dst.header.version[1] = 0;
   dst.header.active = MD_TRACK_TYPE;
@@ -1518,7 +1520,7 @@ bool PROJECT_CONVERSION_ATTR() Project::migrate_legacy_md_aux_slots(
       }
       if (grid_x_header->track_type[0] == EMPTY_TRACK_TYPE) {
         grid_x_header->active = true;
-        grid_x_header->update_model(0, upgraded_md_track.machine.get_model(),
+        grid_x_header->update_model(0, uint8_t(upgraded_md_track.machine.model),
                                     MD_TRACK_TYPE);
       }
       *skip_grid_x0 = true;

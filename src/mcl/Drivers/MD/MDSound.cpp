@@ -5,6 +5,7 @@
 bool MDSound::write_sound() {
   DEBUG_PRINT_FN();
   bool ret;
+  version = SOUND_VERSION;
   ret = write_data(this, sizeof(MDSoundData), 0);
   return ret;
 }
@@ -12,8 +13,26 @@ bool MDSound::write_sound() {
 bool MDSound::read_sound() {
   DEBUG_PRINT_FN();
   bool ret;
-  ret = read_data(this, sizeof(MDSoundData), 0);
-  return ret;
+  // The version 2000 layout: header, two 24-parameter records, sample names.
+  static constexpr uint16_t v1_size =
+      offsetof(MDSoundData, machine1) + 2 * sizeof(MDMachineV1) +
+      sizeof(sample_id1) + sizeof(sample_id2);
+  uint8_t *bytes = reinterpret_cast<uint8_t *>(static_cast<MDSoundData *>(this));
+  ret = read_data(bytes, v1_size, 0);
+  if (!ret) {
+    return false;
+  }
+  if (version == SOUND_VERSION) {
+    return read_data(bytes + v1_size, sizeof(MDSoundData) - v1_size, v1_size);
+  }
+  // Widen from the back so nothing is overwritten before it has moved.
+  uint8_t *old = reinterpret_cast<uint8_t *>(&machine1);
+  memmove(sample_id1, old + 2 * sizeof(MDMachineV1),
+          sizeof(sample_id1) + sizeof(sample_id2));
+  memmove(&machine2, old + sizeof(MDMachineV1), sizeof(MDMachineV1));
+  machine2.upgrade_v1();
+  machine1.upgrade_v1();
+  return true;
 }
 
 bool MDSound::fetch_sound(uint8_t track) {
@@ -21,7 +40,8 @@ bool MDSound::fetch_sound(uint8_t track) {
   machine_count = 0;
   machine1.model = MD.kit.models[track]; //get raw model including tonal bit
   machine1.level = MD.kit.levels[track];
-  memcpy(&machine1.params, &(MD.kit.params[track]), 24);
+  memcpy(&machine1.params, &(MD.kit.params[track]), SPS_PARAMS_PER_TRACK);
+  MD.kit.get_ext(track, &machine1);
   MD.kit.get_lfo(track, &machine1.lfo);
 
   uint8_t trigGroup = MD.kit.trigGroups[track];
@@ -43,7 +63,8 @@ bool MDSound::fetch_sound(uint8_t track) {
   if ((trigGroup < 16) && (trigGroup != track)) {
     machine2.model = MD.kit.models[trigGroup]; //get raw model including tonal bit
     machine2.level = MD.kit.levels[trigGroup];
-    memcpy(&machine2.params, &(MD.kit.params[trigGroup]), 24);
+    memcpy(&machine2.params, &(MD.kit.params[trigGroup]), SPS_PARAMS_PER_TRACK);
+    MD.kit.get_ext(trigGroup, &machine2);
     MD.kit.get_lfo(trigGroup, &machine2.lfo);
 
     if (machine2.lfo.destinationTrack == trigGroup) {

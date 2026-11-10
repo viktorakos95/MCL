@@ -84,6 +84,12 @@ public:
   // device-facing decisions (sysex format, kit param ranges). Does NOT mean
   // the local sequencer is in SPSX mode — see MCLSeq::using_spsx_tracks.
 #if defined(__AVR__)
+  // True when the peer speaks the X.20 kit and machine layouts: kit 65.1 and
+  // 38 parameters per track. The AVR sequencer and patterns stay as they are.
+  bool x20() const {
+    return (fw_caps & (FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37)) ==
+           (FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37);
+  }
   static constexpr bool is_spsx = false;
   static constexpr bool supportsSpsx37Params() { return false; }
   static constexpr uint8_t spsxWireParamCount() {
@@ -91,6 +97,7 @@ public:
   }
 #else
   bool is_spsx = false;
+  bool x20() const { return is_spsx; }
 
   // Native SPS-X kits use v65 and the complete current parameter row.
   bool supportsSpsx37Params() const {

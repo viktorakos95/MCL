@@ -1249,7 +1249,7 @@ void MDClass::requestKit(uint8_t kit) {
 #if defined(__AVR__)
   // Ask an X.20 peer for kit 65.1 by name; a bare request would follow the
   // SysEx-format preference set on the Machinedrum.
-  if ((fw_caps & FW_CAP_SPSX) == 0) {
+  if (!x20()) {
     ElektronDevice::requestKit(kit);
     return;
   }
@@ -2003,7 +2003,10 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
 
   DEBUG_PRINT("assign machine bulk: ");
   DEBUG_PRINTLN(track);
-  uint8_t data[44]; // Increased size by 1 for length byte
+  // An X.20 peer takes 38 parameters, both LFOs and a trailing route.
+  const bool wide = x20();
+  const uint8_t num_params = wide ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+  uint8_t data[6 + SPS_PARAMS_PER_TRACK + 10 + 2 + 1 + 1];
   data[0] = 0x70;
   data[1] = 0x5b;
   uint8_t i = 2;
@@ -2019,8 +2022,8 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
     goto end;
   }
 
-  memcpy(data + i, machine->params, 24);
-  i += 24;
+  memcpy(data + i, machine->params, num_params);
+  i += num_params;
 
   if (mode == 1) {
     goto end;
@@ -2028,6 +2031,10 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
 
   memcpy(data + i, &machine->lfo, 5);
   i += 5;
+  if (wide) {
+    memcpy(data + i, machine->lfoB, 5);
+    i += 5;
+  }
   if (machine->trigGroup > 15) {
     machine->trigGroup = 127;
   }
@@ -2040,6 +2047,11 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
     DEBUG_PRINT("level ");
     DEBUG_PRINTLN(level);
     data[i++] = level;
+  }
+  if (wide && mdKitRouteValid(machine->outputRouting)) {
+    // Bit 2 marks a trailing per-kit route, after the optional level.
+    data[5] |= 4u;
+    data[i++] = machine->outputRouting;
   }
   DEBUG_PRINT("i : ");
   DEBUG_PRINTLN(i);
@@ -2147,7 +2159,7 @@ bool MDClass::querySampleBank(uint8_t &bank) {
 
 void MDClass::setOrigParams(uint8_t track, MDMachine *machine) {
   MDKit *kit_ = &kit;
-  memcpy(kit_->params_orig[track], machine->params, MD_PARAMS_PER_TRACK);
+  memcpy(kit_->params_orig[track], machine->params, SPS_PARAMS_PER_TRACK);
 }
 
 #if !defined(__AVR__)
@@ -2166,27 +2178,10 @@ void MDClass::insertMachineInKit(uint8_t track, MDMachine *machine,
 
   MDKit *kit_ = &kit;
 
-  memcpy(kit_->params[track], machine->params, MD_PARAMS_PER_TRACK);
-#if !defined(__AVR__)
-  if (is_spsx) {
-    kit_->outputRouting[track] = MD_KIT_ROUTE_GLOBAL;
-    // Mirror MDKit::fromSysex legacy fallback (host MDTypes.cpp): envelope
-    // bypass-on, retrig off + RENV on. Keeps single-machine inserts
-    // consistent with full-kit inserts.
-    memset(&kit_->params[track][MD_PARAMS_PER_TRACK], 0,
-           SPS_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK);
-    kit_->params[track][MODEL_ENVATT]  = 0;
-    kit_->params[track][MODEL_ENVHLD]  = 0;
-    kit_->params[track][MODEL_ENVDCY]  = 127;
-    kit_->params[track][MODEL_ENVMIX]  = 127;
-    kit_->params[track][MODEL_LFO2SPD] = 64;
-    kit_->params[track][MODEL_LFO2DEP] = 0;
-    kit_->params[track][MODEL_LFO2MIX] = 0;
-    kit_->params[track][MODEL_RTRG]    = 0;
-    kit_->params[track][MODEL_RTIM]    = 0;
-    kit_->params[track][MODEL_RENV]    = 1;   // envelope reset ON
-  }
-#endif
+  // The record carries all 38 parameters, LFO-B and routing; one loaded from
+  // an older track holds the defaults for the fields it never stored.
+  memcpy(kit_->params[track], machine->params, SPS_PARAMS_PER_TRACK);
+  kit_->set_ext(track, machine);
   setOrigParams(track, machine);
 
   if (set_level) {
