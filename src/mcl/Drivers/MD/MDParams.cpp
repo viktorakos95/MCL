@@ -195,6 +195,17 @@ static const char* ext_param_name(uint8_t param) {
     default:            return NULL;
   }
 }
+#else
+// Names of parameters 24-37, three letters each. Kept in flash and copied
+// to one small buffer, because string literals would occupy main RAM.
+static const char ext_param_names[] PROGMEM =
+    "ATKHLDDCYMIXSP2DP2MX2RTGRTMRENBS1BS2BS3DST";
+
+static const char *ext_param_name(uint8_t param) {
+  static char name[4];
+  memcpy_P(name, ext_param_names + (param - MD_PARAMS_PER_TRACK) * 3, 3);
+  return name;
+}
 #endif
 
 /// Caller is responsible to make machine_param_names is loaded in RM
@@ -203,10 +214,8 @@ const char* model_param_name(uint8_t model, uint8_t param) {
     return "MUT";
   } else if (param == MODEL_LEVEL) {
     return "LEV";
-#if !defined(__AVR__)
   } else if (param >= MD_PARAMS_PER_TRACK && param < SPS_PARAMS_PER_TRACK) {
     return ext_param_name(param);
-#endif
   }
 
   uint16_t model_idx;

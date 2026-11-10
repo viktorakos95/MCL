@@ -68,7 +68,7 @@ void MDMidiEvents::track_cc(uint8_t *msg) {
   }
 
   uint8_t param_limit =
-      MD.is_spsx ? MD.spsxWireParamCount() : MD_PARAMS_PER_TRACK;
+      MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
   if (track_param == MODEL_LEVEL) {
     MD.kit.levels[track] = value;
   } else if (track_param == MODEL_MUTE) {
@@ -1227,6 +1227,16 @@ void MDClass::setup() {
   if (global.baseChannel == 0) {
     setBaseChannel(9);
   }
+#if defined(__AVR__)
+  if (x20()) {
+    // Parameters 24-37 are only reachable in EXPANDED channel mode, which
+    // needs eight channels from the base channel.
+    if (global.baseChannel > 8) {
+      setBaseChannel(8);
+    }
+    setChannelMode(1);
+  }
+#endif
 
   setExternalSync();
   setProgramChange(2);
@@ -1526,7 +1536,7 @@ void MDClass::parseCC(uint8_t channel, uint8_t cc, uint8_t *track,
 
   uint8_t control_ch = channel - global.baseChannel;
 
-  const bool expanded_channel_mode = is_spsx && global.channelMode;
+  const bool expanded_channel_mode = x20() && global.channelMode;
 
   if (control_ch >= (expanded_channel_mode ? 8 : 4)) {
     *track = 255;
@@ -1534,7 +1544,6 @@ void MDClass::parseCC(uint8_t channel, uint8_t cc, uint8_t *track,
   }
 
   // Extended channels (base+4..+7): SPS-X parameters after the stock 24.
-#if !defined(__AVR__)
   if (expanded_channel_mode && control_ch >= 4) {
     SpsExtendedCcTarget target{};
     if (!spsExtendedCcToParam(global.baseChannel, channel, cc, target) ||
@@ -1546,7 +1555,6 @@ void MDClass::parseCC(uint8_t channel, uint8_t cc, uint8_t *track,
     *param = target.param;
     return;
   }
-#endif
 
   *track = control_ch * 4;
 
@@ -1671,9 +1679,8 @@ void MDClass::setTrackParam_inline(uint8_t track, uint8_t param, uint8_t value,
     if (update_kit) {
       kit.params[track][param] = value;
     }
-#if !defined(__AVR__)
-  } else if (param >= MD_PARAMS_PER_TRACK && param < spsxWireParamCount() &&
-             is_spsx && global.channelMode) {
+  } else if (param >= MD_PARAMS_PER_TRACK && param < SPS_PARAMS_PER_TRACK &&
+             x20() && global.channelMode) {
     // Extended params on extended channels (base+4..+7)
     SpsExtendedCcAddress address{};
     if (!spsExtendedParamToCc(global.baseChannel, track, param, address))
@@ -1685,7 +1692,6 @@ void MDClass::setTrackParam_inline(uint8_t track, uint8_t param, uint8_t value,
       sendPolyKeyPressure(address.channel, address.cc, value, uart_);
     }
     return;
-#endif
   } else if (param == MODEL_MUTE) { // MUTE
     cc = 12 + b;
   } else if (param == MODEL_LEVEL) { // LEV

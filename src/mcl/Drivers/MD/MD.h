@@ -93,7 +93,7 @@ public:
   static constexpr bool is_spsx = false;
   static constexpr bool supportsSpsx37Params() { return false; }
   static constexpr uint8_t spsxWireParamCount() {
-    return SPS_PARAMS_V1_PER_TRACK;
+    return SPS_PARAMS_PER_TRACK;
   }
 #else
   bool is_spsx = false;

@@ -78,7 +78,7 @@ bool SeqPtcTrackRef::can_polylink_param(uint8_t source_track,
     return false;
   }
 #endif
-  return (param < 24 && param > 7) ||
+  return (param < SPS_PARAMS_PER_TRACK && param > 7) ||
          (param < 8 &&
           MD.kit.models[target_track] == MD.kit.models[source_track]);
 }

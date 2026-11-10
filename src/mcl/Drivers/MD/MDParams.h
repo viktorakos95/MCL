@@ -800,7 +800,6 @@
 #define SPS_EXTENDED_CC_MAX      (SPS_EXTENDED_PARAM_COUNT * 4 - 1)
 #define SPS_MAX_LOCK_ROWS        (16 * SPS_PARAMS_PER_TRACK)
 
-#if !defined(__AVR__)
 struct SpsExtendedCcAddress {
   uint8_t channel = 0;
   uint8_t cc = 0;
@@ -881,7 +880,6 @@ constexpr bool spsExtendedCcContractIsBijective() {
 
 static_assert(spsExtendedCcContractIsBijective(),
               "SPS-X extended CC mapping must round-trip uniquely");
-#endif
 
 // Virtual param IDs (not array indices, used by parseCC/setTrackParam)
 #define MODEL_MUTE  40

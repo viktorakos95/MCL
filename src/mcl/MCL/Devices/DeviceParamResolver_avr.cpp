@@ -178,9 +178,10 @@ uint8_t DeviceParamTarget::lock_param_count() const {
   if (!valid()) {
     return 0;
   }
-  return device_idx != DeviceIdx::Secondary && target < NUM_MD_TRACKS
-             ? MD_PARAMS_PER_TRACK
-             : 0;
+  if (device_idx == DeviceIdx::Secondary || target >= NUM_MD_TRACKS) {
+    return 0;
+  }
+  return MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
 }
 
 bool DeviceParamTarget::lock_param_info(uint8_t param,
