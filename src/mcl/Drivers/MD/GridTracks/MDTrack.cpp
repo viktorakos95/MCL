@@ -192,7 +192,7 @@ void MDTrack::get_machine_from_kit(uint8_t tracknumber) {
    * the new row posiiton*/
 
   /*Copies Lfo data from the kit object into the machine object*/
-  memcpy(&machine.lfo, &MD.kit.lfos[tracknumber], sizeof(machine.lfo));
+  MD.kit.get_lfo(tracknumber, &machine.lfo);
 
   // The memcpy above already copies destinationTrack, and machine.track was
   // assigned tracknumber above; when destinationTrack == tracknumber the

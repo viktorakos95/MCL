@@ -246,6 +246,23 @@ public:
   /* @} */
 };
 
+#if defined(__AVR__)
+// The live kit keeps the first eight bytes of each LFO record: the five
+// settings and three bytes the LFO parameter messages index past them. The
+// run state is not held in RAM; it is neither edited nor needed by kit 65.1.
+class ATTR_PACKED() MDKitLFO {
+public:
+  uint8_t destinationTrack;
+  uint8_t destinationParam;
+  uint8_t shape1;
+  uint8_t shape2;
+  uint8_t type;
+  uint8_t state[3];
+};
+#else
+typedef MDLFO MDKitLFO;
+#endif
+
 /**
  * This class stores the complete settings for a track inside the Kit object.
  **/
@@ -378,7 +395,10 @@ public:
   /** The selected drum model for each track. **/
   uint32_t models[16];
   /** The LFO-A settings for each track. **/
-  MDLFO lfos[16];
+  MDKitLFO lfos[16];
+  /** Copy the LFO-A settings of a track into or out of a stored machine. **/
+  void get_lfo(uint8_t track, MDLFO *lfo) const;
+  void set_lfo(uint8_t track, const MDLFO *lfo);
 #if !defined(__AVR__)
   /** The LFO-B settings for each track (SPS-X kits only). **/
   MDLFO lfosB[16];

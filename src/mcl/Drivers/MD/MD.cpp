@@ -1961,7 +1961,7 @@ void MDClass::setMachine(uint8_t track, MDKit *kit) {
 #endif
   // 138 bytes approx
   assignMachine(track, kit->get_model(track), kit->get_tonal(track), kit->get_tuning(track));
-  setLFO(track, &(kit->lfos[track]), false);
+  setLFO(track, reinterpret_cast<MDLFO *>(&(kit->lfos[track])), false);
   setTrigGroup(track, kit->trigGroups[track]);
   setMuteGroup(track, kit->muteGroups[track]);
   // uart->useRunningStatus = true;
@@ -2203,7 +2203,7 @@ void MDClass::insertMachineInKit(uint8_t track, MDMachine *machine,
     DEBUG_PRINTLN(F("warning: lfo dest was out of bounds"));
     machine->lfo.destinationTrack = track;
   }
-  memcpy(&(kit_->lfos[track]), &machine->lfo, sizeof(machine->lfo));
+  kit_->set_lfo(track, &machine->lfo);
 
   if ((machine->trigGroup < 16) && (machine->trigGroup != track)) {
     kit_->trigGroups[track] = machine->trigGroup;

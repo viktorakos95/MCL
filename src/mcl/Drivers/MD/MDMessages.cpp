@@ -323,6 +323,20 @@ static void unpack_compact_lfo_state(MDLFO &lfo, const uint8_t in[4], int track)
 #endif
 
 
+void MDKit::get_lfo(uint8_t track, MDLFO *lfo) const {
+#if defined(__AVR__)
+  // A stored machine gets an idle run state and the speed, depth and mix
+  // that the parameter row carries.
+  memset(lfo, 0, sizeof(MDLFO));
+  memcpy(&lfo->speed, &params[track][MODEL_LFOS], 3);
+#endif
+  memcpy(lfo, &lfos[track], sizeof(MDKitLFO));
+}
+
+void MDKit::set_lfo(uint8_t track, const MDLFO *lfo) {
+  memcpy(&lfos[track], lfo, sizeof(MDKitLFO));
+}
+
 uint8_t MDKit::get_model(uint8_t track) { return models[track]; }
 bool MDKit::get_tonal(uint8_t track) {
   if ((models[track] & 0x20000UL) != 0) {
@@ -507,12 +521,20 @@ bool MDKit::fromSysex(MidiClass *midi) {
       uint8_t compact[9];
       decoder.get(compact, 9);
       memcpy(&lfos[i].destinationTrack, compact, 5);
-      memset(lfos[i].state, 0, sizeof(lfos[i].state));
-      memcpy(&lfos[i].speed, &params[i][MODEL_LFOS], 3);
     }
     decoder.stop7Bit();
-  } else
+  } else {
+    // Legacy LFO-A: keep the five settings and skip the 31-byte run state.
+    decoder.start7Bit();
+    for (uint8_t i = 0; i < 16; i++) {
+      uint8_t record[5 + 31];
+      decoder.get(record, sizeof(record));
+      memcpy(&lfos[i].destinationTrack, record, 5);
+    }
+    decoder.stop7Bit();
+  }
 #endif
+#if !defined(__AVR__)
   {
     decoder.start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
@@ -520,6 +542,7 @@ bool MDKit::fromSysex(MidiClass *midi) {
     }
     decoder.stop7Bit();
   }
+#endif
 
   // reverb/delay/eq/dynamics are four consecutive uint8_t[8] members; read the
   // 32-byte run in one call (identical bytes, fewer call sites).
@@ -667,8 +690,20 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
       encoder->fill8(0, 4);
     }
     encoder->stop7Bit();
-  } else
+  } else {
+    // Legacy LFO-A: the five settings and an idle 31-byte run state, which
+    // must carry the noise generator marker.
+    encoder->start7Bit();
+    for (uint8_t i = 0; i < 16; i++) {
+      MDLFO record;
+      record.init(0);
+      encoder->pack(&lfos[i].destinationTrack, 5);
+      encoder->pack(record.state, sizeof(record.state));
+    }
+    encoder->stop7Bit();
+  }
 #endif
+#if !defined(__AVR__)
   {
     encoder->start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
@@ -678,6 +713,7 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
     }
     encoder->stop7Bit();
   }
+#endif
 
   // reverb/delay/eq/dynamics are four consecutive uint8_t[8] members; pack the
   // 32-byte run in one call (identical bytes, fewer call sites).

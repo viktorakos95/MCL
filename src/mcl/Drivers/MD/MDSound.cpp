@@ -22,7 +22,7 @@ bool MDSound::fetch_sound(uint8_t track) {
   machine1.model = MD.kit.models[track]; //get raw model including tonal bit
   machine1.level = MD.kit.levels[track];
   memcpy(&machine1.params, &(MD.kit.params[track]), 24);
-  memcpy(&machine1.lfo, &(MD.kit.lfos[track]), sizeof(MDLFO));
+  MD.kit.get_lfo(track, &machine1.lfo);
 
   uint8_t trigGroup = MD.kit.trigGroups[track];
   if (machine1.lfo.destinationTrack == track) {
@@ -44,7 +44,7 @@ bool MDSound::fetch_sound(uint8_t track) {
     machine2.model = MD.kit.models[trigGroup]; //get raw model including tonal bit
     machine2.level = MD.kit.levels[trigGroup];
     memcpy(&machine2.params, &(MD.kit.params[trigGroup]), 24);
-    memcpy(&machine2.lfo, &(MD.kit.lfos[trigGroup]), sizeof(MDLFO));
+    MD.kit.get_lfo(trigGroup, &machine2.lfo);
 
     if (machine2.lfo.destinationTrack == trigGroup) {
       machine2.lfo.destinationTrack = 1;
