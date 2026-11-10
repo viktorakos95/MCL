@@ -248,6 +248,7 @@ MCLSTR_DECLARE(link);
 MCLSTR_DECLARE(update);
 MCLSTR_DECLARE(full);
 MCLSTR_DECLARE(machinedrum);
+MCLSTR_DECLARE(project);
 MCLSTR_DECLARE(monomachine);
 MCLSTR_DECLARE(mirror);
 MCLSTR_DECLARE(page);
