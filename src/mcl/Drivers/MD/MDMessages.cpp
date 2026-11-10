@@ -6,6 +6,7 @@
 #include "helpers.h"
 
 #include "MD.h"
+#include "MCLMemory.h"
 
 const int8_t md_standard_drum_mapping[16] PROGMEM = {
     36, 38, 40, 41, 43, 45, 47, 48,
@@ -345,14 +346,52 @@ uint8_t *MDKit::fx_params(uint8_t fx) {
   }
 }
 
+#if defined(__AVR__)
+// Kit 65.1 fields the AVR product never edits are kept as received, as wire
+// bytes, in the bank-one tail: 14 parameters per track, then the LFO-B,
+// output routing and reserved blocks. Only kit decode and encode touch them.
+static constexpr uint8_t kKit65ExtParams =
+    SPSX_KIT_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK;
+static constexpr uint8_t kKit65TailBytes = BANK1_KIT65_LEN - 16 * kKit65ExtParams;
+static_assert(BANK1_KIT65_LEN - 16 * kKit65ExtParams ==
+                  mdKit7BitEncodedSize(16 * 9) + 16 +
+                      (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT,
+              "kit 65.1 tail differs from the reserved SRAM region");
+
+// True while the store holds the extras of the kit now in MD.kit.
+static bool kit65_stored;
+
+static volatile uint8_t *kit65_ptr(uint8_t at) {
+  return reinterpret_cast<volatile uint8_t *>(uint16_t(BANK1_KIT65_START + at));
+}
+
+static void kit65_store(ElektronSysexDecoder &decoder, volatile uint8_t *dst,
+                        uint8_t count) NOINLINE();
+static void kit65_store(ElektronSysexDecoder &decoder, volatile uint8_t *dst,
+                        uint8_t count) {
+  while (count--) {
+    uint8_t value;
+    decoder.get8(&value);
+    put_byte_bank1(dst++, value);
+  }
+}
+
+static void kit65_pack(ElektronDataToSysexEncoder *encoder,
+                       volatile uint8_t *src, uint8_t count) NOINLINE();
+static void kit65_pack(ElektronDataToSysexEncoder *encoder,
+                       volatile uint8_t *src, uint8_t count) {
+  while (count--) {
+    encoder->pack8(get_byte_bank1(src++));
+  }
+}
+#endif
+
 bool MDKit::fromSysex(MidiClass *midi) {
   SysexView sysex(midi->midiSysex);
 #if defined(__AVR__)
   uint16_t len = sysex.get_recordLen() - 5;
   uint16_t offset = 5;
 
-  // Preserve the established AVR decoder contract. SPS-X v65 payloads
-  // are hosted-only and are rejected by the version check below.
   if (len < 420) {
     DEBUG_PRINTLN(F("kit too short"));
     return false;
@@ -374,17 +413,15 @@ bool MDKit::fromSysex(MidiClass *midi) {
   uint8_t version = sysex.getByte(1 + offset);
 
   // Accept stock (1-4), MDX (64), and SPS-X v65.
-#if !defined(__AVR__)
   bool is_spsx_kit = false;
-#endif
   if ((version >= 1 && version <= 4) || version == MDX_KIT_VERSION) {
     /* legacy/MDX layout: 24 params/track, full 36-byte LFO-A, no LFO-B */
   } else if (version == SPSX_KIT_VERSION) {
-#if !defined(__AVR__)
     is_spsx_kit = true;
-#else
-    DEBUG_PRINTLN(F("SPS-X kit on AVR — reject"));
-    return false;
+#if defined(__AVR__)
+    if (len != mdKitChecksumLengthForVersion(SPSX_KIT_VERSION)) {
+      return false;
+    }
 #endif
   } else {
     DEBUG_PRINTLN(F("unknown kit version"));
@@ -425,7 +462,15 @@ bool MDKit::fromSysex(MidiClass *midi) {
 #endif
   for (uint8_t i = 0; i < 16; i++) {
     decoder.get((uint8_t *)params[i], params_per_track);
+#if defined(__AVR__)
+    if (is_spsx_kit) {
+      kit65_store(decoder, kit65_ptr(0) + i * kKit65ExtParams, kKit65ExtParams);
+    }
+#endif
   }
+#if defined(__AVR__)
+  kit65_stored = is_spsx_kit;
+#endif
 
   decoder.get(levels, 16);
 
@@ -449,6 +494,21 @@ bool MDKit::fromSysex(MidiClass *midi) {
       lfos[i].speed = 64;
       lfos[i].depth = 0;
       lfos[i].mix = 0;
+    }
+    decoder.stop7Bit();
+  } else
+#else
+  if (is_spsx_kit) {
+    // Compact LFO-A: keep the five settings. The four state bytes are not
+    // kept; the 36-byte record stored in grid tracks gets an idle state and
+    // the speed, depth and mix that the parameter row already carries.
+    decoder.start7Bit();
+    for (uint8_t i = 0; i < 16; i++) {
+      uint8_t compact[9];
+      decoder.get(compact, 9);
+      memcpy(&lfos[i].destinationTrack, compact, 5);
+      memset(lfos[i].state, 0, sizeof(lfos[i].state));
+      memcpy(&lfos[i].speed, &params[i][MODEL_LFOS], 3);
     }
     decoder.stop7Bit();
   } else
@@ -517,6 +577,10 @@ bool MDKit::fromSysex(MidiClass *midi) {
     }
     init_user_fx();
   }
+#else
+  if (is_spsx_kit) {
+    kit65_store(decoder, kit65_ptr(0) + 16 * kKit65ExtParams, kKit65TailBytes);
+  }
 #endif
 
   DEBUG_PRINTLN(F("md kit okay"));
@@ -538,7 +602,9 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
   const uint8_t kit_ver =
       emit_spsx ? SPSX_KIT_VERSION : MDX_KIT_VERSION;
 #else
-  const uint8_t kit_ver = MDX_KIT_VERSION;
+  // Send 65.1 only when the extras of this kit came from a 65.1 dump.
+  const bool emit_spsx = kit65_stored && (MD.fw_caps & FW_CAP_SPSX) != 0;
+  const uint8_t kit_ver = emit_spsx ? SPSX_KIT_VERSION : MDX_KIT_VERSION;
 #endif
 
 #if !defined(__AVR__)
@@ -563,6 +629,11 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
 #endif
   for (uint8_t i = 0; i < 16; i++) {
     encoder->pack((uint8_t *)params[i], params_per_track);
+#if defined(__AVR__)
+    if (emit_spsx) {
+      kit65_pack(encoder, kit65_ptr(0) + i * kKit65ExtParams, kKit65ExtParams);
+    }
+#endif
   }
   encoder->pack(levels, 16);
 
@@ -584,6 +655,16 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
       uint8_t compact_state[4];
       pack_compact_lfo_state(lfos[i], compact_state);
       encoder->pack(compact_state, 4);
+    }
+    encoder->stop7Bit();
+  } else
+#else
+  if (emit_spsx) {
+    // Compact LFO-A: the five settings and an idle four-byte state.
+    encoder->start7Bit();
+    for (uint8_t i = 0; i < 16; i++) {
+      encoder->pack(&lfos[i].destinationTrack, 5);
+      encoder->fill8(0, 4);
     }
     encoder->stop7Bit();
   } else
@@ -624,6 +705,10 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
     encoder->pack(outputRouting, sizeof(outputRouting));
     encoder->pack(&userBusFx[0][0], sizeof(userBusFx));
     encoder->pack(userPostFx, sizeof(userPostFx));
+  }
+#else
+  if (emit_spsx) {
+    kit65_pack(encoder, kit65_ptr(0) + 16 * kKit65ExtParams, kKit65TailBytes);
   }
 #endif
 

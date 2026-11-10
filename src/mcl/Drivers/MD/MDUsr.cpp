@@ -99,6 +99,7 @@ void MDUsrCache::service() {
   // Cache is complete. Further reads are driven by MD notifications.
 }
 
+#if !defined(__AVR__)
 bool MDUsrCache::readKitTuning(uint8_t kit, uint16_t timeout) {
   if (!(MD.fw_caps & FW_CAP_USR_QUERY)) return true;
   kit_received_ = false;
@@ -113,6 +114,7 @@ bool MDUsrCache::readKitTuning(uint8_t kit, uint16_t timeout) {
   pending_ = 255;
   return kit_received_;
 }
+#endif
 
 void MDUsrCache::receive(const SysexView &view) {
   // Excludes F0/F7: header[5], 72, command, version, tag, page, count,
@@ -144,7 +146,13 @@ void MDUsrCache::receive(const SysexView &view) {
     return;
   }
   const uint8_t slots = page < 3 && page * 16 < count ? 16 : 0;
+#if defined(__AVR__)
+  // The AVR product reads tuning from kit 65.1 and never asks for the kit page.
+  if (page >= 3) return;
+  const uint8_t bytes = slots * MD_USR_RECORD_BYTES;
+#else
   const uint8_t bytes = page == MD_USR_KIT_PAGE ? 32 : slots * MD_USR_RECORD_BYTES;
+#endif
   if (view.get_recordLen() != uint16_t(16 + bytes)) return;
   if (page < 3) {
     for (uint8_t record = 16; record < 16 + bytes; record += MD_USR_RECORD_BYTES) {
@@ -156,13 +164,16 @@ void MDUsrCache::receive(const SysexView &view) {
         if (value != 0 && (value < 32 || value > 126)) return;
       }
     }
-  } else if (page == MD_USR_KIT_PAGE) {
+  }
+#if !defined(__AVR__)
+  else if (page == MD_USR_KIT_PAGE) {
     for (uint8_t track = 0; track < 16; ++track) {
       const uint32_t model = mdModelFromMachineFlags(view.getByte(16 + track * 2),
                                                     view.getByte(17 + track * 2));
       if (uint8_t(model) != MD.kit.get_model(track)) return;
     }
   }
+#endif
   if (generation != generation_ || count != slot_count_) invalidate();
   generation_ = generation;
   slot_count_ = count;
@@ -173,12 +184,15 @@ void MDUsrCache::receive(const SysexView &view) {
     if (count == 16) valid_pages_ |= 6;
     if (MD.currentTrack < 16 && uint8_t(MD.kit.get_model(MD.currentTrack) - MD_USR_FIRST) / 16 == page)
       valid_pages_ |= 0x80;
-  } else if (page == MD_USR_KIT_PAGE) {
+  }
+#if !defined(__AVR__)
+  else if (page == MD_USR_KIT_PAGE) {
     for (uint8_t track = 0; track < 16; ++track)
       MD.kit.models[track] = mdModelFromMachineFlags(view.getByte(16 + track * 2),
                                                     view.getByte(17 + track * 2));
     kit_received_ = true;
   }
+#endif
   pending_ = 255;
   retries_ = 0;
 }

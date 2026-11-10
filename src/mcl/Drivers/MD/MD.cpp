@@ -1245,13 +1245,21 @@ void MDClass::setProgramChange(uint8_t val) {
   send_global_setting(*this, 0x4C, val);
 }
 
-#if !defined(__AVR__)
 void MDClass::requestKit(uint8_t kit) {
+#if defined(__AVR__)
+  // Ask an X.20 peer for kit 65.1 by name; a bare request would follow the
+  // SysEx-format preference set on the Machinedrum.
+  if ((fw_caps & FW_CAP_SPSX) == 0) {
+    ElektronDevice::requestKit(kit);
+    return;
+  }
+  const uint8_t ver = SYSEX_VERSION_SPSX;
+#else
   uint8_t ver = is_spsx ? SYSEX_VERSION_SPSX : SYSEX_VERSION_LEGACY;
+#endif
   uint8_t data[] = {sysex_protocol.kitrequest_id, kit, ver};
   sendRequest(data, sizeof(data));
 }
-#endif
 
 void MDClass::requestPattern(uint8_t pattern) {
 #if defined(__AVR__)
@@ -1777,10 +1785,13 @@ void MDClass::setCompressorParam(uint8_t param, uint8_t value) {
 
 bool MDClass::getBlockingKit(uint8_t kit, uint16_t timeout) {
   if (!ElektronDevice::getBlockingKit(kit, timeout)) return false;
-#if !defined(__AVR__)
+#if defined(__AVR__)
+  // Kit 65.1 carries every tuning flag; older peers have only tonal on/off.
+  return true;
+#else
   if (is_spsx) return true; // Native kits already contain all tuning flags.
-#endif
   return md_usr.readKitTuning(kit, timeout);
+#endif
 }
 
 uint8_t MDClass::pitchParameter(uint8_t track) const {

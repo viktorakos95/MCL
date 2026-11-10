@@ -18,7 +18,9 @@ public:
   void service();
   void kitChanged();
   void receive(const SysexView &view);
+#if !defined(__AVR__)
   bool readKitTuning(uint8_t kit, uint16_t timeout);
+#endif
   uint8_t descriptor(uint8_t model) const;
   const char *name(uint8_t model);
   void invalidate() { valid_pages_ = 0x80; }

@@ -119,8 +119,8 @@ public:
   virtual void page_select_popup(char *text) override;
   virtual void page_select_cleanup() override;
   PageIndex mixer_fx_page() const;
-#if !defined(__AVR__)
   virtual void requestKit(uint8_t kit) override;
+#if !defined(__AVR__)
   virtual void requestGlobal(uint8_t global) override;
 #endif
   virtual void requestPattern(uint8_t pattern) override;

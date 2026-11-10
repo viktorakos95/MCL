@@ -207,7 +207,11 @@ constexpr size_t BANK1_EXT_TRACKS_START = BANK1_AUX_TRACKS_START + AUX_CACHE_LEN
 // Volatile USR metadata follows the existing track caches in bank one.
 constexpr size_t BANK1_USR_CACHE_START = BANK1_EXT_TRACKS_START + EXT_CACHE_LEN;
 constexpr size_t BANK1_USR_CACHE_LEN = 48u * 6u;
-constexpr uint32_t BANK1_USED_END = uint32_t(BANK1_USR_CACHE_START) + BANK1_USR_CACHE_LEN;
+// Kit 65.1 fields kept as received: 16 x 14 parameters, then the encoded
+// LFO-B block (165), output routing (16) and reserved bytes (32).
+constexpr size_t BANK1_KIT65_START = BANK1_USR_CACHE_START + BANK1_USR_CACHE_LEN;
+constexpr size_t BANK1_KIT65_LEN = 16u * 14u + 165u + 16u + 32u;
+constexpr uint32_t BANK1_USED_END = uint32_t(BANK1_KIT65_START) + BANK1_KIT65_LEN;
 static_assert(BANK1_USED_END <= 0x10000UL, "AVR bank-one allocation exceeds SRAM");
 #endif
 #if defined(PLATFORM_TBD)
