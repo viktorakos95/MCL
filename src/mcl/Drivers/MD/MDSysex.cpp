@@ -166,7 +166,9 @@ void MDSysexListenerClass::end() {
       const uint8_t trailing_bytes =
           ((data_flags & 0x02) ? 5 : 0) +
           ((data_flags & 0x04) ? 1 : 0) +
-          ((data_flags & 0x08) ? 2 : 0);
+          ((data_flags & 0x08) ? 2 : 0) +
+          ((data_flags & 0x10) ? 5 : 0) +
+          ((data_flags & 0x20) ? 1 : 0);
       if (record_len < offset + trailing_bytes) {
         return;
       }
@@ -177,7 +179,10 @@ void MDSysexListenerClass::end() {
       // Current SPS-X parameters, or the stock 24-byte payload.
       if (data_flags & 0x01) {
 #if defined(__AVR__)
-        const uint8_t num_params = MD_PARAMS_PER_TRACK;
+        // The extended form always carries the whole parameter row.
+        const uint8_t num_params = MD.extendedMachineUpdates()
+                                       ? SPS_PARAMS_PER_TRACK
+                                       : MD_PARAMS_PER_TRACK;
 #else
         const uint16_t available_params =
             record_len - offset - trailing_bytes;
@@ -207,6 +212,17 @@ void MDSysexListenerClass::end() {
         }
       }
 
+      // LFO-B settings (5 bytes) follow LFO-A in the extended form.
+      MDMachine ext;
+      if (data_flags & 0x30) {
+        MD.kit.get_ext(track, &ext);
+      }
+      if (data_flags & 0x10) {
+        for (uint8_t i = 0; i < 5; i++) {
+          ext.lfoB[i] = view.getByte(offset++);
+        }
+      }
+
       // Level (1 byte)
       if (data_flags & 0x04) {
         MD.kit.levels[track] = view.getByte(offset++);
@@ -218,6 +234,14 @@ void MDSysexListenerClass::end() {
         uint8_t mute = view.getByte(offset++);
         MD.kit.trigGroups[track] = (trig == 0x7F) ? 255 : trig;
         MD.kit.muteGroups[track] = (mute == 0x7F) ? 255 : mute;
+      }
+
+      // The kit output route (1 byte) arrives only in the extended form.
+      if (data_flags & 0x20) {
+        ext.outputRouting = view.getByte(offset++);
+      }
+      if (data_flags & 0x30) {
+        MD.kit.set_ext(track, &ext);
       }
 #if MCL_FEATURE_HOST_ARRANGER
       mcl_arrangement.markRuntimePrivateSourceEdited(track);

@@ -69,6 +69,12 @@ public:
   virtual void on_ui_slot_button(uint8_t slot, bool pressed) override;
 #endif
 
+  // True when setup() asked the peer for extended machine updates ($70/$45):
+  // 38 parameters, LFO-B and the output route in every $63 notification.
+  bool extendedMachineUpdates() const {
+    return x20() && (fw_caps & FW_CAP_MACHINE_UPDATE_EXT) != 0;
+  }
+
   /** Stores the kit settings of the machinedrum (usually set by MDTask). **/
   MDKit kit;
   MDPattern pattern;
