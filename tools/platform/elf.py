@@ -14,6 +14,7 @@ env = DefaultEnvironment()
 ENV_MAPPING = {
     "rp2040": "rp2040", "rp2350": "rp2040", "tbd": "rp2040",
     "avr": "avr", "megacmd": "avr", "megacommand": "avr", "nano": "avr",
+    "megacmd_upgrader": "avr", "megacommand_upgrader": "avr",
 }
 FIRMWARE_EXTENSIONS = {
     "rp2040": ".uf2",
