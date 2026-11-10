@@ -1241,9 +1241,6 @@ void MDClass::setup() {
   setExternalSync();
   setProgramChange(2);
   setLocalOn(true);
-  if (extendedMachineUpdates()) {
-    send_global_setting(*this, 0x45, 1);
-  }
 }
 
 void MDClass::setBaseChannel(uint8_t channel) {
