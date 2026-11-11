@@ -217,7 +217,9 @@ bool md_compact_build_shape(const MDPattern &pattern, uint8_t steps,
       uint8_t flags = pattern.ext_step_flags[track][step];
       bool disabled = md_compact_step_has_lock(pattern, track, step) &&
                       (flags & 1) == 0;
-      if ((flags >> 2) != 0 || (flags & 2) != 0 || disabled) {
+      bool mode_high =
+          ((pattern.ext_condition_mode_high[track] >> step) & 1) != 0;
+      if ((flags >> 2) != 0 || (flags & 2) != 0 || disabled || mode_high) {
         shape.conditions[track]++;
         words++;
       }
@@ -338,10 +340,13 @@ void md_compact_pack_words(ElektronDataToSysexEncoder *encoder,
       bool plock = (flags & 2) != 0;
       bool disabled = md_compact_step_has_lock(pattern, track, step) &&
                       (flags & 1) == 0;
-      if (condition != 0 || plock || disabled) {
+      bool mode_high =
+          ((pattern.ext_condition_mode_high[track] >> step) & 1) != 0;
+      if (condition != 0 || plock || disabled || mode_high) {
         encoder->pack16(
             step | ((uint16_t)condition << 6) |
-            (plock ? 0x1000 : 0) | (disabled ? 0x2000 : 0));
+            (plock ? 0x1000 : 0) | (disabled ? 0x2000 : 0) |
+            (mode_high ? 0x4000 : 0));
       }
     }
   }
@@ -500,8 +505,9 @@ bool md_compact_unpack_words(ElektronSysexDecoder &decoder,
       const uint16_t word = decoder.gget16();
       const uint8_t step = word & 0x3f;
       const uint8_t condition = (word >> 6) & 0x3f;
-      if ((word & 0xc000) != 0 ||
-          (condition == 0 && (word & 0x3000) == 0) ||
+      // Bit 14 is the second condition-mode bit; only bit 15 is unused.
+      if ((word & 0x8000) != 0 ||
+          (condition == 0 && (word & 0x7000) == 0) ||
           step >= steps || (have_step && step <= previous_step)) {
         return false;
       }
@@ -516,6 +522,9 @@ bool md_compact_unpack_words(ElektronSysexDecoder &decoder,
           flags |= 1;
         }
         pattern->ext_step_flags[track][step] = flags;
+        if (word & 0x4000) {
+          pattern->ext_condition_mode_high[track] |= (uint64_t)1 << step;
+        }
       }
       cursor++;
     }
@@ -564,6 +573,7 @@ void MDPattern::clearPattern() {
   version = 0x03;
   memset(ext_microtiming, 0, sizeof(ext_microtiming));
   memset(ext_step_flags, 0, sizeof(ext_step_flags));
+  memset(ext_condition_mode_high, 0, sizeof(ext_condition_mode_high));
   memset(ext_locks_params, 0, sizeof(ext_locks_params));
   memset(ext_track_lengths, 0, sizeof(ext_track_lengths));
   memset(ext_track_speeds, 0xFF, sizeof(ext_track_speeds));

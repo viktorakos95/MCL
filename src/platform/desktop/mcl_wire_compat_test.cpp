@@ -1209,6 +1209,112 @@ bool checkSequencerNegotiation(uint8_t param, uint8_t value) {
 
 } // namespace
 
+// MDX keeps a step's condition mode in two bits. MCL carries both through a
+// pattern and into an SPS-X track, and plays the third mode, LOCK.
+bool checkConditionModes() {
+    // The play rule: which of the step's locks and trig go out.
+    struct Case {
+        uint8_t result;
+        bool plock, lockOnly, trig, muted, locks, fire;
+    };
+    static const Case cases[] = {
+        // TRIG: the locks always go; the trig waits on the condition.
+        {SPSX_TRIG_TRUE, false, false, true, false, true, true},
+        {SPSX_TRIG_FALSE, false, false, true, false, true, false},
+        // TRIG+LOCK: both wait on the condition.
+        {SPSX_TRIG_TRUE, true, false, true, false, true, true},
+        {SPSX_TRIG_FALSE, true, false, true, false, false, false},
+        // LOCK: the trig plays anyway; only the locks wait.
+        {SPSX_TRIG_TRUE, true, true, true, false, true, true},
+        {SPSX_TRIG_FALSE, true, true, true, false, false, true},
+        // A muted LOCK step is silent; a spent one-shot keeps its plain hit.
+        {SPSX_TRIG_ONESHOT, true, true, true, true, false, false},
+        {SPSX_TRIG_ONESHOT, true, true, true, false, false, true},
+        // LOCK on a step with locks but no trig.
+        {SPSX_TRIG_TRUE, true, true, false, false, true, false},
+        {SPSX_TRIG_FALSE, true, true, false, false, false, false},
+        // A muted TRIG step sends nothing.
+        {SPSX_TRIG_ONESHOT, false, false, true, true, false, false},
+    };
+    for (const Case& c : cases) {
+        const SPSXStepPlan plan = spsx_plan_step(
+            c.result, c.plock, c.lockOnly, c.trig, c.muted);
+        if (plan.apply_locks != c.locks || plan.fire != c.fire) return false;
+    }
+
+    // A pattern keeps the second mode bit (bit 14 of a condition word).
+    const uint8_t kTrack = 2;
+    const uint8_t kRatio = SEQ_COND_ITER_BASE; // 1:2
+    std::array<uint8_t, 8192> message{};
+    std::array<uint8_t, 8192> again{};
+    MD.is_spsx = true;
+    MD.fw_caps = FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37;
+    MD.pattern.clearPattern();
+    MD.pattern.patternLength = 64;
+    MD.pattern.trigPatterns[kTrack] =
+        (UINT64_C(1) << 1) | (UINT64_C(1) << 5) | (UINT64_C(1) << 9) |
+        (UINT64_C(1) << 13);
+    MD.pattern.ext_step_flags[kTrack][1] = (kRatio << 2) | 2u;  // TRIG+LOCK
+    MD.pattern.ext_step_flags[kTrack][5] = (kRatio << 2) | 2u;  // LOCK
+    MD.pattern.ext_step_flags[kTrack][9] = 0;                   // explicit TRIG
+    MD.pattern.ext_step_flags[kTrack][13] = SEQ_COND_50PCT << 2; // TRIG
+    MD.pattern.ext_condition_mode_high[kTrack] =
+        (UINT64_C(1) << 5) | (UINT64_C(1) << 9);
+
+    ElektronDataToSysexEncoder encoder(message.data());
+    const uint16_t length = MD.pattern.toSysex(&encoder);
+    if (length == 0 || message[7] != MD_PATTERN_VERSION_SPSX) return false;
+    auto fixture = std::make_unique<SysexFixture>();
+    auto decoded = std::make_unique<MDPattern>();
+    if (!publishToMidiSysex(fixture->sysex, message.data(), length) ||
+        !decoded->fromSysex(&fixture->midi)) {
+        return false;
+    }
+    if (decoded->ext_condition_mode_high[kTrack] !=
+            MD.pattern.ext_condition_mode_high[kTrack] ||
+        decoded->ext_step_flags[kTrack][1] != ((kRatio << 2) | 2u) ||
+        decoded->ext_step_flags[kTrack][5] != ((kRatio << 2) | 2u) ||
+        decoded->ext_step_flags[kTrack][9] != 0 ||
+        decoded->ext_step_flags[kTrack][13] != (SEQ_COND_50PCT << 2)) {
+        return false;
+    }
+    for (uint8_t track = 0; track < 16; ++track) {
+        if (track != kTrack && decoded->ext_condition_mode_high[track] != 0)
+            return false;
+    }
+    ElektronDataToSysexEncoder reencoder(again.data());
+    if (decoded->toSysex(&reencoder) != length ||
+        std::memcmp(message.data(), again.data(), length) != 0) {
+        return false;
+    }
+
+    // An SPS-X track takes both bits from the pattern.
+    SPSXSeqTrack& track = mcl_seq.spsx_tracks[kTrack];
+    track.merge_from_md(kTrack, decoded.get());
+    const auto& steps = track.steps;
+    if (steps[1].cond_id != kRatio || !steps[1].cond_plock ||
+        steps[1].cond_explicit || steps[1].cond_lock_only() ||
+        steps[5].cond_id != kRatio || !steps[5].cond_lock_only() ||
+        steps[9].cond_id != 0 || steps[9].cond_plock ||
+        !steps[9].cond_explicit || steps[9].cond_lock_only() ||
+        steps[13].cond_id != SEQ_COND_50PCT || steps[13].cond_plock ||
+        steps[13].cond_explicit) {
+        return false;
+    }
+
+    // An edit from MCL chooses TRIG or TRIG+LOCK. A LOCK step stays LOCK
+    // while it stays on the lock side, and loses it on the trig side.
+    track.set_conditional_value(5, kRatio + 1, true);
+    if (!track.steps[5].cond_lock_only() ||
+        track.steps[5].cond_id != kRatio + 1) {
+        return false;
+    }
+    track.set_conditional_value(5, kRatio + 1, false);
+    track.set_conditional_value(9, 0, false);
+    return !track.steps[5].cond_explicit && !track.steps[5].cond_plock &&
+           !track.steps[9].cond_explicit;
+}
+
 int main(int argc, char** argv) {
     if (argc == 4 && std::strcmp(argv[1], "--roundtrip-kit") == 0)
         return roundtripKitFile(argv[2], argv[3]);
@@ -1248,6 +1354,10 @@ int main(int argc, char** argv) {
     const bool seqNegotiation =
         checkSequencerNegotiation(MODEL_BUS3, 91) &&
         checkSequencerNegotiation(MODEL_ENVDEST, 2);
+    if (!checkConditionModes()) {
+        std::fprintf(stderr, "MCL condition mode checks failed\n");
+        return 1;
+    }
     if (!globalVersions || !machineRoutes || !kitV1 || !kitV2 || !patternStockFallback || !patternCompact ||
         !maximumPattern ||
         !malformedPattern || !envelopePattern || !trackRows ||

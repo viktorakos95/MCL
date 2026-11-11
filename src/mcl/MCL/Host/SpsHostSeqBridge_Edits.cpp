@@ -171,6 +171,7 @@ bool SpsHostSeqBridge::applySetCondition(const uint8_t* b, uint16_t n) {
     }
     tr->steps[b[1]].cond_id = cond;
     tr->steps[b[1]].cond_plock = plock;
+    tr->steps[b[1]].cond_explicit = tr->steps[b[1]].cond_explicit && plock;
     markArrangerLocalEdit(b[0]);
     return true;
 }

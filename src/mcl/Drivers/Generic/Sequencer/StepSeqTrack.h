@@ -368,6 +368,10 @@ public:
             clear_step_oneshot_state(step);
         descriptor.cond_id = condition;
         descriptor.cond_plock = plock;
+        // MCL's knob chooses between TRIG and TRIG+LOCK. A LOCK step that
+        // came from the Machinedrum stays LOCK while it stays on the lock
+        // side, so nudging its microtiming or condition does not change it.
+        descriptor.cond_explicit = descriptor.cond_explicit && plock;
     }
     uint64_t mute_mask_value() const override { return mute_mask; }
     void clear_step_mute(uint8_t step) override {

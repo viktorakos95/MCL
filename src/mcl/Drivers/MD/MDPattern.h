@@ -111,6 +111,9 @@ public:
   uint8_t version;
   int8_t ext_microtiming[16][64];
   uint8_t ext_step_flags[16][64];
+  // The second bit of each step's condition mode, one bit per step: MDX's
+  // explicit TRIG and, with the plock flag, LOCK. Bit 14 of a condition word.
+  uint64_t ext_condition_mode_high[16];
   uint8_t ext_locks_params[16][MD_PATTERN_LOCK_SLOTS];
   uint8_t ext_track_lengths[16];
   uint8_t ext_track_speeds[16];

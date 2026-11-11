@@ -467,6 +467,7 @@ void BasicStepSeqDataTrack<LockCount>::set_track_step(uint8_t step, int8_t micro
     }
     steps[step].cond_id = 0;
     steps[step].cond_plock = false;
+    steps[step].cond_explicit = false;
     microtiming[step] = microtiming_val;
 }
 
@@ -529,6 +530,7 @@ void BasicStepSeqDataTrack<LockCount>::clear_step(uint8_t step) {
     steps[step].locks = 0;
     steps[step].cond_id = 0;
     steps[step].cond_plock = 0;
+    steps[step].cond_explicit = false;
     microtiming[step] = 0;
     STEPSEQ_CLEAR_BIT64(trig_mask, step);
     STEPSEQ_CLEAR_BIT64(slide_mask, step);
@@ -571,6 +573,7 @@ void BasicStepSeqDataTrack<LockCount>::clear_conditional() {
     for (uint8_t c = 0; c < STEPSEQ_NUM_STEPS; c++) {
         steps[c].cond_id = 0;
         steps[c].cond_plock = 0;
+        steps[c].cond_explicit = false;
         microtiming[c] = 0;
     }
     clear_mutes();
@@ -885,6 +888,7 @@ void BasicStepSeqDataTrack<LockCount>::paste_step(uint8_t n, StepSeqStep *step,
         }
     }
     steps[n].cond_plock = step->data.cond_plock;
+    steps[n].cond_explicit = step->data.cond_explicit;
     steps[n].cond_id = step->data.cond_id;
     set_step(n, STEPSEQ_MASK_PATTERN, step->trig);
     set_step(n, STEPSEQ_MASK_SLIDE, step->slide);

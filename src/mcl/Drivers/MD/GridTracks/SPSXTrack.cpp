@@ -60,6 +60,7 @@ void convert_legacy_seq_to_spsx(const MDSeqTrackData &src,
     uint8_t legacy_locks = src_step.locks;
     dest_step.locks = 0;
     dest_step.cond_plock = src_step.cond_plock;
+    dest_step.cond_explicit = false;
     dest_step.cond_id = src_step.cond_id;
     dest.microtiming[step] =
         legacy_md_microtiming_to_spsx(src.microtiming[step], speed);
