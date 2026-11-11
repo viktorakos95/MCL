@@ -912,7 +912,7 @@ bool MDStepEditCapability::param_from_key(const DeviceContext &ctx,
     return false;
   }
   MDClass &device = md();
-  uint8_t value = device.currentSynthPage * 8 + key - 0x10;
+  uint8_t value = device.paramForEncoder(key - 0x10);
   uint8_t param_count =
       device.is_spsx ? device.spsxWireParamCount() : MD_PARAMS_PER_TRACK;
   if (value >= param_count) {
@@ -935,12 +935,11 @@ bool MDStepEditCapability::key_for_param(const DeviceContext &ctx,
   if (param >= param_count) {
     return false;
   }
-  int16_t value =
-      (int16_t)param - (int16_t)device.currentSynthPage * 8 + 0x10;
-  if (value < 0x10 || value > 0x17) {
+  uint8_t encoder = device.encoderForParam(param);
+  if (encoder > 7) {
     return false;
   }
-  *key = (uint8_t)value;
+  *key = 0x10 + encoder;
   return true;
 }
 
@@ -1209,6 +1208,35 @@ bool MDParamCapability::sequencer_uses_step_pitch(const DeviceContext &ctx,
   return target < NUM_MD_TRACKS;
 }
 #endif
+
+// The Machinedrum's LFO page: the first five encoders of an LFO tab choose
+// the destination, shapes and type, which are not track parameters.
+static const uint8_t md_lfo_page_params[3][8] PROGMEM = {
+    {255, 255, 255, 255, 255, 21, 22, 23},
+    {255, 255, 255, 255, 255, 28, 29, 30},
+    {24, 25, 26, 27, 31, 32, 33, 37},
+};
+
+uint8_t MDClass::paramForEncoder(uint8_t encoder) const {
+  uint8_t page = currentSynthPage;
+  if (page < 3) {
+    return page * 8 + encoder;
+  }
+  page -= 4;
+  if (page >= 3) {
+    return 255;
+  }
+  return pgm_read_byte(&md_lfo_page_params[page][encoder]);
+}
+
+uint8_t MDClass::encoderForParam(uint8_t param) const {
+  for (uint8_t encoder = 0; encoder < 8; encoder++) {
+    if (paramForEncoder(encoder) == param) {
+      return encoder;
+    }
+  }
+  return 255;
+}
 
 void MDClass::setup() {
   resetMidiMap();

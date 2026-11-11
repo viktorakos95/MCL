@@ -248,7 +248,7 @@ bool DevicePerfTarget::param_from_key(uint8_t key, uint8_t *param) const {
       params.target >= NUM_MD_TRACKS || key < 0x10 || key > 0x17) {
     return false;
   }
-  uint8_t value = MD.currentSynthPage * 8 + key - 0x10;
+  uint8_t value = MD.paramForEncoder(key - 0x10);
   if (value >= MD_PARAMS_PER_TRACK) {
     return false;
   }
@@ -261,11 +261,11 @@ bool DevicePerfTarget::key_for_param(uint8_t param, uint8_t *key) const {
       params.target >= NUM_MD_TRACKS || param >= MD_PARAMS_PER_TRACK) {
     return false;
   }
-  int8_t value = (int8_t)param - (int8_t)MD.currentSynthPage * 8 + 0x10;
-  if (value < 0x10 || value > 0x17) {
+  uint8_t encoder = MD.encoderForParam(param);
+  if (encoder > 7) {
     return false;
   }
-  *key = (uint8_t)value;
+  *key = 0x10 + encoder;
   return true;
 }
 

@@ -75,6 +75,13 @@ public:
     return x20() && (fw_caps & FW_CAP_MACHINE_UPDATE_EXT) != 0;
   }
 
+  // The parameter under encoder 0-7 on the page the Machinedrum is showing,
+  // and the encoder holding a parameter there. 255 when there is none.
+  // currentSynthPage is 0-2 for the main pages and 4-6 for the LFO page's
+  // LFO-A, LFO-B and ENV tabs.
+  uint8_t paramForEncoder(uint8_t encoder) const;
+  uint8_t encoderForParam(uint8_t param) const;
+
   /** Stores the kit settings of the machinedrum (usually set by MDTask). **/
   MDKit kit;
   MDPattern pattern;

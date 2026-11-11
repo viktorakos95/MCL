@@ -417,7 +417,7 @@ private:
         key > 0x17) {
       return false;
     }
-    uint8_t value = MD.currentSynthPage * 8 + key - 0x10;
+    uint8_t value = MD.paramForEncoder(key - 0x10);
     if (value >= MD_PARAMS_PER_TRACK) {
       return false;
     }
@@ -430,11 +430,11 @@ private:
         param >= MD_PARAMS_PER_TRACK) {
       return false;
     }
-    int8_t value = (int8_t)param - (int8_t)MD.currentSynthPage * 8 + 0x10;
-    if (value < 0x10 || value > 0x17) {
+    uint8_t encoder = MD.encoderForParam(param);
+    if (encoder > 7) {
       return false;
     }
-    *key = (uint8_t)value;
+    *key = 0x10 + encoder;
     return true;
   }
 

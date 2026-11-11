@@ -168,6 +168,11 @@ void MDTrackSelect::handle_track_select_legacy(const SysexView &view,
     MD.currentBank = (b & 64) > 0;
 
     b = view.getByte(4);
+    // Bit 5 says the Machinedrum is showing its LFO page; the page number is
+    // then the tab. Older firmware leaves the bit clear.
+    if (b & 0x20) {
+      MD.currentSynthPage |= 4;
+    }
     MD.kit.models[MD.currentTrack] = mdModelFromMachineFlags(view.getByte(5), b);
     // Bit 6 is the Machinedrum's channel mode, so a change made there is
     // followed like the base channel. Older firmware leaves the bit clear.
