@@ -410,12 +410,11 @@ constexpr size_t PROJECT_HEADER_SIZE_LEGACY_CONFIG =
    (v) == PROJ_VERSION)
 #define PROJECT_CONVERSION_ATTR() __attribute__((noinline, cold)) COLD_SMALL()
 #else
-#define PROJECT_VERSION_CAN_OPEN(v) ((v) == PROJ_VERSION)
+// A 3013 project is laid out like the current one, so it opens without the
+// conversion code: its header is restamped and its tracks widen as they load.
+#define PROJECT_VERSION_CAN_OPEN(v)                                           \
+  ((v) == PROJ_PREV_VERSION || (v) == PROJ_VERSION)
 #endif
-// A grid file is the same in 3013 and 3014, so a grid pair kept from MCL 5.0x
-// (a project backup) still opens once the project itself has been upgraded.
-#define GRID_VERSION_CAN_OPEN(v)                                              \
-  (PROJECT_VERSION_CAN_OPEN(v) || (v) == PROJ_PREV_VERSION)
 
 bool project_config_version_valid(uint32_t version) {
   return version == CONFIG_VERSION;
@@ -1259,7 +1258,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
         return false;
       }
     }
-    if (!GRID_VERSION_CAN_OPEN(grid_version)) {
+    if (!PROJECT_VERSION_CAN_OPEN(grid_version)) {
       DEBUG_PRINTLN(F("Grid version incompatible"));
       return false;
     }
@@ -1346,9 +1345,11 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   mcl_cfg.active_arrangement_idx = cfg.active_arrangement_idx;
 #endif
 
+  // An older project is stamped with the current version once it is open, so
+  // that MCL 5.0x no longer opens it and misreads the wider tracks.
+  update_header = update_header || project_version < PROJ_VERSION;
 #ifdef MCL_HAS_PROJECT_CONVERSION
-  update_header = update_header || project_needs_update || write_grid_headers ||
-                  project_version < PROJ_VERSION;
+  update_header = update_header || project_needs_update || write_grid_headers;
   bool created_project_header = false;
   // A 3013 header is laid out like the current one and is restamped in
   // place; only the pre-MCL 5 project file is kept aside as .old.
@@ -1430,7 +1431,7 @@ bool Project::read_header() {
   }
 
 #ifndef MCL_HAS_PROJECT_CONVERSION
-  if (header_version != PROJ_VERSION) {
+  if (!PROJECT_VERSION_CAN_OPEN(header_version)) {
     version = header_version;
     return true;
   }
@@ -1829,7 +1830,7 @@ COLD_SMALL() bool Project::copy_grid_pair(const char *from_project,
     if (src_grid.read_header()) {
       grid_version = src_grid.version;
     }
-    ok = GRID_VERSION_CAN_OPEN(grid_version) &&
+    ok = PROJECT_VERSION_CAN_OPEN(grid_version) &&
          dst_grid.write_header(grid_version,
                                dest_pair * NUM_GRIDS + grid_idx);
 

@@ -79,9 +79,8 @@ void LoadProjectPage::on_select(const char *entry) {
       return;
     } else {
 #ifndef MCL_HAS_PROJECT_CONVERSION
-      if (proj.version == PROJ_MIN_READABLE_VERSION ||
-          proj.version == PROJ_PREV_VERSION) {
-        // A project from an earlier MCL: this firmware cannot convert it.
+      if (proj.version == PROJ_MIN_READABLE_VERSION) {
+        // A project from before MCL 5: this firmware cannot convert it.
         oled_display.textbox_P(mclstr_upgrade, mclstr_project);
         oled_display.display();
       } else

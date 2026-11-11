@@ -13,7 +13,8 @@
 #define PROJ_MIN_READABLE_VERSION 3000
 // 3013 is MCL 5.0x. Its headers and grid files are laid out like 3014, but
 // its MD tracks hold the 24-parameter machine record, which 5.0x would read
-// a version-6 track as. 3014 keeps 5.0x from opening such a project.
+// a version-6 track as. 3014 keeps 5.0x from opening such a project. A 3013
+// project opens directly and is restamped as 3014.
 #define PROJ_PREV_VERSION 3013
 #define PROJ_VERSION 3014
 #define PRJ_DIR "/Projects"
