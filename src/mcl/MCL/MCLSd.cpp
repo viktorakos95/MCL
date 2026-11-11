@@ -123,9 +123,10 @@ void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
       oled_display.println(F("UPGRADING"));
       oled_display.println(path);
       oled_display.display();
+      const uint8_t skipped = proj.upgrade_skipped;
       if (proj.load_project(path)) {
         (*upgraded)++;
-      } else if (depth) {
+      } else if (depth && proj.upgrade_skipped == skipped) {
         upgrade_projects_in(path, depth - 1, upgraded);
       }
       proj.chdir_projects();
@@ -135,13 +136,37 @@ void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
   dir.close();
 }
 
+// Counts how many conversions fit in the card's free space. Each one needs a
+// new pair of grid files, plus a little for the project file kept as .old.
+uint16_t count_upgrade_room() {
+  const uint32_t cluster_bytes = SD.bytesPerCluster();
+  const int32_t free_clusters = SD.freeClusterCount();
+  if (cluster_bytes == 0 || free_clusters <= 0) {
+    return 0;
+  }
+  const uint32_t grid_bytes = (uint32_t)GRID_SLOT_BYTES *
+                              (uint32_t)(GRID_LENGTH + 2) *
+                              (uint32_t)(GRID_WIDTH + 1);
+  const uint32_t grid_clusters = (grid_bytes + cluster_bytes - 1) / cluster_bytes;
+  const uint32_t room =
+      (uint32_t)free_clusters / (grid_clusters * NUM_GRIDS + 2);
+  return room > 0xFFFF ? 0xFFFF : room;
+}
+
 void upgrade_all_projects() {
   char path[PRJ_PATH_LEN] = "";
   uint8_t upgraded = 0;
   // Nothing on the card is touched until the user agrees.
   const bool confirmed =
       mcl_gui.wait_for_confirm("Upgrade", "Convert all projects?");
+  proj.upgrade_skipped = 0;
   if (confirmed) {
+    // Reading the free space of a large card takes a few seconds.
+    oled_display.clearDisplay();
+    oled_display.setCursor(0, 8);
+    oled_display.println(F("CHECKING SD CARD"));
+    oled_display.display();
+    proj.upgrade_room = count_upgrade_room();
     upgrade_projects_in(path, 1, &upgraded);
   }
   oled_display.clearDisplay();
@@ -149,6 +174,10 @@ void upgrade_all_projects() {
   if (confirmed) {
     oled_display.print(upgraded);
     oled_display.println(F(" PROJECTS READY"));
+    if (proj.upgrade_skipped) {
+      oled_display.print(proj.upgrade_skipped);
+      oled_display.println(F(" LEFT: SD FULL"));
+    }
   } else {
     oled_display.println(F("NOTHING CHANGED"));
   }

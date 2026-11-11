@@ -40,6 +40,12 @@ public:
   bool new_project(const char *newprj);
   bool new_project_prompt(const char *parent = nullptr) NOINLINE();
   bool load_project(const char *projectname);
+#ifdef MCL_PROJECT_UPGRADER
+  // Conversions the card's free space still has room for, and the projects
+  // left unconverted because it ran out.
+  uint16_t upgrade_room;
+  uint8_t upgrade_skipped;
+#endif
 #ifdef MCL_HAS_PROJECT_BACKUP
   bool load_project_version(const char *projectname, uint8_t pair);
 #endif

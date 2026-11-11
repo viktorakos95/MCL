@@ -201,6 +201,10 @@ def create_or_validate_manifest(env, env_name, checksum, firmware_size):
         transformed_version = '_'.join(alphanumeric_chars).lower()
         new_firmware_name = f"mcl_{transformed_version}{firmware_ext}"
 
+    # The project upgrader is its own tool with its own version.
+    if env_name.endswith("_upgrader"):
+        new_firmware_name = f"mcl_project_upgrade_1_0{firmware_ext}"
+
     print(f"✓ Target filename will be '{new_firmware_name}'")
 
     project_dir = env.subst("$PROJECT_DIR")

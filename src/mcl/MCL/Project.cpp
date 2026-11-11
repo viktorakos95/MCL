@@ -1270,6 +1270,16 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
   bool rebuilt_grid_pair = false;
+#ifdef MCL_PROJECT_UPGRADER
+  // A conversion writes a new pair of grid files beside the old pair.
+  if (migrate_track_storage) {
+    if (upgrade_room == 0) {
+      upgrade_skipped++;
+      return false;
+    }
+    upgrade_room--;
+  }
+#endif
   if (migrate_track_storage || project_needs_update || write_grid_headers) {
     draw_wait_popup("UPGRADING PROJECT");
   }
