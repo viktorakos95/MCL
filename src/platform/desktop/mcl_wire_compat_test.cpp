@@ -1257,7 +1257,9 @@ bool checkConditionModes() {
     MD.pattern.ext_step_flags[kTrack][1] = (kRatio << 2) | 2u;  // TRIG+LOCK
     MD.pattern.ext_step_flags[kTrack][5] = (kRatio << 2) | 2u;  // LOCK
     MD.pattern.ext_step_flags[kTrack][9] = 0;                   // explicit TRIG
-    MD.pattern.ext_step_flags[kTrack][13] = SEQ_COND_50PCT << 2; // TRIG
+    // 90% on the Machinedrum is condition 1; MCL's 90% is condition 7.
+    const uint8_t kMd90 = 1;
+    MD.pattern.ext_step_flags[kTrack][13] = kMd90 << 2;          // TRIG
     MD.pattern.ext_condition_mode_high[kTrack] =
         (UINT64_C(1) << 5) | (UINT64_C(1) << 9);
 
@@ -1275,7 +1277,7 @@ bool checkConditionModes() {
         decoded->ext_step_flags[kTrack][1] != ((kRatio << 2) | 2u) ||
         decoded->ext_step_flags[kTrack][5] != ((kRatio << 2) | 2u) ||
         decoded->ext_step_flags[kTrack][9] != 0 ||
-        decoded->ext_step_flags[kTrack][13] != (SEQ_COND_50PCT << 2)) {
+        decoded->ext_step_flags[kTrack][13] != (kMd90 << 2)) {
         return false;
     }
     for (uint8_t track = 0; track < 16; ++track) {
@@ -1297,9 +1299,42 @@ bool checkConditionModes() {
         steps[5].cond_id != kRatio || !steps[5].cond_lock_only() ||
         steps[9].cond_id != 0 || steps[9].cond_plock ||
         !steps[9].cond_explicit || steps[9].cond_lock_only() ||
-        steps[13].cond_id != SEQ_COND_50PCT || steps[13].cond_plock ||
+        steps[13].cond_id != SEQ_COND_90PCT || steps[13].cond_plock ||
         steps[13].cond_explicit) {
         return false;
+    }
+    // The probability mapping mirrors 1-7 and leaves every other id alone.
+    for (uint8_t id = 0; id < SEQ_NUM_TRIG_CONDITIONS; ++id) {
+        const uint8_t mapped = seq_cond_from_md(id);
+        const uint8_t expected = (id >= 1 && id <= 7) ? uint8_t(8 - id) : id;
+        if (mapped != expected || seq_cond_to_md(mapped) != id) return false;
+    }
+
+    // The hosted editor names conditions with the Machinedrum's numbers, so
+    // the bridge converts them both ways.
+    {
+        std::array<uint8_t, 1200> drained{};
+        while (MidiUart.desktop_egress(drained.data(), drained.size()) != 0) {}
+        SPSXSeqTrack& bridged = mcl_seq.spsx_tracks[0];
+        const uint8_t setCondition[3] = {0, 3, uint8_t(kMd90 | 0x80)};
+        if (!deliverSequencerFrame(spsseq::CMD_SET_CONDITION, 6, setCondition,
+                                   sizeof(setCondition)) ||
+            bridged.steps[3].cond_id != SEQ_COND_90PCT ||
+            !bridged.steps[3].cond_plock) {
+            return false;
+        }
+        while (MidiUart.desktop_egress(drained.data(), drained.size()) != 0) {}
+        const uint8_t detailTrack = 0;
+        std::array<uint8_t, spsseq::kMaxBodyRaw> body{};
+        uint16_t bodyBytes = 0;
+        if (!deliverSequencerFrame(spsseq::CMD_REQ_TRACK_DETAIL, 7,
+                                   &detailTrack, 1) ||
+            !readSequencerResponse(spsseq::CMD_TRACK_DETAIL, body, bodyBytes) ||
+            bodyBytes < 2 + 2 * spsseq::kNumSteps ||
+            body[2 + spsseq::kNumSteps + 3] != uint8_t(kMd90 | 0x80)) {
+            return false;
+        }
+        bridged.set_conditional_value(3, 0, false);
     }
 
     // An edit from MCL chooses TRIG or TRIG+LOCK. A LOCK step stays LOCK

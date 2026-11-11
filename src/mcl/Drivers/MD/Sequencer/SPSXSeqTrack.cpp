@@ -705,7 +705,7 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
         // Unpack step flags
         for (uint8_t s = 0; s < 64; s++) {
             uint8_t flags = pattern->ext_step_flags[trk][s];
-            steps[s].cond_id = flags >> 2;
+            steps[s].cond_id = seq_cond_from_md(flags >> 2);
             steps[s].cond_plock = (flags >> 1) & 1;
             steps[s].cond_explicit =
                 (pattern->ext_condition_mode_high[trk] >> s) & 1;

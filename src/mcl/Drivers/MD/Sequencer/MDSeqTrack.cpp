@@ -1352,7 +1352,7 @@ void MDSeqTrack::merge_from_md(uint8_t track_number, MDPattern *pattern) {
     for (uint8_t a = 0; a < merge_length; a++) {
       if (steps[a].trig) {
         uint8_t flags = pattern->ext_step_flags[track_number][a];
-        steps[a].cond_id = flags >> 2;
+        steps[a].cond_id = seq_cond_from_md(flags >> 2);
         steps[a].cond_plock = (flags >> 1) & 1;
         int8_t mt = pattern->ext_microtiming[track_number][a];
         if (mt != 0) {
