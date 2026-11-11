@@ -169,6 +169,11 @@ void MDTrackSelect::handle_track_select_legacy(const SysexView &view,
 
     b = view.getByte(4);
     MD.kit.models[MD.currentTrack] = mdModelFromMachineFlags(view.getByte(5), b);
+    // Bit 6 is the Machinedrum's channel mode, so a change made there is
+    // followed like the base channel. Older firmware leaves the bit clear.
+    if (MD.extendedMachineUpdates()) {
+      MD.global.channelMode = (b >> 6) & 1;
+    }
   }
   bool ret = seq_step_page.md_track_change_check();
   if (ret) {
