@@ -406,11 +406,16 @@ constexpr size_t PROJECT_HEADER_SIZE_LEGACY_CONFIG =
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
 #define PROJECT_VERSION_CAN_OPEN(v)                                           \
-  ((v) == PROJ_MIN_READABLE_VERSION || (v) == PROJ_VERSION)
+  ((v) == PROJ_MIN_READABLE_VERSION || (v) == PROJ_PREV_VERSION ||             \
+   (v) == PROJ_VERSION)
 #define PROJECT_CONVERSION_ATTR() __attribute__((noinline, cold)) COLD_SMALL()
 #else
 #define PROJECT_VERSION_CAN_OPEN(v) ((v) == PROJ_VERSION)
 #endif
+// A grid file is the same in 3013 and 3014, so a grid pair kept from MCL 5.0x
+// (a project backup) still opens once the project itself has been upgraded.
+#define GRID_VERSION_CAN_OPEN(v)                                              \
+  (PROJECT_VERSION_CAN_OPEN(v) || (v) == PROJ_PREV_VERSION)
 
 bool project_config_version_valid(uint32_t version) {
   return version == CONFIG_VERSION;
@@ -1117,7 +1122,7 @@ bool Project::read_active_grid_pair(const char *projectname, uint8_t *pair) {
   uint32_t header_version = 0;
   bool ok = mcl_sd.read_data((uint8_t *)&header_version,
                              sizeof(header_version), &header_file);
-  if (ok && header_version == PROJ_VERSION) {
+  if (ok && header_version >= PROJ_PREV_VERSION) {
     ok = mcl_sd.read_data(pair, sizeof(*pair), &header_file);
   } else {
     *pair = 0;
@@ -1254,7 +1259,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
         return false;
       }
     }
-    if (!PROJECT_VERSION_CAN_OPEN(grid_version)) {
+    if (!GRID_VERSION_CAN_OPEN(grid_version)) {
       DEBUG_PRINTLN(F("Grid version incompatible"));
       return false;
     }
@@ -1345,7 +1350,9 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   update_header = update_header || project_needs_update || write_grid_headers ||
                   project_version < PROJ_VERSION;
   bool created_project_header = false;
-  if (project_version < PROJ_VERSION) {
+  // A 3013 header is laid out like the current one and is restamped in
+  // place; only the pre-MCL 5 project file is kept aside as .old.
+  if (project_version == PROJ_MIN_READABLE_VERSION) {
     char old_filename[PRJ_NAME_LEN + 5];
     strcpy(old_filename, proj_filename);
     uint8_t len = strlen(old_filename);
@@ -1822,7 +1829,7 @@ COLD_SMALL() bool Project::copy_grid_pair(const char *from_project,
     if (src_grid.read_header()) {
       grid_version = src_grid.version;
     }
-    ok = PROJECT_VERSION_CAN_OPEN(grid_version) &&
+    ok = GRID_VERSION_CAN_OPEN(grid_version) &&
          dst_grid.write_header(grid_version,
                                dest_pair * NUM_GRIDS + grid_idx);
 
