@@ -482,7 +482,7 @@ void GridTask::transition_handler() {
 
       DEBUG_PRINTLN(n);
       DEBUG_PRINT(mcl_actions.next_transition);
-      DEBUG_PRINT(" ");
+      DEBUG_PRINT(F(" "));
       DEBUG_PRINTLN(mcl_actions.next_transitions[n]);
 
       if ((mcl_actions.links[n].loops == 0) ||
@@ -600,7 +600,7 @@ void GridTask::transition_handler() {
 
     bool update_gui = true;
 
-    DEBUG_PRINTLN("cache next");
+    DEBUG_PRINTLN(F("cache next"));
 //#if !defined(__AVR__)
 //    uint32_t go_step = mcl_actions.next_transition * 12 - 1;
 //    wait_blocking(go_step);

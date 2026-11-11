@@ -254,13 +254,13 @@ void debug_p4_json_result(const char *label, bool ok, const char *json) {
     }
   }
 
-  DEBUG_PRINT("tbd_init json ");
+  DEBUG_PRINT(F("tbd_init json "));
   DEBUG_PRINT(label);
-  DEBUG_PRINT(" ok=");
+  DEBUG_PRINT(F(" ok="));
   DEBUG_PRINT(ok ? 1 : 0);
-  DEBUG_PRINT(" len=");
+  DEBUG_PRINT(F(" len="));
   DEBUG_PRINT((unsigned)len);
-  DEBUG_PRINT(" head=");
+  DEBUG_PRINT(F(" head="));
   DEBUG_PRINTLN(head);
 #else
   (void)label;
@@ -271,15 +271,15 @@ void debug_p4_json_result(const char *label, bool ok, const char *json) {
 
 void debug_p4_boot_preset(const char *label, const P4BootPreset &preset) {
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init preset ");
+  DEBUG_PRINT(F("tbd_init preset "));
   DEBUG_PRINT(label);
-  DEBUG_PRINT(" p4=");
+  DEBUG_PRINT(F(" p4="));
   DEBUG_PRINT((unsigned)preset.track_index);
-  DEBUG_PRINT(" id=");
+  DEBUG_PRINT(F(" id="));
   DEBUG_PRINT(preset.preset_id);
-  DEBUG_PRINT(" bank=");
+  DEBUG_PRINT(F(" bank="));
   DEBUG_PRINT((unsigned)preset.rom_bank);
-  DEBUG_PRINT(" slice=");
+  DEBUG_PRINT(F(" slice="));
   DEBUG_PRINTLN((long)preset.sample_slice);
 #else
   (void)label;
@@ -289,25 +289,25 @@ void debug_p4_boot_preset(const char *label, const P4BootPreset &preset) {
 
 void debug_p4_sound_summary(const char *label, const TbdP4SoundData &sound) {
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init sound ");
+  DEBUG_PRINT(F("tbd_init sound "));
   DEBUG_PRINT(label);
-  DEBUG_PRINT(" p4=");
+  DEBUG_PRINT(F(" p4="));
   DEBUG_PRINT((unsigned)sound.p4_track_index);
-  DEBUG_PRINT(" ch=");
+  DEBUG_PRINT(F(" ch="));
   DEBUG_PRINT((unsigned)sound.midi_channel);
-  DEBUG_PRINT(" preset=");
+  DEBUG_PRINT(F(" preset="));
   DEBUG_PRINT(sound.preset_id);
-  DEBUG_PRINT(" macro=");
+  DEBUG_PRINT(F(" macro="));
   DEBUG_PRINT(sound.macro_id);
-  DEBUG_PRINT(" mach=");
+  DEBUG_PRINT(F(" mach="));
   DEBUG_PRINT(sound.machine_id);
-  DEBUG_PRINT(" apg=");
+  DEBUG_PRINT(F(" apg="));
   DEBUG_PRINT((unsigned)sound.audio_params.num_pages);
-  DEBUG_PRINT(" ap=");
+  DEBUG_PRINT(F(" ap="));
   DEBUG_PRINT((unsigned)count_p4_audio_params(sound));
-  DEBUG_PRINT(" mpg=");
+  DEBUG_PRINT(F(" mpg="));
   DEBUG_PRINT((unsigned)sound.mixer_params.num_pages);
-  DEBUG_PRINT(" send=");
+  DEBUG_PRINT(F(" send="));
   DEBUG_PRINTLN((unsigned)count_p4_sendable_params(sound));
 #else
   (void)label;
@@ -336,9 +336,9 @@ void draw_p4_init_progress(uint8_t cur) {
 bool activate_p4_sample_kit(uint8_t kit_index, uint32_t timeout_ms) {
   const bool set_ok = tbd_p4_command.set_active_sample_kit(kit_index, timeout_ms);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init set_sample_kit index=");
+  DEBUG_PRINT(F("tbd_init set_sample_kit index="));
   DEBUG_PRINT((unsigned)kit_index);
-  DEBUG_PRINT(" ok=");
+  DEBUG_PRINT(F(" ok="));
   DEBUG_PRINTLN(set_ok ? 1 : 0);
 #endif
   if (!set_ok) {
@@ -357,16 +357,16 @@ void debug_p4_active_plugin(uint32_t timeout_ms) {
   const bool get_ok = tbd_p4_command.get_active_plugin(
       0, active_plugin, sizeof(active_plugin), timeout_ms);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init active_plugin get=");
+  DEBUG_PRINT(F("tbd_init active_plugin get="));
   DEBUG_PRINT(get_ok ? 1 : 0);
-  DEBUG_PRINT(" id=");
+  DEBUG_PRINT(F(" id="));
   DEBUG_PRINTLN(active_plugin);
 #endif
 #ifdef DEBUGMODE
   if (get_ok && strcmp(active_plugin, kP4RackPluginId) != 0) {
-    DEBUG_PRINT("tbd_init plugin_mismatch was=");
+    DEBUG_PRINT(F("tbd_init plugin_mismatch was="));
     DEBUG_PRINT(active_plugin);
-    DEBUG_PRINT(" want=");
+    DEBUG_PRINT(F(" want="));
     DEBUG_PRINTLN(kP4RackPluginId);
   }
 #endif
@@ -1438,7 +1438,7 @@ bool tbd_hydrate_p4_sound(TbdP4SoundData &sound) {
       sound_has_audio_params(sound)) {
     const bool hydrated = sound_has_audio_params(sound);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init hydrate_skip result=");
+    DEBUG_PRINT(F("tbd_init hydrate_skip result="));
     DEBUG_PRINTLN(hydrated ? 1 : 0);
 #endif
     return hydrated;
@@ -1452,7 +1452,7 @@ bool tbd_hydrate_p4_sound(TbdP4SoundData &sound) {
   tbd_p4_command.init();
   if (!tbd_p4_command.wait_ready(kP4PresetCommandTimeoutMs)) {
 #ifdef DEBUGMODE
-    DEBUG_PRINTLN("tbd_init hydrate wait_ready failed");
+    DEBUG_PRINTLN(F("tbd_init hydrate wait_ready failed"));
 #endif
     return false;
   }
@@ -1472,18 +1472,18 @@ bool tbd_hydrate_p4_sound(TbdP4SoundData &sound) {
         parse_p4_preset_json(p4_track_defaults_json, sound, values, value_set,
                              kP4PresetValueCount);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init hydrate preset_parse=");
+    DEBUG_PRINT(F("tbd_init hydrate preset_parse="));
     DEBUG_PRINT(preset_parse_ok ? 1 : 0);
-    DEBUG_PRINT(" req=");
+    DEBUG_PRINT(F(" req="));
     DEBUG_PRINT(requested_preset);
-    DEBUG_PRINT(" got=");
+    DEBUG_PRINT(F(" got="));
     DEBUG_PRINT(sound.preset_id);
-    DEBUG_PRINT(" macro=");
+    DEBUG_PRINT(F(" macro="));
     DEBUG_PRINTLN(sound.macro_id);
     if (preset_parse_ok && strcmp(requested_preset, sound.preset_id) != 0) {
-      DEBUG_PRINT("tbd_init hydrate preset_id_mismatch req=");
+      DEBUG_PRINT(F("tbd_init hydrate preset_id_mismatch req="));
       DEBUG_PRINT(requested_preset);
-      DEBUG_PRINT(" got=");
+      DEBUG_PRINT(F(" got="));
       DEBUG_PRINTLN(sound.preset_id);
     }
 #endif
@@ -1491,7 +1491,7 @@ bool tbd_hydrate_p4_sound(TbdP4SoundData &sound) {
 
   if (!sound.has_macro()) {
 #ifdef DEBUGMODE
-    DEBUG_PRINTLN("tbd_init hydrate no macro id");
+    DEBUG_PRINTLN(F("tbd_init hydrate no macro id"));
 #endif
     return false;
   }
@@ -1510,18 +1510,18 @@ bool tbd_hydrate_p4_sound(TbdP4SoundData &sound) {
       parse_p4_macro_definition(p4_track_defaults_json, values, value_set,
                                 kP4PresetValueCount, sound);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init hydrate macro_parse=");
+  DEBUG_PRINT(F("tbd_init hydrate macro_parse="));
   DEBUG_PRINT(macro_parse_ok ? 1 : 0);
-  DEBUG_PRINT(" req=");
+  DEBUG_PRINT(F(" req="));
   DEBUG_PRINT(requested_macro);
-  DEBUG_PRINT(" got=");
+  DEBUG_PRINT(F(" got="));
   DEBUG_PRINT(sound.macro_id);
-  DEBUG_PRINT(" machine=");
+  DEBUG_PRINT(F(" machine="));
   DEBUG_PRINTLN(sound.machine_id);
   if (macro_parse_ok && strcmp(requested_macro, sound.macro_id) != 0) {
-    DEBUG_PRINT("tbd_init hydrate macro_id_mismatch req=");
+    DEBUG_PRINT(F("tbd_init hydrate macro_id_mismatch req="));
     DEBUG_PRINT(requested_macro);
-    DEBUG_PRINT(" got=");
+    DEBUG_PRINT(F(" got="));
     DEBUG_PRINTLN(sound.macro_id);
   }
 #endif
@@ -2127,11 +2127,11 @@ void TbdDevice::sync_grid_devices() {
 
 void TbdDevice::apply_runtime_p4_defaults() {
 #ifdef DEBUGMODE
-  DEBUG_PRINTLN("tbd_init apply_runtime_defaults begin");
+  DEBUG_PRINTLN(F("tbd_init apply_runtime_defaults begin"));
 #endif
   for (uint8_t i = 0; i < mcl_seq.num_tbd_tracks; i++) {
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init runtime_tbd slot=");
+    DEBUG_PRINT(F("tbd_init runtime_tbd slot="));
     DEBUG_PRINTLN((unsigned)i);
 #endif
     debug_p4_sound_summary("runtime_tbd_before",
@@ -2148,7 +2148,7 @@ void TbdDevice::apply_runtime_p4_defaults() {
 
   for (uint8_t i = 0; i < mcl_seq.num_midi_tracks; i++) {
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init runtime_midi slot=");
+    DEBUG_PRINT(F("tbd_init runtime_midi slot="));
     DEBUG_PRINTLN((unsigned)i);
 #endif
     TbdP4SoundData *sound = tbd_midi_runtime_sound(i);
@@ -2164,7 +2164,7 @@ void TbdDevice::apply_runtime_p4_defaults() {
     debug_p4_sound_summary("runtime_midi_after", *sound);
   }
 #ifdef DEBUGMODE
-  DEBUG_PRINTLN("tbd_init apply_runtime_defaults end");
+  DEBUG_PRINTLN(F("tbd_init apply_runtime_defaults end"));
 #endif
 }
 
@@ -2209,15 +2209,15 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   }
   if (p4_defaults_init_in_progress_) {
 #ifdef DEBUGMODE
-    DEBUG_PRINTLN("tbd_init already in progress");
+    DEBUG_PRINTLN(F("tbd_init already in progress"));
 #endif
     return false;
   }
   if (p4_defaults_init_failed_) {
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init previous failure stage=");
+    DEBUG_PRINT(F("tbd_init previous failure stage="));
     DEBUG_PRINT((unsigned)p4_boot_fail_stage);
-    DEBUG_PRINT(" request=");
+    DEBUG_PRINT(F(" request="));
     DEBUG_PRINTLN((unsigned)p4_boot_fail_request);
 #endif
     return false;
@@ -2226,7 +2226,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   auto set_stage = [](uint8_t stage) {
     p4_boot_stage = stage;
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init stage ");
+    DEBUG_PRINT(F("tbd_init stage "));
     DEBUG_PRINTLN((unsigned)stage);
 #endif
   };
@@ -2237,9 +2237,9 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
     p4_defaults_init_failed_ = true;
     p4_defaults_init_in_progress_ = false;
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init FAIL stage=");
+    DEBUG_PRINT(F("tbd_init FAIL stage="));
     DEBUG_PRINT((unsigned)stage);
-    DEBUG_PRINT(" request=");
+    DEBUG_PRINT(F(" request="));
     DEBUG_PRINTLN((unsigned)request);
 #endif
     return false;
@@ -2265,7 +2265,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   if (p4_defaults_last_attempt_ms_ != 0 &&
       now - p4_defaults_last_attempt_ms_ < kP4PresetRetryMs) {
 #ifdef DEBUGMODE
-    DEBUG_PRINTLN("tbd_init retry suppressed");
+    DEBUG_PRINTLN(F("tbd_init retry suppressed"));
 #endif
     return false;
   }
@@ -2287,13 +2287,13 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
     set_stage(3);
     const bool reboot_ok = tbd_p4_command.reboot(kP4PresetCommandTimeoutMs);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init reboot=");
+    DEBUG_PRINT(F("tbd_init reboot="));
     DEBUG_PRINTLN(reboot_ok ? 1 : 0);
 #endif
     delay(kP4BootSettleMs);
     const bool post_reboot_ready = tbd_p4_command.wait_ready(kP4PresetBootReadyMs);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init post_reboot_ready=");
+    DEBUG_PRINT(F("tbd_init post_reboot_ready="));
     DEBUG_PRINTLN(post_reboot_ready ? 1 : 0);
 #endif
     advance_progress(progress);
@@ -2303,7 +2303,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   const bool announce_ok = tbd_p4_command.announce_app(
       kP4ReferenceAppName, kP4AppFlags, kP4PresetCommandTimeoutMs);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init announce=");
+  DEBUG_PRINT(F("tbd_init announce="));
   DEBUG_PRINTLN(announce_ok ? 1 : 0);
 #endif
   if (!announce_ok) {
@@ -2315,7 +2315,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   const bool version_ok = tbd_p4_command.report_pico_version(
       "MCL " VERSION_STR, kP4PresetCommandTimeoutMs);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init report_version=");
+  DEBUG_PRINT(F("tbd_init report_version="));
   DEBUG_PRINTLN(version_ok ? 1 : 0);
 #endif
   delay(kP4BootSettleMs);
@@ -2326,7 +2326,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   delay(kP4RackProcessorSettleMs);
   const bool rack_ready = tbd_p4_command.wait_ready(kP4PresetCommandTimeoutMs);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init rack_settle=");
+  DEBUG_PRINT(F("tbd_init rack_settle="));
   DEBUG_PRINTLN(rack_ready ? 1 : 0);
 #endif
   if (!rack_ready) {
@@ -2349,9 +2349,9 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
         parse_p4_track_defaults(p4_track_defaults_json, p4_boot_presets,
                                 kP4SoundTrackCount, kit_id, sizeof(kit_id));
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init track_defaults_parse=");
+    DEBUG_PRINT(F("tbd_init track_defaults_parse="));
     DEBUG_PRINT(parsed_defaults ? 1 : 0);
-    DEBUG_PRINT(" kit=");
+    DEBUG_PRINT(F(" kit="));
     DEBUG_PRINTLN(kit_id);
 #endif
     for (const auto &preset : p4_boot_presets) {
@@ -2371,9 +2371,9 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
     const uint8_t kit_index =
         find_p4_kit_index_for_id(p4_track_defaults_json, kit_id);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init kit id=");
+    DEBUG_PRINT(F("tbd_init kit id="));
     DEBUG_PRINT(kit_id);
-    DEBUG_PRINT(" index=");
+    DEBUG_PRINT(F(" index="));
     DEBUG_PRINTLN((unsigned)kit_index);
 #endif
     if (!activate_p4_sample_kit(kit_index, kP4PresetCommandTimeoutMs)) {
@@ -2396,9 +2396,9 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
         preset.track_index, preset.preset_id, preset.rom_bank,
         preset.sample_slice, kP4PresetCommandTimeoutMs);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init p4_load_sound p4=");
+    DEBUG_PRINT(F("tbd_init p4_load_sound p4="));
     DEBUG_PRINT((unsigned)preset.track_index);
-    DEBUG_PRINT(" ok=");
+    DEBUG_PRINT(F(" ok="));
     DEBUG_PRINTLN(load_ok ? 1 : 0);
 #endif
     if (!load_ok) {
@@ -2414,9 +2414,9 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
     tbd_init_p4_sound_runtime_defaults(sound);
     const bool hydrated = tbd_hydrate_p4_sound(sound);
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init hydrate_result p4=");
+    DEBUG_PRINT(F("tbd_init hydrate_result p4="));
     DEBUG_PRINT((unsigned)preset.track_index);
-    DEBUG_PRINT(" ok=");
+    DEBUG_PRINT(F(" ok="));
     DEBUG_PRINTLN(hydrated ? 1 : 0);
 #endif
     cache_default_sound(sound);
@@ -2428,7 +2428,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
 
   set_stage(12);
 #ifdef DEBUGMODE
-  DEBUG_PRINTLN("tbd_init send driver and cached mixer state");
+  DEBUG_PRINTLN(F("tbd_init send driver and cached mixer state"));
 #endif
   tbd_p4_send_driver_params();
   for (uint8_t i = 0; i < kP4SoundTrackCount; i++) {
@@ -2436,9 +2436,9 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
       continue;
     }
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_init send_mixer p4=");
+    DEBUG_PRINT(F("tbd_init send_mixer p4="));
     DEBUG_PRINT((unsigned)i);
-    DEBUG_PRINT(" params=");
+    DEBUG_PRINT(F(" params="));
     DEBUG_PRINTLN((unsigned)count_p4_sendable_mixer_params(p4_default_sounds[i]));
 #endif
     tbd_p4_send_sound_mixer_state(p4_default_sounds[i]);
@@ -2450,7 +2450,7 @@ bool TbdDevice::load_default_p4_presets(bool show_progress) {
   p4_defaults_init_in_progress_ = false;
   set_stage(13);
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_init complete tracks=");
+  DEBUG_PRINT(F("tbd_init complete tracks="));
   DEBUG_PRINTLN((unsigned)p4_boot_loaded_tracks);
 #endif
   finish_progress();
@@ -2535,9 +2535,9 @@ bool TbdDevice::handle_ui_event(gui_event_t *event) {
       event->source >= ButtonsClass::FUNC_BUTTON6 &&
       event->source <= ButtonsClass::FUNC_BUTTON9;
   if (arrow_trace) {
-    DEBUG_PRINT("  TbdDevice::handle_ui_event diag=");
+    DEBUG_PRINT(F("  TbdDevice::handle_ui_event diag="));
     DEBUG_PRINT((unsigned)diag_active_);
-    DEBUG_PRINT(" tbd_ui_mode.active=");
+    DEBUG_PRINT(F(" tbd_ui_mode.active="));
     DEBUG_PRINTLN((unsigned)tbd_ui_mode.is_active());
   }
   if (diag_active_) {
@@ -2556,7 +2556,7 @@ bool TbdDevice::handle_ui_event(gui_event_t *event) {
   }
   bool result = tbd_ui_mode.handle_event(event);
   if (arrow_trace) {
-    DEBUG_PRINT("  tbd_ui_mode.handle_event returned ");
+    DEBUG_PRINT(F("  tbd_ui_mode.handle_event returned "));
     DEBUG_PRINTLN((unsigned)result);
   }
   return result;

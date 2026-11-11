@@ -443,7 +443,7 @@ bool MDKit::fromSysex(MidiClass *midi) {
   }
 
   if (!ElektronHelper::checkSysexChecksum(sysex, offset, len)) {
-    DEBUG_PRINTLN("wrong checksum");
+    DEBUG_PRINTLN(F("wrong checksum"));
     return false;
   }
 #else
@@ -481,7 +481,7 @@ bool MDKit::fromSysex(MidiClass *midi) {
   }
 
   if (!ElektronHelper::checkSysexChecksum(sysex, offset, len)) {
-    DEBUG_PRINTLN("wrong checksum");
+    DEBUG_PRINTLN(F("wrong checksum"));
     return false;
   }
   if (is_spsx_kit) {

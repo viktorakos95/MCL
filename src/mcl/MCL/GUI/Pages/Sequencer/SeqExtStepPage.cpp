@@ -2059,7 +2059,7 @@ COLD_SMALL() bool SeqExtStepPage::handleEvent(gui_event_t *event) {
         DEBUG_DUMP(locks.count_lock_event(step, lock_idx));
         return true;
       } else {
-        DEBUG_PRINTLN("here");
+        DEBUG_PRINTLN(F("here"));
         DEBUG_PRINTLN(active_track.notes_on_count());
         if (active_track.notes_on_count() > 0) {
           enter_notes();

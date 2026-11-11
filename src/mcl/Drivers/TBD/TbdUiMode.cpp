@@ -135,23 +135,23 @@ uint8_t clamped_mixer_pages(const TbdP4SoundData &sound) {
 void log_arrow_press(uint8_t source, uint8_t before, uint8_t after,
                      uint8_t count, TbdP4SoundData *sound) {
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_ui_arrow src ");
+  DEBUG_PRINT(F("tbd_ui_arrow src "));
   DEBUG_PRINT((unsigned)source);
-  DEBUG_PRINT(" page ");
+  DEBUG_PRINT(F(" page "));
   DEBUG_PRINT((unsigned)before);
-  DEBUG_PRINT("->");
+  DEBUG_PRINT(F("->"));
   DEBUG_PRINT((unsigned)after);
-  DEBUG_PRINT(" count ");
+  DEBUG_PRINT(F(" count "));
   DEBUG_PRINT((unsigned)count);
   if (sound == nullptr) {
-    DEBUG_PRINTLN(" sound null");
+    DEBUG_PRINTLN(F(" sound null"));
     return;
   }
-  DEBUG_PRINT(" audio ");
+  DEBUG_PRINT(F(" audio "));
   DEBUG_PRINT((unsigned)sound->audio_params.num_pages);
-  DEBUG_PRINT(" mixer ");
+  DEBUG_PRINT(F(" mixer "));
   DEBUG_PRINT((unsigned)sound->mixer_params.num_pages);
-  DEBUG_PRINT(" p4 ");
+  DEBUG_PRINT(F(" p4 "));
   DEBUG_PRINTLN((unsigned)sound->p4_track_index);
 #endif
 }
@@ -748,7 +748,7 @@ bool TbdUiMode::ensure_preset_cache() {
       kPresetCommandTimeoutMs);
   if (!got_list || !parse_preset_list_json(preset_list_json)) {
 #ifdef DEBUGMODE
-    DEBUG_PRINT("tbd_ui preset list failed p4=");
+    DEBUG_PRINT(F("tbd_ui preset list failed p4="));
     DEBUG_PRINTLN((unsigned)sound->p4_track_index);
 #endif
     preset_cache_failed_ = true;
@@ -1095,14 +1095,14 @@ bool TbdUiMode::handle_event(gui_event_t *event) {
       event->source >= ButtonsClass::FUNC_BUTTON6 &&
       event->source <= ButtonsClass::FUNC_BUTTON9;
   if (entry_arrow_trace) {
-    DEBUG_PRINT("    TbdUiMode::handle_event latched=");
+    DEBUG_PRINT(F("    TbdUiMode::handle_event latched="));
     DEBUG_PRINT((unsigned)latched_);
-    DEBUG_PRINT(" mask=");
+    DEBUG_PRINT(F(" mask="));
     DEBUG_PRINTLN((unsigned)event->mask);
   }
 
   if (!latched_ || !EVENT_BUTTON(event)) {
-    if (entry_arrow_trace) DEBUG_PRINTLN("    -> reject (!latched/!EVENT_BUTTON)");
+    if (entry_arrow_trace) DEBUG_PRINTLN(F("    -> reject (!latched/!EVENT_BUTTON)"));
     return false;
   }
   if (event->mask != EVENT_BUTTON_PRESSED &&
@@ -1151,13 +1151,13 @@ bool TbdUiMode::handle_event(gui_event_t *event) {
   }
 
   if (encoder_passthrough_page()) {
-    if (entry_arrow_trace) DEBUG_PRINTLN("    -> reject (encoder_passthrough_page)");
+    if (entry_arrow_trace) DEBUG_PRINTLN(F("    -> reject (encoder_passthrough_page)"));
     return false;
   }
   if (entry_arrow_trace) {
-    DEBUG_PRINT("    -> handling, count=");
+    DEBUG_PRINT(F("    -> handling, count="));
     DEBUG_PRINT((unsigned)window_count());
-    DEBUG_PRINT(" sub_page=");
+    DEBUG_PRINT(F(" sub_page="));
     DEBUG_PRINTLN((unsigned)sub_page_);
   }
 
@@ -1286,9 +1286,9 @@ bool TbdUiMode::apply_selected_preset() {
   copy_fixed_text(next.preset_id, sizeof(next.preset_id), entry->id);
 
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_ui apply preset p4=");
+  DEBUG_PRINT(F("tbd_ui apply preset p4="));
   DEBUG_PRINT((unsigned)next.p4_track_index);
-  DEBUG_PRINT(" id=");
+  DEBUG_PRINT(F(" id="));
   DEBUG_PRINTLN(next.preset_id);
 #endif
 
@@ -1312,7 +1312,7 @@ bool TbdUiMode::apply_selected_preset() {
 
   preset_apply_in_progress_ = false;
 #ifdef DEBUGMODE
-  DEBUG_PRINT("tbd_ui apply preset ok=");
+  DEBUG_PRINT(F("tbd_ui apply preset ok="));
   DEBUG_PRINTLN(loaded ? 1 : 0);
 #endif
   return loaded;

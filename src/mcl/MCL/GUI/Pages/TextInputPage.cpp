@@ -263,7 +263,7 @@ bool TextInputPage::handleEvent(gui_event_t *event) {
 #endif
     if (EVENT_RELEASED(event, Buttons.BUTTON1)) {
     NO:
-      DEBUG_PRINTLN("pop a");
+      DEBUG_PRINTLN(F("pop a"));
       return_state = false;
       GUI.ignoreNextEvent(event->source);
       mcl.popPage();

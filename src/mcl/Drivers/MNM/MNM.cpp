@@ -126,7 +126,7 @@ DeviceExtStepTrackCapability *MNMClass::ext_step_tracks() {
 
 bool MNMClass::probe() {
   connected = false;
-  DEBUG_PRINTLN("MNM probe");
+  DEBUG_PRINTLN(F("MNM probe"));
   if (255 != MNM.getCurrentKit(CALLBACK_TIMEOUT)) {
     uint8_t turbo_speed =
         (port == UARTUSB_PORT) ? mcl_cfg.usb_turbo_speed : mcl_cfg.uart2_turbo_speed;
@@ -177,7 +177,7 @@ bool MNMClass::probe() {
 
     loadGlobal(7);
     connected = true;
-    DEBUG_PRINTLN("MNM CONNECTED");
+    DEBUG_PRINTLN(F("MNM CONNECTED"));
     return MNM.connected;
   }
 
@@ -189,7 +189,7 @@ void MNMClass::requestKit(uint8_t kit) {
   if (kit > 0x7F) {
     kit -= 0x80;
     workspace = 1;
-    DEBUG_PRINTLN("sending workspace request");
+    DEBUG_PRINTLN(F("sending workspace request"));
    }
 
    uint8_t data[] = {sysex_protocol.kitrequest_id, kit, workspace};
@@ -374,7 +374,7 @@ void MNMClass::insertMachineInKit(uint8_t track, MNMMachine *machine,
 
 uint8_t MNMClass::setMachine(uint8_t track, uint8_t idx, bool send) {
   uint8_t size = assignMachine(track, kit.models[idx], false, false, send);
-  DEBUG_PRINTLN("Setting model");
+  DEBUG_PRINTLN(F("Setting model"));
   DEBUG_PRINTLN( kit.models[idx]);
   for (uint8_t i = 0; i < 56; i++) {
     size += setParam(track, i, kit.parameters[idx][i], send);

@@ -35,13 +35,13 @@ public:
   }
 
   void debug() {
-    DEBUG_PRINT("count: "); DEBUG_PRINTLN(count);
+    DEBUG_PRINT(F("count: ")); DEBUG_PRINTLN(count);
     for (uint8_t n = 0; n < NUM_PERF_PARAMS; n++) {
-    DEBUG_PRINT("PARAM "); DEBUG_PRINT(n); 
-    DEBUG_PRINT(" DEST:"); DEBUG_PRINT(params[n].dest); 
-    DEBUG_PRINT(" PARAM:"); DEBUG_PRINT(params[n].param);
-    DEBUG_PRINT(" DEST:"); DEBUG_PRINT(params[n].dest); 
-    DEBUG_PRINTLN("");
+    DEBUG_PRINT(F("PARAM ")); DEBUG_PRINT(n); 
+    DEBUG_PRINT(F(" DEST:")); DEBUG_PRINT(params[n].dest); 
+    DEBUG_PRINT(F(" PARAM:")); DEBUG_PRINT(params[n].param);
+    DEBUG_PRINT(F(" DEST:")); DEBUG_PRINT(params[n].dest); 
+    DEBUG_PRINTLN(F(""));
     }
   }
 

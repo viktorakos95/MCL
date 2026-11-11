@@ -392,7 +392,7 @@ bool MCLSd::seek(uint32_t pos, File *filep) {
     if (ret) {
       return true;
     }
-    DEBUG_PRINTLN("seek retry");
+    DEBUG_PRINTLN(F("seek retry"));
     DEBUG_PRINTLN(pos);
     delay(20);
     n++;
@@ -410,7 +410,7 @@ bool MCLSd::write_data(void *data, size_t len, File *filep) {
     if (b == len) {
       return true;
     }
-    DEBUG_PRINTLN("write retry");
+    DEBUG_PRINTLN(F("write retry"));
     delay(20);
     write_fail++;
     filep->seekSet(pos);
@@ -432,7 +432,7 @@ bool MCLSd::read_data(void *data, size_t len, File *filep) {
     if (b == len) {
       return true;
     }
-    DEBUG_PRINTLN("read retry");
+    DEBUG_PRINTLN(F("read retry"));
     delay(20);
     read_fail++;
     filep->seekSet(pos);

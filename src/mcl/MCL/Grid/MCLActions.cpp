@@ -850,7 +850,7 @@ void MCLActions::manual_transition(uint8_t *slot_select_array,
   bool recalc_latency = true;
   uint8_t headroom = 0;
   //uint8_t headroom = ceil(MidiClock.get_tempo()* 0.133333333333f * 0.200f);
-  ////DEBUG_PRINTLN("manual trans");
+  ////DEBUG_PRINTLN(F("manual trans"));
   GridSlot first_slot = 255;
 again:
   bool overflow = next_step < MidiClock.div16th_counter;
@@ -879,7 +879,7 @@ again:
           transition_level[dst] = 0;
           if (increase_loops) {
             if (next_transitions[dst] == next_transition) {
-              DEBUG_PRINTLN("increasing loops");
+              DEBUG_PRINTLN(F("increasing loops"));
               links[dst].loops++;
             }
           }
@@ -915,9 +915,9 @@ again:
         links[dst].row = row;
         links[dst].loops = 1;
         // if (grid_page.active_slots[n] < 0) {
-        DEBUG_PRINT("slot man trans ");
+        DEBUG_PRINT(F("slot man trans "));
         DEBUG_PRINT(dst);
-        DEBUG_PRINT(" ");
+        DEBUG_PRINT(F(" "));
         DEBUG_PRINTLN(next_transitions[dst]);
         // }
       }
@@ -938,7 +938,7 @@ again:
   sps_host_arr_bridge.notifyDirty(0xFF, (uint8_t)spsarr::DIRTY_ACTIVE);
 #endif
 
-  DEBUG_PRINTLN("NEXT STEP");
+  DEBUG_PRINTLN(F("NEXT STEP"));
   DEBUG_PRINTLN(next_step);
   DEBUG_PRINTLN(next_transition);
   DEBUG_PRINTLN(MidiClock.div16th_counter);
@@ -970,7 +970,7 @@ again:
       if (q == 255) {
         increase_loops = 1;
       } else {
-        // DEBUG_PRINTLN("try again");
+        // DEBUG_PRINTLN(F("try again"));
         next_step += q;
       }
       recalc_latency = false;
@@ -1003,7 +1003,7 @@ bool MCLActions::load_track_immediate(GridRow row, GridSlot i, GridSlot dst,
                                         rebuilt, scratch, dst, dst);
 
   if (ptrack == nullptr) {
-    // DEBUG_PRINTLN("bad read");
+    // DEBUG_PRINTLN(F("bad read"));
     return false;
   } // read failure
 
@@ -1090,7 +1090,7 @@ void MCLActions::send_tracks_to_devices(uint8_t *slot_select_array,
 
   GridRow row = 0;
 
-  // DEBUG_PRINTLN("send tracks 1");
+  // DEBUG_PRINTLN(F("send tracks 1"));
   // DEBUG_PRINTLN((int)SP);
   // DEBUG_CHECK_STACK();
 
@@ -1207,7 +1207,7 @@ void MCLActions::send_tracks_to_devices(uint8_t *slot_select_array,
         } else {
           strcpy_P(dst, mclstr_new_kit);
         }
-        // DEBUG_PRINTLN("SEND NAME");
+        // DEBUG_PRINTLN(F("SEND NAME"));
         // DEBUG_PRINTLN(dst);
       }
       uint16_t deviceLatency =
@@ -1321,9 +1321,9 @@ void MCLActions::cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_
     ptrack->restore_sound_from_mem_if_type(gdt->mem_slot_idx,
                                            gdt->track_type);
   } else if (ptrack->get_sound_data_ptr() && ptrack->get_sound_data_size()) {
-    DEBUG_PRINTLN("comparing sound");
+    DEBUG_PRINTLN(F("comparing sound"));
     if (ptrack->memcmp_sound(gdt->mem_slot_idx) != 0) {
-      DEBUG_PRINTLN("no match");
+      DEBUG_PRINTLN(F("no match"));
       ptrack->transition_cache(track_idx, n);
       send_machine[n] = 1;
     }
@@ -1396,7 +1396,7 @@ void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
 void MCLActions::calc_next_slot_transition(GridSlot n,
                                            bool ignore_chain_settings,
                                            bool ignore_overflow) {
- DEBUG_PRINTLN("calc_next_slot_transition");
+ DEBUG_PRINTLN(F("calc_next_slot_transition"));
    if (!ignore_chain_settings) {
     switch (chains[n].mode) {
     case LOAD_QUEUE: {
@@ -1430,7 +1430,7 @@ void MCLActions::calc_next_slot_transition(GridSlot n,
 
   GridDeviceTrack *gdt = get_grid_dev_track(n);
   if (gdt == nullptr) {
-    DEBUG_PRINTLN("exit");
+    DEBUG_PRINTLN(F("exit"));
     return;
   }
   uint16_t next_transitions_old = next_transitions[n];
@@ -1463,9 +1463,9 @@ void MCLActions::calc_next_slot_transition(GridSlot n,
     next_transitions[n] += len_steps;
   }
 
-  DEBUG_PRINT("slot ");
+  DEBUG_PRINT(F("slot "));
   DEBUG_PRINT(n);
-  DEBUG_PRINT(" ");
+  DEBUG_PRINT(F(" "));
   DEBUG_PRINTLN(next_transitions[n]);
 }
 
@@ -1608,7 +1608,7 @@ void MCLActions::calc_latency() {
           total_latency > 0xFFFFu ? 0xFFFFu : (uint16_t)total_latency;
     }
   }
-   DEBUG_PRINTLN("total latency");
+   DEBUG_PRINTLN(F("total latency"));
    DEBUG_PRINTLN(div192th_total_latency);
 }
 

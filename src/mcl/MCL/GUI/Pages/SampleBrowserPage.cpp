@@ -195,7 +195,7 @@ void SampleBrowserPage::recv_wav(int slot, bool silent) {
   temp_entry[sizeof(temp_entry) - sizeof(".wav")] = '\0';
   strcat(temp_entry, ".wav");
   if (!silent && SD.exists(temp_entry)) { gfx.alert("File exists!", temp_entry); return; }
-  DEBUG_PRINTLN("bulk recv");
+  DEBUG_PRINTLN(F("bulk recv"));
   DEBUG_PRINTLN(temp_entry);
   #if defined(__AVR__)
     MidiUartClass *uart_clock_recv = nullptr;
@@ -244,7 +244,7 @@ void SampleBrowserPage::on_select(const char *__) {
   if (!show_samplemgr) {
     pending_action = PA_SELECT;
     show_ram_slots = false;
-    DEBUG_PRINTLN("on select");
+    DEBUG_PRINTLN(F("on select"));
     init(true);
   } else {
     auto slot = encoders[1]->cur;
@@ -300,7 +300,7 @@ bool SampleBrowserPage::handleEvent(gui_event_t *event) {
 }
 
 void SampleBrowserPage::query_sample_slots() {
-  DEBUG_PRINTLN("query sample slots");
+  DEBUG_PRINTLN(F("query sample slots"));
   encoders[1]->cur = 0;
   encoders[1]->old = 0;
   old_cur_row = cur_row;
@@ -353,11 +353,11 @@ bool SampleBrowserPage::_handle_filemenu() {
       gfx.alert("NON", "UW");
       goto end;
     }
-   DEBUG_PRINTLN("Recv samples");
+   DEBUG_PRINTLN(F("Recv samples"));
     DEBUG_PRINTLN(numEntries);
     for (uint8_t n = 0; n < numEntries && !key_interface.is_key_down(MDX_KEY_NO) &&
          !BUTTON_DOWN(Buttons.BUTTON1); n++) {
-      DEBUG_PRINTLN("Recv wav");
+      DEBUG_PRINTLN(F("Recv wav"));
       char wav_name[FILE_ENTRY_SIZE];
       get_entry(n, wav_name);
       DEBUG_PRINTLN(wav_name);
@@ -384,7 +384,7 @@ bool SampleBrowserPage::_handle_filemenu() {
       if (!isdigit(wav_name[0]) || !isdigit(wav_name[1]))
         continue;
       uint8_t slot = (wav_name[0] - '0') * 10 + wav_name[1] - '0' - 1;
-      DEBUG_PRINTLN("slot pos:");
+      DEBUG_PRINTLN(F("slot pos:"));
       DEBUG_PRINTLN(slot);
       DEBUG_PRINTLN((uint8_t)wav_name[0]);
       DEBUG_PRINTLN((uint8_t)wav_name[1]);

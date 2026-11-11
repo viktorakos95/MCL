@@ -309,7 +309,7 @@ encoders[3]->handler = encoder_filtq_handle;
 }
 
 void MixerPage::init() {
-  DEBUG_PRINTLN("mixer init");
+  DEBUG_PRINTLN(F("mixer init"));
 #ifdef PLATFORM_TBD
   device_manager.exit_ui();
 #endif
@@ -802,7 +802,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
         break;
       }
       case MDX_KEY_EXTENDED: {
-        DEBUG_PRINTLN("key extended");
+        DEBUG_PRINTLN(F("key extended"));
         ext_key_down = 1;
         redraw();
         if (use_perf) {

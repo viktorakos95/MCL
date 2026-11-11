@@ -42,22 +42,22 @@ health_status health_check() {
 
 
   // --- 5. Print debug information and compare ---
-  DEBUG_PRINTLN("Health Check (Multi-Section Method):");
-  DEBUG_PRINT("  > Stored Checksum:   0x"); DEBUG_PRINTLN(stored_checksum);
-  DEBUG_PRINT("  > Calculated Sum:    0x"); DEBUG_PRINTLN(calculated_checksum);
-  DEBUG_PRINTLN("--- Section Details ---");
-  DEBUG_PRINT("  > .text section:  0x"); DEBUG_PRINT(text_start_addr);
-  DEBUG_PRINT(" - 0x"); DEBUG_PRINTLN(text_end_addr);
-  DEBUG_PRINT("  > .data section:  0x"); DEBUG_PRINT(data_start_addr);
-  DEBUG_PRINT(" - 0x"); DEBUG_PRINTLN(data_end_addr);
-  DEBUG_PRINTLN("-----------------------");
+  DEBUG_PRINTLN(F("Health Check (Multi-Section Method):"));
+  DEBUG_PRINT(F("  > Stored Checksum:   0x")); DEBUG_PRINTLN(stored_checksum);
+  DEBUG_PRINT(F("  > Calculated Sum:    0x")); DEBUG_PRINTLN(calculated_checksum);
+  DEBUG_PRINTLN(F("--- Section Details ---"));
+  DEBUG_PRINT(F("  > .text section:  0x")); DEBUG_PRINT(text_start_addr);
+  DEBUG_PRINT(F(" - 0x")); DEBUG_PRINTLN(text_end_addr);
+  DEBUG_PRINT(F("  > .data section:  0x")); DEBUG_PRINT(data_start_addr);
+  DEBUG_PRINT(F(" - 0x")); DEBUG_PRINTLN(data_end_addr);
+  DEBUG_PRINTLN(F("-----------------------"));
 
 
   if (calculated_checksum != stored_checksum) {
-    DEBUG_PRINTLN("  > ERROR: CHECKSUM MISMATCH!");
+    DEBUG_PRINTLN(F("  > ERROR: CHECKSUM MISMATCH!"));
     return BAD_CHECKSUM;
   } else {
-    DEBUG_PRINTLN("  > SUCCESS: Checksum OK.");
+    DEBUG_PRINTLN(F("  > SUCCESS: Checksum OK."));
     return HEALTH_OK;
   }
   */

@@ -1259,7 +1259,7 @@ bool ExtSeqTrack::set_track_step(uint8_t step, uint8_t utiming,
   e.micro_timing = ext_page_timing_to_microtiming(utiming,
                                                   get_ticks_per_step());
 
-  DEBUG_PRINTLN("adding step");
+  DEBUG_PRINTLN(F("adding step"));
   DEBUG_DUMP(event_on);
   DEBUG_DUMP(step);
   DEBUG_DUMP(utiming);

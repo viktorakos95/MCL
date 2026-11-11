@@ -700,7 +700,7 @@ void SeqPage::check_and_set_page_select() {
   }
   ElektronDevice *elektron_dev = midi_device->asElektronDevice();
   if (!active_device_is_md()) {
-    DEBUG_PRINTLN("bad device");
+    DEBUG_PRINTLN(F("bad device"));
   }
   if (elektron_dev != nullptr) {
     elektron_dev->set_seq_page(page_select);
@@ -741,7 +741,7 @@ void SeqPage::init() {
   seqpage_midi_events.setup_callbacks();
 
   toggle_device = true;
-  DEBUG_PRINTLN("seq page init");
+  DEBUG_PRINTLN(F("seq page init"));
 
   constexpr uint32_t base_seq_menu_entries =
       menu_entry_mask(SEQ_MENU_TRACK) | menu_entry_mask(SEQ_MENU_SPEED) |
@@ -882,7 +882,7 @@ void SeqPage::select_track(MidiDevice *device, uint8_t track, bool send) {
   }
 #endif
   if (is_md_device) {
-    DEBUG_PRINTLN("setting md track");
+    DEBUG_PRINTLN(F("setting md track"));
     opt_undo = 255;
     DEBUG_PRINTLN(track);
     if (track >= NUM_MD_TRACKS) {
@@ -903,7 +903,7 @@ void SeqPage::select_track(MidiDevice *device, uint8_t track, bool send) {
   }
 #ifdef EXT_TRACKS
   else {
-    DEBUG_PRINTLN("setting ext track");
+    DEBUG_PRINTLN(F("setting ext track"));
     last_ext_track = min(track, SeqTrackUtil::track_count(false) - 1);
     auto &active_track = SeqTrackUtil::get_seq_track(false, last_ext_track);
     seq_page_active_step_track().sync_step_edit(
@@ -1572,10 +1572,10 @@ void opt_copy_track_handler(uint8_t op) {
     const uint8_t copy_slot = use_step_tracks ? 4 : 0;
     SET_BIT(copy_mask, copy_slot + opt_copy);
   }
-  DEBUG_PRINTLN("copying");
+  DEBUG_PRINTLN(F("copying"));
   DEBUG_PRINTLN(opt_copy);
   DEBUG_PRINTLN(op);
-  DEBUG_PRINTLN("/end");
+  DEBUG_PRINTLN(F("/end"));
   if (opt_copy == 2) {
 
     if (use_step_tracks) {

@@ -128,7 +128,7 @@ static void set_menu_layout(MenuBase *menu, const void *layout,
 #endif
 
 void ResourceManager::Clear() {
-    DEBUG_PRINTLN("resource clear");
+    DEBUG_PRINTLN(F("resource clear"));
 	m_bufsize = m_persistent_size;
 #if !defined(__AVR__)
 	machine_param_names = m_persistent_machine_param_names;
@@ -154,7 +154,7 @@ byte* ResourceManager::__use_resource(const void* pgm) {
     byte* pos = m_buffer + m_bufsize;
 	uint16_t sz = unpack((byte*)pgm, pos);
 	m_bufsize += sz;
-    DEBUG_PRINTLN("resource buf size");
+    DEBUG_PRINTLN(F("resource buf size"));
     DEBUG_PRINTLN(m_bufsize);
     return pos;
 }
@@ -162,7 +162,7 @@ byte* ResourceManager::__use_resource(const void* pgm) {
 byte* ResourceManager::Allocate(size_t sz) {
   byte* pos = m_buffer + m_bufsize;
   m_bufsize += sz;
-  DEBUG_PRINTLN("allocate");
+  DEBUG_PRINTLN(F("allocate"));
   DEBUG_PRINTLN(m_bufsize);
   return pos;
 }
@@ -175,7 +175,7 @@ void ResourceManager::Free(size_t sz) {
 // consider writing to SD card
 // SWAP partition!!
 void ResourceManager::Save(uint8_t *buf, size_t *sz) {
-    DEBUG_PRINTLN("resource SAVE");
+    DEBUG_PRINTLN(F("resource SAVE"));
 	memcpy(buf, m_buffer, m_bufsize);
 	*sz = m_bufsize;
 }

@@ -262,7 +262,7 @@ void close_slot_menu_from_mouse(GridPage &page) {
 } // namespace
 
 void GridPage::init() {
-  DEBUG_PRINTLN("Grid page init");
+  DEBUG_PRINTLN(F("Grid page init"));
   if (mcl_cfg.grid_page_mode == PERF_ENC) {
     encoders[0] = &perf_param1;
     encoders[1] = &perf_param2;
@@ -358,7 +358,7 @@ void GridPage::close_bank_popup() {
   }
   key_interface.off();
   if (last_page != 255) {
-    DEBUG_PRINTLN("setting page");
+    DEBUG_PRINTLN(F("setting page"));
     mcl.setPage(last_page);
   }
   last_page = NULL_PAGE;
@@ -547,7 +547,7 @@ void GridPage::row_state_scan() {
 }
 
 void GridPage::update_row_state(GridRow row, bool state) {
-  // DEBUG_PRINTLN("updating row state");
+  // DEBUG_PRINTLN(F("updating row state"));
   // DEBUG_PRINTLN(row);
   if (state) {
     SET_BIT128_P(row_states, row);
@@ -563,7 +563,7 @@ GridColumn GridPage::getCol() { return param1.cur; }
 GridSpan GridPage::getWidth() { return GRID_WIDTH; }
 
 void GridPage::load_slot_models() {
-  DEBUG_PRINTLN("load slot models");
+  DEBUG_PRINTLN(F("load slot models"));
   GridSpan row_shift = 0;
   if ((cur_row + param4.cur > MAX_VISIBLE_ROWS - 1)) {
     row_shift = cur_row + param4.cur - MAX_VISIBLE_ROWS;
@@ -836,7 +836,7 @@ void GridPage::display() {
 
   #ifdef FPS
   if (clock_diff(frameclock, read_clock_ms()) >= 1000) {
-  DEBUG_PRINT("FPS: "); DEBUG_PRINTLN(frames);
+  DEBUG_PRINT(F("FPS: ")); DEBUG_PRINTLN(frames);
   frames = 0;
   frameclock = read_clock_ms();
   }
@@ -941,14 +941,14 @@ COLD_SMALL() void GridPage::apply_slot_changes(bool ignore_undo, bool ignore_fun
   uint8_t undo = (slot_clear || slot_paste) && slot_undo && !ignore_undo &&
                  slot_undo_x == _col && slot_undo_y == getRow();
   GridTrack temp_slot;
-  DEBUG_PRINTLN("apply slot");
+  DEBUG_PRINTLN(F("apply slot"));
 
 
   if (!ignore_func) {
     void (*row_func)() =
         grid_slot_page.menu.get_row_function(grid_slot_page.encoders[1]->cur);
     if (row_func != NULL) {
-      DEBUG_PRINTLN("calling menu func");
+      DEBUG_PRINTLN(F("calling menu func"));
       (*row_func)();
       return;
     }
@@ -978,7 +978,7 @@ COLD_SMALL() void GridPage::apply_slot_changes(bool ignore_undo, bool ignore_fun
   if (!(slot_copy || slot_paste || slot_clear || slot_load || undo)) {
     if (slot_dirty_mask) {
       slot_update = 1;
-      DEBUG_PRINTLN("Slot update");
+      DEBUG_PRINTLN(F("Slot update"));
     }
   }
   if (undo == 1) {
@@ -1067,7 +1067,7 @@ COLD_SMALL() void GridPage::apply_slot_changes(bool ignore_undo, bool ignore_fun
         }
       }
       if (slot_load == 1) {
-        DEBUG_PRINTLN("slot load put");
+        DEBUG_PRINTLN(F("slot load put"));
         grid_task.load_queue.put(mcl_cfg.load_mode,ypos, track_select_array);
       }
       // If all slots are deleted then clear the row name
@@ -1487,7 +1487,7 @@ bool GridPage::handleEvent(gui_event_t *event) {
           slot_undo = old_undo;
         }
 
-        DEBUG_PRINTLN("here");
+        DEBUG_PRINTLN(F("here"));
         init();
       }
       return true;

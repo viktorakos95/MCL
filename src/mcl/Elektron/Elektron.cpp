@@ -66,35 +66,35 @@ const char *blocking_data_type_name(DataType type) {
 }
 
 void trace_blocking_data(const char *stage, DataType type, uint8_t index) {
-  DEBUG_PRINT("[mcl-blocking] ");
+  DEBUG_PRINT(F("[mcl-blocking] "));
   DEBUG_PRINT(stage);
-  DEBUG_PRINT(" type=");
+  DEBUG_PRINT(F(" type="));
   DEBUG_PRINT(blocking_data_type_name(type));
-  DEBUG_PRINT(" index=");
+  DEBUG_PRINT(F(" index="));
   DEBUG_PRINTLN((unsigned)index);
 }
 
 void trace_blocking_listener(const char *stage,
                              ElektronSysexListenerClass *listener) {
-  DEBUG_PRINT("[mcl-blocking] ");
+  DEBUG_PRINT(F("[mcl-blocking] "));
   DEBUG_PRINT(stage);
   if (!listener) {
-    DEBUG_PRINTLN(" listener=null");
+    DEBUG_PRINTLN(F(" listener=null"));
     return;
   }
 
-  DEBUG_PRINT(" msgType=");
+  DEBUG_PRINT(F(" msgType="));
   DEBUG_PRINT((unsigned)listener->msgType);
-  DEBUG_PRINT(" msg_rd=");
+  DEBUG_PRINT(F(" msg_rd="));
   DEBUG_PRINT((unsigned)listener->msg_rd);
   if (listener->sysex && listener->msg_rd < NUM_SYSEX_MSGS) {
     const uint8_t msg_rd = listener->msg_rd;
-    DEBUG_PRINT(" state=");
+    DEBUG_PRINT(F(" state="));
     DEBUG_PRINT((unsigned)listener->sysex->ledger[msg_rd].state);
-    DEBUG_PRINT(" len=");
+    DEBUG_PRINT(F(" len="));
     DEBUG_PRINT((unsigned)listener->sysex->ledger[msg_rd].recordLen);
   }
-  DEBUG_PRINTLN("");
+  DEBUG_PRINTLN(F(""));
 }
 #else
 void trace_blocking_data(const char *, DataType, uint8_t) {}

@@ -117,7 +117,7 @@ static void print_category_name_by_idx(uint8_t catidx) {
 }
 
 void PageSelectPage::init() {
-  DEBUG_PRINTLN("page select init");
+  DEBUG_PRINTLN(F("page select init"));
   key_interface.on();
   uint8_t _midi_lock_tmp = MidiUartParent::handle_midi_lock;
   MidiUartParent::handle_midi_lock = 0;

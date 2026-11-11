@@ -1460,7 +1460,7 @@ void MDClass::get_mutes() {
       mcl_seq.set_fill_mask(DeviceIdx::Primary, fill_state);
     }
   } else {
-    DEBUG_PRINTLN("mute state failed");
+    DEBUG_PRINTLN(F("mute state failed"));
   }
 }
 
@@ -1474,7 +1474,7 @@ bool MDClass::probe() {
   if (ti) {
     key_interface.off();
   }
-  DEBUG_PRINTLN("md probe");
+  DEBUG_PRINTLN(F("md probe"));
   connected = false;
 
   // Begin main probe sequence — derive port from uart pointer
@@ -1483,7 +1483,7 @@ bool MDClass::probe() {
     uint8_t count = 3;
 
     while ((!get_fw_caps() || !md_has_required_fw_caps(*this)) && count) {
-      DEBUG_PRINTLN("bad caps");
+      DEBUG_PRINTLN(F("bad caps"));
       mcl_gui.delay_progress(250);
       count--;
     }
@@ -2038,7 +2038,7 @@ void MDClass::setMachine(uint8_t track, SPSMachine *machine) {
 uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
                                    uint8_t level, uint8_t mode, bool send) {
 
-  DEBUG_PRINT("assign machine bulk: ");
+  DEBUG_PRINT(F("assign machine bulk: "));
   DEBUG_PRINTLN(track);
   // An X.20 peer takes 38 parameters, both LFOs and a trailing route.
   const bool wide = x20();
@@ -2081,7 +2081,7 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
   data[i++] = machine->trigGroup;
   data[i++] = machine->muteGroup;
   if (level != 255) {
-    DEBUG_PRINT("level ");
+    DEBUG_PRINT(F("level "));
     DEBUG_PRINTLN(level);
     data[i++] = level;
   }
@@ -2090,14 +2090,14 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
     data[5] |= 4u;
     data[i++] = machine->outputRouting;
   }
-  DEBUG_PRINT("i : ");
+  DEBUG_PRINT(F("i : "));
   DEBUG_PRINTLN(i);
 end:
   // Calculate and insert length (total data length minus the command bytes and length byte itself)
   uint8_t payload_length = i - 1;
   data[length_index] = payload_length;
 
-  DEBUG_PRINT("payload length: ");
+  DEBUG_PRINT(F("payload length: "));
   DEBUG_PRINTLN(payload_length);
 
   return sendRequest(data, i, send);
@@ -2166,7 +2166,7 @@ end:
 #endif
 
 void MDClass::loadMachinesCache(uint32_t track_mask, MidiUartClass *uart_) {
-  DEBUG_PRINTLN("load machine cache");
+  DEBUG_PRINTLN(F("load machine cache"));
   uint8_t a = track_mask & 0x7F;
   uint8_t b = (track_mask >> 7) & 0x7F;
   uint8_t c = (track_mask >> 14) & 0x7F;
@@ -2210,7 +2210,7 @@ void MDClass::setOrigParams(uint8_t track, SPSMachine *machine) {
 void MDClass::insertMachineInKit(uint8_t track, MDMachine *machine,
                                  bool set_level) {
 
-  DEBUG_PRINT("insert machine in kit ");
+  DEBUG_PRINT(F("insert machine in kit "));
   DEBUG_PRINTLN(track);
 
   MDKit *kit_ = &kit;
@@ -2301,7 +2301,7 @@ uint8_t MDClass::sendMachine(uint8_t track, MDMachine *machine, bool send_level,
   }
 
   if ((send_level) && (kit_->levels[track_] != machine->level)) {
-    DEBUG_PRINTLN("level changing");
+    DEBUG_PRINTLN(F("level changing"));
     DEBUG_PRINTLN(machine->level);
     level = machine->level;
   }

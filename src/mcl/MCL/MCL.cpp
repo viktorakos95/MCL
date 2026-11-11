@@ -664,7 +664,7 @@ void sdcard_bench() {
     }
 #ifdef DEBUGMODE
     uint16_t diff = clock_diff(cl, read_clock_ms());
-    DEBUG_PRINT("Clock :");
+    DEBUG_PRINT(F("Clock :"));
     DEBUG_PRINTLN(diff);
 #endif
   }

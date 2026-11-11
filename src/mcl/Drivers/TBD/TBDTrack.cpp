@@ -261,41 +261,41 @@ void debug_p4_sound_apply(const char *source, uint8_t mcl_track,
                           GridSlot slotnumber,
                           const TbdP4SoundData &sound) {
 #ifdef DEBUGMODE
-  DEBUG_PRINT("TBD_P4_APPLY src=");
+  DEBUG_PRINT(F("TBD_P4_APPLY src="));
   DEBUG_PRINT(source == nullptr ? "?" : source);
-  DEBUG_PRINT(" mcl=");
+  DEBUG_PRINT(F(" mcl="));
   DEBUG_PRINT((unsigned)mcl_track);
-  DEBUG_PRINT(" slot=");
+  DEBUG_PRINT(F(" slot="));
   if (slotnumber == 255) {
-    DEBUG_PRINT("-");
+    DEBUG_PRINT(F("-"));
   } else {
     DEBUG_PRINT((unsigned)slotnumber);
   }
-  DEBUG_PRINT(" p4=");
+  DEBUG_PRINT(F(" p4="));
   DEBUG_PRINT((unsigned)sound.p4_track_index);
-  DEBUG_PRINT(" ch=");
+  DEBUG_PRINT(F(" ch="));
   DEBUG_PRINT((unsigned)sound.midi_channel);
-  DEBUG_PRINT(" preset=");
+  DEBUG_PRINT(F(" preset="));
   DEBUG_PRINT(sound.preset_id[0] ? sound.preset_id : "-");
-  DEBUG_PRINT(" macro=");
+  DEBUG_PRINT(F(" macro="));
   DEBUG_PRINT(sound.macro_id[0] ? sound.macro_id : "-");
-  DEBUG_PRINT(" machine=");
+  DEBUG_PRINT(F(" machine="));
   DEBUG_PRINT(sound.machine_id[0] ? sound.machine_id : "-");
-  DEBUG_PRINT(" rom=");
+  DEBUG_PRINT(F(" rom="));
   DEBUG_PRINT((unsigned)sound.rom_bank);
-  DEBUG_PRINT(" slice=");
+  DEBUG_PRINT(F(" slice="));
   DEBUG_PRINT((long)sound.sample_slice);
-  DEBUG_PRINT(" cmd=");
+  DEBUG_PRINT(F(" cmd="));
   if (sound.has_preset()) {
-    DEBUG_PRINT("preset");
+    DEBUG_PRINT(F("preset"));
   } else if (sound.has_machine()) {
-    DEBUG_PRINT("machine");
+    DEBUG_PRINT(F("machine"));
   } else if (sound.has_macro()) {
-    DEBUG_PRINT("macro");
+    DEBUG_PRINT(F("macro"));
   } else {
-    DEBUG_PRINT("state");
+    DEBUG_PRINT(F("state"));
   }
-  DEBUG_PRINT(" params=");
+  DEBUG_PRINT(F(" params="));
   DEBUG_PRINTLN((unsigned)sound.has_sendable_params());
 #else
   (void)source;
@@ -308,13 +308,13 @@ void debug_p4_sound_apply(const char *source, uint8_t mcl_track,
 void debug_p4_sound_apply_result(const char *source, uint8_t mcl_track,
                                  uint8_t p4_track_index, bool applied) {
 #ifdef DEBUGMODE
-  DEBUG_PRINT("TBD_P4_APPLY_RESULT src=");
+  DEBUG_PRINT(F("TBD_P4_APPLY_RESULT src="));
   DEBUG_PRINT(source == nullptr ? "?" : source);
-  DEBUG_PRINT(" mcl=");
+  DEBUG_PRINT(F(" mcl="));
   DEBUG_PRINT((unsigned)mcl_track);
-  DEBUG_PRINT(" p4=");
+  DEBUG_PRINT(F(" p4="));
   DEBUG_PRINT((unsigned)p4_track_index);
-  DEBUG_PRINT(" ok=");
+  DEBUG_PRINT(F(" ok="));
   DEBUG_PRINTLN(applied ? 1 : 0);
 #else
   (void)source;
@@ -328,13 +328,13 @@ void debug_p4_sound_apply_skip(const char *source, uint8_t mcl_track,
                                uint8_t p4_track_index,
                                const char *reason) {
 #ifdef DEBUGMODE
-  DEBUG_PRINT("TBD_P4_APPLY_SKIP src=");
+  DEBUG_PRINT(F("TBD_P4_APPLY_SKIP src="));
   DEBUG_PRINT(source == nullptr ? "?" : source);
-  DEBUG_PRINT(" mcl=");
+  DEBUG_PRINT(F(" mcl="));
   DEBUG_PRINT((unsigned)mcl_track);
-  DEBUG_PRINT(" p4=");
+  DEBUG_PRINT(F(" p4="));
   DEBUG_PRINT((unsigned)p4_track_index);
-  DEBUG_PRINT(" reason=");
+  DEBUG_PRINT(F(" reason="));
   DEBUG_PRINTLN(reason == nullptr ? "?" : reason);
 #else
   (void)source;

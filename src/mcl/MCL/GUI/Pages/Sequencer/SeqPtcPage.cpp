@@ -931,7 +931,7 @@ void SeqPtcMidiEvents::onNoteOffCallback_Midi2(uint8_t *msg) {
 void SeqPtcMidiEvents::note_on(uint8_t *msg, uint8_t channel_event) {
   uint8_t note_num = msg[1];
   uint8_t channel = MIDI_VOICE_CHANNEL(msg[0]);
-  DEBUG_PRINTLN("note on");
+  DEBUG_PRINTLN(F("note on"));
   DEBUG_DUMP(channel);
 
   // pitch - MIDI_NOTE_C4

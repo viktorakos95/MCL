@@ -994,7 +994,7 @@ again:
     }
     if (proj.load_project(project_path)) {
       grid_page.reload_slot_models = false;
-      DEBUG_PRINTLN("project loaded, setting page to grid");
+      DEBUG_PRINTLN(F("project loaded, setting page to grid"));
       mcl.setPage(GRID_PAGE);
       return true;
     } else {
@@ -1024,7 +1024,7 @@ bool Project::split_project_path(const char *projectname,
                                  const char **basename) const {
   size_t path_len = strlen(projectname);
   if (path_len == 0 || path_len >= PRJ_PATH_LEN) {
-    DEBUG_PRINTLN("bad path len");
+    DEBUG_PRINTLN(F("bad path len"));
     return false;
   }
 
@@ -1033,7 +1033,7 @@ bool Project::split_project_path(const char *projectname,
                                                  : project_basename + 1;
   size_t name_len = strlen(project_basename);
   if (name_len == 0 || name_len > PRJ_NAME_LEN) {
-    DEBUG_PRINTLN("bad name len");
+    DEBUG_PRINTLN(F("bad name len"));
     return false;
   }
   if (basename != nullptr) {
@@ -1174,7 +1174,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   char proj_filename[PRJ_NAME_LEN  + 5];
   if (!project_file_name(project_basename, proj_filename,
                          sizeof(proj_filename))) {
-    DEBUG_PRINTLN("bad project filename");
+    DEBUG_PRINTLN(F("bad project filename"));
     return false;
   }
 
@@ -1182,7 +1182,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   chdir_projects();
 
   if (!SD.chdir(projectname)) {
-    DEBUG_PRINTLN("could not enter project dir");
+    DEBUG_PRINTLN(F("could not enter project dir"));
     return false;
   }
 

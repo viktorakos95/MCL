@@ -104,11 +104,7 @@
 #define UART_MIDI 0
 #define UART_SERIAL 1
 
-#ifdef DEBUGMODE
-class MidiUartClass : public MidiUartParent, public Stream {
-#else
 class MidiUartClass : public MidiUartParent {
-#endif
 
 private:
 #ifdef RUNNING_STATUS_OUT
@@ -348,14 +344,6 @@ public:
     set_tx();
   }
 
-
-#ifdef DEBUGMODE
-  // Stream pure functions
-  int available() { return 0; }
-  int read() { return 0; }
-  int peek() { return 0; }
-  void flush() { return; }
-#endif
 
 };
 ;

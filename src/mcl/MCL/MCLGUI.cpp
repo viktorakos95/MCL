@@ -139,7 +139,7 @@ void MCLGUI::wait_for_project() {
     mcl.loop();
   }
   if (!proj.project_loaded) { goto again; }
-  DEBUG_PRINTLN("finished");
+  DEBUG_PRINTLN(F("finished"));
 }
 
 void MCLGUI::draw_cross(uint8_t x, uint8_t y, uint8_t color) {

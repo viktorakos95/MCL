@@ -464,16 +464,16 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
       orig_src == ButtonsClass::FUNC_BUTTON2 ||
       orig_src == ButtonsClass::FUNC_BUTTON3;
   if (arrow_trace) {
-    DEBUG_PRINT("arrow ");
+    DEBUG_PRINT(F("arrow "));
     DEBUG_PRINT((unsigned)orig_src);
     DEBUG_PRINT(is_press ? " P" : (is_release ? " R" : " ?"));
-    DEBUG_PRINT(" pg=");
+    DEBUG_PRINT(F(" pg="));
     DEBUG_PRINT((unsigned)pg);
-    DEBUG_PRINT(" tbd_ui=");
+    DEBUG_PRINT(F(" tbd_ui="));
     DEBUG_PRINT((unsigned)TBD.is_ui_active());
-    DEBUG_PRINT(" dm_ui=");
+    DEBUG_PRINT(F(" dm_ui="));
     DEBUG_PRINT((unsigned)ui_active);
-    DEBUG_PRINT(" collapsed=");
+    DEBUG_PRINT(F(" collapsed="));
     DEBUG_PRINTLN((unsigned)ui_collapsed);
   }
 
@@ -751,7 +751,7 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
   }
 
   if (tbd_tempo_page.is_active() && tbd_tempo_page.handleEvent(event)) {
-    if (arrow_trace) DEBUG_PRINTLN("  arrow eaten by tempo_page");
+    if (arrow_trace) DEBUG_PRINTLN(F("  arrow eaten by tempo_page"));
     return true;
   }
 
@@ -847,17 +847,17 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
       (!TBD.is_ui_collapsed() ||
        (orig_src >= ButtonsClass::FUNC_BUTTON6 &&
         orig_src <= ButtonsClass::FUNC_BUTTON9))) {
-    if (arrow_trace) DEBUG_PRINTLN("  -> TBD.handle_ui_event");
+    if (arrow_trace) DEBUG_PRINTLN(F("  -> TBD.handle_ui_event"));
     if (TBD.handle_ui_event(event)) {
-      if (arrow_trace) DEBUG_PRINTLN("  TBD.handle_ui_event consumed");
+      if (arrow_trace) DEBUG_PRINTLN(F("  TBD.handle_ui_event consumed"));
       return true;
     }
-    if (arrow_trace) DEBUG_PRINTLN("  TBD.handle_ui_event did NOT consume");
+    if (arrow_trace) DEBUG_PRINTLN(F("  TBD.handle_ui_event did NOT consume"));
   }
 
   if (!is_local_nav_page && ui_expanded &&
       device_manager.handle_ui_event(event)) {
-    if (arrow_trace) DEBUG_PRINTLN("  device_manager.handle_ui_event consumed");
+    if (arrow_trace) DEBUG_PRINTLN(F("  device_manager.handle_ui_event consumed"));
     return true;
   }
 
@@ -1052,13 +1052,13 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
 
   if (key != 255) {
     if (arrow_trace) {
-      DEBUG_PRINT("  arrow fell through to MDX_KEY ");
+      DEBUG_PRINT(F("  arrow fell through to MDX_KEY "));
       DEBUG_PRINTLN((unsigned)key);
     }
     key_interface.key_event(key, is_release);
     return true;
   }
-  if (arrow_trace) DEBUG_PRINTLN("  arrow returned false (unhandled)");
+  if (arrow_trace) DEBUG_PRINTLN(F("  arrow returned false (unhandled)"));
   return false;
 }
 

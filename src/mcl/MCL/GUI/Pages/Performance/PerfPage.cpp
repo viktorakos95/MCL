@@ -639,7 +639,7 @@ bool PerfPage::handleEvent(gui_event_t *event) {
         void (*row_func)() = perf_menu_page.menu.get_row_function(
             perf_menu_page.encoders[1]->cur);
         if (row_func != NULL) {
-          DEBUG_PRINTLN("calling menu func");
+          DEBUG_PRINTLN(F("calling menu func"));
           (*row_func)();
         }
         init();

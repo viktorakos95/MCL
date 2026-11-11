@@ -10,7 +10,7 @@
 
 void LoadProjectPage::init() {
 
-  DEBUG_PRINTLN("load project page init");
+  DEBUG_PRINTLN(F("load project page init"));
   DEBUG_PRINT_FN();
   DevicePanelRef::set_primary_key_repeat(1);
   FileBrowserPage::init();
@@ -74,7 +74,7 @@ void LoadProjectPage::on_select(const char *entry) {
   uint8_t count = 2;
   while (count--) {
     if (proj.load_project(proj_filename)) {
-      DEBUG_PRINTLN("loaded, setting grid");
+      DEBUG_PRINTLN(F("loaded, setting grid"));
       mcl.setPage(GRID_PAGE);
       return;
     } else {
@@ -111,7 +111,7 @@ void LoadProjectPage::on_rename(const char *from, const char *to) {
   char from[f_len] = {0};
   strncpy(from,from_,f_len);
 */
-  DEBUG_PRINTLN("on rename");
+  DEBUG_PRINTLN(F("on rename"));
   bool project_dir = is_project_dir(from);
   char from_project_path[PRJ_PATH_LEN];
   if (!build_project_path(from, from_project_path, sizeof(from_project_path))) {
@@ -141,7 +141,7 @@ void LoadProjectPage::on_rename(const char *from, const char *to) {
   }
 
   if (strcmp(mcl_cfg.project, from_project_path) == 0) {
-    DEBUG_PRINTLN("reload current");
+    DEBUG_PRINTLN(F("reload current"));
     reload_current = true;
   }
 
@@ -158,7 +158,7 @@ void LoadProjectPage::on_rename(const char *from, const char *to) {
   }
 error:
   SD.chdir(lwd);
-  DEBUG_PRINTLN("error");
+  DEBUG_PRINTLN(F("error"));
   gfx.alert_error("Not renamed.");
 }
 

@@ -170,7 +170,7 @@ void FileBrowserPage::query_filesystem() {
   file_menu_encoder.cur = file_menu_encoder.old = 0;
   file_menu_encoder.max = file_menu_page.menu.get_number_of_items() - 1;
 
-  DEBUG_PRINTLN("query");
+  DEBUG_PRINTLN(F("query"));
   DEBUG_PRINTLN(lwd);
   DEBUG_PRINTLN(file_menu_encoder.max);
 
@@ -382,7 +382,7 @@ void FileBrowserPage::_calcindices(int &saveidx) {
 
 void FileBrowserPage::_cd_up() {
   file.close();
-  DEBUG_PRINTLN("cd_up");
+  DEBUG_PRINTLN(F("cd_up"));
   // don't cd up if we are at the root
 #ifndef __AVR__
   if (mcl_sd.mcl_root[0] == '\0') {
@@ -431,7 +431,7 @@ void FileBrowserPage::_cd_up() {
   }
   DEBUG_PRINTLN(lwd);
   if (!SD.chdir(lwd)) {
-    DEBUG_PRINTLN("bad directory change");
+    DEBUG_PRINTLN(F("bad directory change"));
   }
   init();
   uint16_t pos = 0;
@@ -443,7 +443,7 @@ void FileBrowserPage::_cd_up() {
 }
 
 bool FileBrowserPage::_cd(const char *child) {
-  DEBUG_PRINTLN("_cd");
+  DEBUG_PRINTLN(F("_cd"));
   DEBUG_PRINTLN(child);
 
   DEBUG_PRINTLN(lwd);
@@ -478,7 +478,7 @@ bool FileBrowserPage::_cd(const char *child) {
   }
 
   if (!SD.chdir(ptr)) {
-    DEBUG_PRINTLN("cd failed");
+    DEBUG_PRINTLN(F("cd failed"));
     init();
     return false;
   }

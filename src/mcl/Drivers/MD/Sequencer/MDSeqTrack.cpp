@@ -297,7 +297,7 @@ void MDSeqTrack::re_sync() {
 
 void MDSeqTrack::load_cache() {
   /*  MDTrackChunk t;
-    DEBUG_PRINTLN("lc");
+    DEBUG_PRINTLN(F("lc"));
     for (uint8_t n = 0; n < t.get_chunk_count(); n++) {
       t.load_from_mem_chunk(track_number, n);
       t.load_chunk(data(), n);

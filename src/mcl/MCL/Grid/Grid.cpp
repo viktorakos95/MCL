@@ -187,7 +187,7 @@ bool Grid::clear_slot(GridColumn column, GridRow row, bool update_header) {
     DEBUG_DUMP(column);
     return false;
   }
-  // DEBUG_PRINTLN("Writing");
+  // DEBUG_PRINTLN(F("Writing"));
   // DEBUG_DUMP(sizeof(temptrack.active));
   ret = mcl_sd.write_data(temp_track._this(), temp_track._sizeof(), &file);
   if (!ret) {

@@ -171,7 +171,7 @@ bool Wav::read_header() {
         return false;
       }
       memcpy(&header.fmt, header_buf, sizeof(header.fmt));
-      DEBUG_PRINTLN("parse fmt");
+      DEBUG_PRINTLN(F("parse fmt"));
       DEBUG_DUMP(header.fmt.audioFormat);
       DEBUG_DUMP(header.fmt.sampleRate);
       DEBUG_DUMP(header.fmt.bitRate);
@@ -179,12 +179,12 @@ bool Wav::read_header() {
     } else if (chunk.is<datachunk_t>()) {
       memcpy(&header.data, header_buf, sizeof(header.data));
       data_offset = chunk_offset + sizeof(datachunk_t);
-      DEBUG_PRINTLN("parse data");
+      DEBUG_PRINTLN(F("parse data"));
       DEBUG_DUMP(data_offset);
     } else if (chunk.is<smplchunk_t>()) {
       if (chunk.chunk_size >= sizeof(smplchunk_t) - sizeof(chunk_t)) {
         memcpy(&header.smpl, header_buf, sizeof(header.smpl));
-        DEBUG_PRINTLN("parse smpl");
+        DEBUG_PRINTLN(F("parse smpl"));
       }
     }
     chunk_offset += padded_len;
@@ -485,7 +485,7 @@ void Wav::find_peaks(uint32_t num_samples, uint32_t sample_index,
     }
     // Read read_size samples.
     if (!read_samples(buffer, read_size, n, header.fmt.numChannels)) {
-      DEBUG_PRINTLN("could not read");
+      DEBUG_PRINTLN(F("could not read"));
       return;
     }
     // Itterate through samples in buffer
@@ -600,7 +600,7 @@ bool Wav::normalize16_mono(uint16_t target_peak, uint16_t current_peak,
     uint32_t position = data_offset + n * sizeof(int16_t);
     uint16_t bytes = current_run * sizeof(int16_t);
     if (!read_data(buffer, bytes, position)) {
-      DEBUG_PRINTLN("could not read");
+      DEBUG_PRINTLN(F("could not read"));
       return false;
     }
 
@@ -618,7 +618,7 @@ bool Wav::normalize16_mono(uint16_t target_peak, uint16_t current_peak,
     }
 
     if (!write_data(buffer, bytes, position)) {
-      DEBUG_PRINTLN("could not write");
+      DEBUG_PRINTLN(F("could not write"));
       return false;
     }
   }
@@ -674,7 +674,7 @@ bool Wav::apply_gain(float gain, uint8_t channel, uint32_t num_samples,
     // Read read_size samples.
 
     if (!read_samples(buffer, read_size, n, header.fmt.numChannels)) {
-      DEBUG_PRINTLN("could not read");
+      DEBUG_PRINTLN(F("could not read"));
       return false;
     }
     // Itterate through samples in buffer
@@ -732,7 +732,7 @@ bool Wav::apply_gain(float gain, uint8_t channel, uint32_t num_samples,
     // Write back the adjusted samples
     if (!write_samples(buffer, read_size, n, header.fmt.numChannels,
                        write_header)) {
-      DEBUG_PRINTLN("could not write");
+      DEBUG_PRINTLN(F("could not write"));
       return false;
     }
     // loop

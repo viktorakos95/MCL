@@ -52,9 +52,9 @@ class FileBrowserFileTypes {
 
   bool compare(const char *str) {
     for (uint8_t n = 0; n < count; n++) {
-      DEBUG_PRINT("Comparing "); DEBUG_PRINT(str); DEBUG_PRINT(" "); DEBUG_PRINTLN(types[n]);
+      DEBUG_PRINT(F("Comparing ")); DEBUG_PRINT(str); DEBUG_PRINT(F(" ")); DEBUG_PRINTLN(types[n]);
       if (strcmp(str, types[n]) == 0) {
-        DEBUG_PRINTLN("match");
+        DEBUG_PRINTLN(F("match"));
         return true;
       }
     }

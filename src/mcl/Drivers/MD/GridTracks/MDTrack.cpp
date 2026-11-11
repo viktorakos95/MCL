@@ -118,7 +118,7 @@ bool MDTrack::transition_cache(uint8_t tracknumber, GridSlot slotnumber) {
   bool send = true;
   switch (mcl_actions.transition_level[n]) {
   case 1:
-    DEBUG_PRINTLN("setting transition level to 0");
+    DEBUG_PRINTLN(F("setting transition level to 0"));
     send_level = true;
     machine.level = 0;
     break;
@@ -137,7 +137,7 @@ static void md_apply_mute(uint8_t tracknumber, uint8_t n, bool mute,
 
 void MDTrack::transition_send(uint8_t tracknumber, GridSlot slotnumber) {
   uint8_t n = slotnumber;
-  DEBUG_PRINTLN("transition send");
+  DEBUG_PRINTLN(F("transition send"));
   switch (mcl_actions.transition_level[n]) {
   case TRANSITION_UNMUTE:
     DEBUG_PRINTLN(F("unmuting"));
@@ -160,7 +160,7 @@ void MDTrack::transition_load(uint8_t tracknumber, SeqTrack *seq_track,
 }
 
 void MDTrack::load_immediate(uint8_t tracknumber, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   MD.insertMachineInKit(tracknumber, &(machine), true);
   load_seq_data(seq_track);
 }
@@ -168,14 +168,14 @@ void MDTrack::load_immediate(uint8_t tracknumber, SeqTrack *seq_track) {
 #if !defined(__AVR__)
 void MDTrack::load_immediate_preserve_level(uint8_t tracknumber,
                                             SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   MD.insertMachineInKit(tracknumber, &(machine), false);
   load_seq_data(seq_track);
 }
 #endif
 
 void MDTrack::load_immediate_cleared(uint8_t tracknumber, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   load_seq_data(seq_track);
 }
 

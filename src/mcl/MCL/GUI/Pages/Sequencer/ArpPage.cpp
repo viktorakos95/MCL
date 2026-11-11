@@ -64,7 +64,7 @@ void ArpPage::track_update(uint8_t n, bool re_render) {
   if (re_render) {
     if (last_arp_track && arp_track != last_arp_track) {
       if (!last_arp_track->preserves_note_set()) {
-        DEBUG_PRINTLN("clear");
+        DEBUG_PRINTLN(F("clear"));
         last_arp_track->clear_notes();
       }
     }

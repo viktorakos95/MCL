@@ -53,7 +53,7 @@ void MCLActionsMidiEvents::onProgramChangeCallback_Midi2(uint8_t *msg) {
       grid_load_page.track_select_array_from_type_select(track_select_array);
       grid_task.load_queue.put(mcl_cfg.load_mode,msg[1],track_select_array);
     } else {
-      DEBUG_PRINTLN("set row");
+      DEBUG_PRINTLN(F("set row"));
       grid_task.midi_row_select = msg[1];
     }
   }
@@ -90,9 +90,9 @@ void MCLActionsMidiEvents::onNoteOnCallback_Midi2(uint8_t *msg) {
       grid_task.midi_row_select = grid_page.getRow();
     }
 
-    DEBUG_PRINT("Selecting slot: ");
+    DEBUG_PRINT(F("Selecting slot: "));
     DEBUG_PRINT(slot);
-    DEBUG_PRINT(" ");
+    DEBUG_PRINT(F(" "));
     DEBUG_PRINTLN(grid_task.midi_row_select);
     grid_task.load_track_select[slot] = grid_task.midi_row_select;
   }
@@ -122,7 +122,7 @@ void MCLActionsMidiEvents::onNoteOffCallback_Midi2(uint8_t *msg) {
 void MCLActionsMidiEvents::onControlChangeCallback_Midi(uint8_t *msg) {}
 
 void MCLActionsCallbacks::StopHardCallback() {
-  DEBUG_PRINTLN("BEGIN stop hard");
+  DEBUG_PRINTLN(F("BEGIN stop hard"));
   mcl_actions.clear_load_fades();
   GridRow row_array[NUM_SLOTS];
   uint8_t slot_select_array[NUM_SLOTS] = {};
@@ -163,12 +163,12 @@ void MCLActionsCallbacks::StopHardCallback() {
      }
    }
    */
-  DEBUG_PRINTLN("StopHard");
+  DEBUG_PRINTLN(F("StopHard"));
   StackMonitor::print_stack_info();
   mcl_actions.send_tracks_to_devices(slot_select_array, row_array);
   MidiUartParent::handle_midi_lock = _midi_lock_tmp;
 end:
-  DEBUG_PRINTLN("END stop hard");
+  DEBUG_PRINTLN(F("END stop hard"));
   grid_task.reset_midi_states();
   mcl_actions_midievents.slot_mask = 0;
   return;
@@ -176,7 +176,7 @@ end:
 
 void MCLActionsCallbacks::onMidiStartCallback(uint32_t clock_count) {
   (void)clock_count;
-  DEBUG_PRINTLN("BEGIN on midi start");
+  DEBUG_PRINTLN(F("BEGIN on midi start"));
   //StackMonitor::print_stack_info();
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   mcl_actions.clear_load_fades(true);
@@ -199,7 +199,7 @@ void MCLActionsCallbacks::onMidiStartCallback(uint32_t clock_count) {
   }
   mcl_actions.calc_next_transition();
 
-  DEBUG_PRINTLN("END midi start");
+  DEBUG_PRINTLN(F("END midi start"));
 }
 
 void MCLActionsMidiEvents::setup_callbacks() {

@@ -201,7 +201,7 @@ void MDTrackSelect::end() {
     return;
   }
 
-  DEBUG_PRINTLN("track select end");
+  DEBUG_PRINTLN(F("track select end"));
   uint8_t len = view.get_recordLen();
   DEBUG_PRINTLN(len);
   DEBUG_PRINTLN(msg_rd);

@@ -119,14 +119,14 @@ void MenuPageBase::init() {
 }
 
 void MenuPageBase::init(bool generate_row_names) {
-  DEBUG_PRINTLN("MenuPageBase::init");
+  DEBUG_PRINTLN(F("MenuPageBase::init"));
   DevicePanelRef::set_primary_key_repeat(1);
   R.Clear();
   R.use_machine_names_short(); // for grid page
   R.use_icons_knob(); // for grid page
   R.use_menu_options();
   R.use_menu_layouts();
-  DEBUG_PRINT("R.Size() = ");
+  DEBUG_PRINT(F("R.Size() = "));
   DEBUG_PRINTLN(R.Size());
   R.restore_menu_layout_deps();
   (void)generate_row_names;
@@ -323,7 +323,7 @@ bool MenuPageBase::enter() {
   void (*row_func)() = m->get_row_function(encoders[1]->cur);
   PageIndex page_callback = m->get_page_callback(encoders[1]->cur);
   if (page_callback != NULL_PAGE) {
-    DEBUG_PRINTLN("menu pushing page");
+    DEBUG_PRINTLN(F("menu pushing page"));
     DEBUG_PRINTLN((uint16_t)page_callback);
     mcl.pushPage(page_callback);
     return true;
@@ -386,7 +386,7 @@ bool MenuPageBase::handleEvent(gui_event_t *event) {
     if (EVENT_PRESSED(event, Buttons.BUTTON4)) {
       GUI.ignoreNextEvent(event->source);
     YES:
-      DEBUG_PRINTLN("YES");
+      DEBUG_PRINTLN(F("YES"));
       enter();
       return true;
     }

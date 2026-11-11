@@ -37,7 +37,7 @@ void WavDesigner::prompt_send() {
       mcl.loop();
     }
   }
-  DEBUG_PRINTLN("cleaning up");
+  DEBUG_PRINTLN(F("cleaning up"));
   sample_browser.file.close();
   mcl.setPage(WD_MIXER_PAGE);
 }
@@ -73,7 +73,7 @@ COLD_SMALL() bool WavDesigner::render() {
 
   // The OscPage pitch range keeps a rendered waveform well under 65535 samples.
   uint16_t n_cycle = (uint16_t)(sample_rate / fund_freq + 0.5f);
-  DEBUG_PRINTLN("n_cycle 1");
+  DEBUG_PRINTLN(F("n_cycle 1"));
   DEBUG_PRINTLN(n_cycle);
   sample_rate = n_cycle * fund_freq;
 
@@ -206,7 +206,7 @@ COLD_SMALL() bool WavDesigner::render() {
   // first_zero_crossing = 0;
   // Normalise wav
 
-  DEBUG_PRINTLN("gain:");
+  DEBUG_PRINTLN(F("gain:"));
   DEBUG_PRINTLN(largest_sample_so_far);
   wav_file.header.smpl.init(SDS_LOOP_FORWARD, loop_start, loop_end);
   wav_file.file.sync();

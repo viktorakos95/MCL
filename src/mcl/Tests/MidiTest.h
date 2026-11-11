@@ -21,30 +21,30 @@ private:
     TestCallback(MIDITest *p) : parent(p) {}
 
     void onNoteOn(uint8_t *msg) {
-      DEBUG_PRINTLN("Received Note On:");
+      DEBUG_PRINTLN(F("Received Note On:"));
       DEBUG_PRINTLN("  Channel: " + String(msg[0] & 0x0F));
       DEBUG_PRINTLN("  Note: " + String(msg[1]));
       DEBUG_PRINTLN("  Velocity: " + String(msg[2]));
 
       if (msg[0] == (MIDI_NOTE_ON | 0) && msg[1] == 60 && msg[2] == 100) {
         parent->increment_received();
-        DEBUG_PRINTLN("  -> Valid test message received");
+        DEBUG_PRINTLN(F("  -> Valid test message received"));
       } else {
-        DEBUG_PRINTLN("  -> Unexpected message values");
+        DEBUG_PRINTLN(F("  -> Unexpected message values"));
       }
     }
 
     void onCC(uint8_t *msg) {
-      DEBUG_PRINTLN("Received CC:");
+      DEBUG_PRINTLN(F("Received CC:"));
       DEBUG_PRINTLN("  Channel: " + String(msg[0] & 0x0F));
       DEBUG_PRINTLN("  Controller: " + String(msg[1]));
       DEBUG_PRINTLN("  Value: " + String(msg[2]));
 
       if (msg[0] == (MIDI_CONTROL_CHANGE | 0) && msg[1] == 7 && msg[2] == 100) {
         parent->increment_received();
-        DEBUG_PRINTLN("  -> Valid test message received");
+        DEBUG_PRINTLN(F("  -> Valid test message received"));
       } else {
-        DEBUG_PRINTLN("  -> Unexpected message values");
+        DEBUG_PRINTLN(F("  -> Unexpected message values"));
       }
     }
   };
@@ -59,7 +59,7 @@ private:
     virtual ~TestSysexListener() {}
 
     virtual void end() {
-      DEBUG_PRINTLN("Received SYSEX:");
+      DEBUG_PRINTLN(F("Received SYSEX:"));
       DEBUG_PRINTLN("  Length: " + String(sysex->get_recordLen()));
       DEBUG_PRINTLN("  Manufacturer ID: " + String(ids[0], HEX) + " " +
                     String(ids[1], HEX) + " " + String(ids[2], HEX));
@@ -72,12 +72,12 @@ private:
 
         if (data1 == 0x11 && data2 == 0x22) {
           parent->increment_received();
-          DEBUG_PRINTLN("  -> Valid test message received");
+          DEBUG_PRINTLN(F("  -> Valid test message received"));
         } else {
-          DEBUG_PRINTLN("  -> Unexpected data values");
+          DEBUG_PRINTLN(F("  -> Unexpected data values"));
         }
       } else {
-        DEBUG_PRINTLN("  -> Unexpected message length");
+        DEBUG_PRINTLN(F("  -> Unexpected message length"));
       }
     }
   };

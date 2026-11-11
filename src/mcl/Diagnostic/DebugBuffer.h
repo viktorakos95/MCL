@@ -2,11 +2,21 @@
 
 #include <Arduino.h>
 
-#ifndef __AVR__
- #define DEBUG_BUFFER_SIZE 4096
+#ifdef __AVR__
+// AVR has no RAM to spare for a ring buffer or the Stream fields, so debug
+// text goes straight to the UART it is given.
+class MidiUartClass;
+
+class DebugBuffer : public Print {
+private:
+  MidiUartClass *output_uart;
+
+public:
+  DebugBuffer(MidiUartClass *uart) : output_uart(uart) {}
+  size_t write(uint8_t c) override;
+};
 #else
- #define DEBUG_BUFFER_SIZE 128
-#endif
+#define DEBUG_BUFFER_SIZE 4096
 
 class DebugBuffer : public Stream {
 private:
@@ -38,3 +48,4 @@ public:
   void transmit(size_t maxBytes);
   void flush() override { return; }
 };
+#endif // __AVR__

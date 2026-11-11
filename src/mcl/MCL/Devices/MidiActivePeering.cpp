@@ -79,7 +79,7 @@ static DriverList drivers_for_slot(uint8_t slot_idx, bool force_generic) {
 #endif
 
 void MidiActivePeering::disconnect(uint8_t port) {
-  DEBUG_PRINTLN("disconnect");
+  DEBUG_PRINTLN(F("disconnect"));
   DEBUG_PRINTLN(port);
   MidiClass *pmidi_class = midi_class_for_port(port);
   if (!pmidi_class) {
@@ -166,7 +166,7 @@ static void probePort(uint8_t port, DriverList drivers) {
       MidiClock.init();
     }
     pmidi->set_speed((uint32_t)31250);
-    DEBUG_PRINTLN("disconnecting");
+    DEBUG_PRINTLN(F("disconnecting"));
     DeviceIdx device_idx =
         static_cast<DeviceIdx>(device_manager.logical_idx_for_port(port));
     if (device_idx == DeviceIdx::None) {
@@ -195,7 +195,7 @@ static void probePort(uint8_t port, DriverList drivers) {
       mcl_gui.delay_progress(0);
       for (uint8_t probe_retry = 0; probe_retry < 6 && !probe_success;
            ++probe_retry) {
-        DEBUG_PRINTLN("probing...");
+        DEBUG_PRINTLN(F("probing..."));
         driver->in_probe = true;
         probe_success = driver->probe();
         driver->in_probe = false;

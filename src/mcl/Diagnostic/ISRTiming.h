@@ -62,27 +62,27 @@ public:
             return;
         }
         
-        DEBUG_PRINT("ISR Statistics:");
-        DEBUG_PRINTLN("");
-        DEBUG_PRINT("Min duration: ");
+        DEBUG_PRINT(F("ISR Statistics:"));
+        DEBUG_PRINTLN(F(""));
+        DEBUG_PRINT(F("Min duration: "));
         DEBUG_PRINT((uint32_t)min_duration);
-        DEBUG_PRINT(" us");
-        DEBUG_PRINTLN("");
-        DEBUG_PRINT("Max duration: ");
+        DEBUG_PRINT(F(" us"));
+        DEBUG_PRINTLN(F(""));
+        DEBUG_PRINT(F("Max duration: "));
         DEBUG_PRINT((uint32_t)max_duration);
-        DEBUG_PRINT(" us");
-        DEBUG_PRINTLN("");
-        DEBUG_PRINT("Last duration: ");
+        DEBUG_PRINT(F(" us"));
+        DEBUG_PRINTLN(F(""));
+        DEBUG_PRINT(F("Last duration: "));
         DEBUG_PRINT((uint32_t)last_duration);
-        DEBUG_PRINT(" us");
-        DEBUG_PRINTLN("");
-        DEBUG_PRINT("Average duration: ");
+        DEBUG_PRINT(F(" us"));
+        DEBUG_PRINTLN(F(""));
+        DEBUG_PRINT(F("Average duration: "));
         DEBUG_PRINT((uint32_t)(isr_count ? (total_duration / isr_count) : 0));
-        DEBUG_PRINT(" us");
-        DEBUG_PRINTLN("");
-        DEBUG_PRINT("Total ISR calls: ");
+        DEBUG_PRINT(F(" us"));
+        DEBUG_PRINTLN(F(""));
+        DEBUG_PRINT(F("Total ISR calls: "));
         DEBUG_PRINT((uint32_t)isr_count);
-        DEBUG_PRINTLN("");
+        DEBUG_PRINTLN(F(""));
         last_print_time = current_time;
     }
 
