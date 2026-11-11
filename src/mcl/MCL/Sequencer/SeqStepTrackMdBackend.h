@@ -87,8 +87,10 @@ public:
     }
   }
 
-  void draw_microtiming(uint8_t encoder_value) const {
-    MD.draw_microtiming(speed(), encoder_value);
+  void draw_microtiming(uint8_t encoder_value,
+                        uint8_t condition = MICROTIMING_NO_CONDITION,
+                        uint8_t mode = 0) const {
+    MD.draw_microtiming(speed(), encoder_value, condition, mode);
   }
   void close_microtiming() const { MD.draw_close_microtiming(); }
   void clear_step_edit_popup() const { MD.popup_text(127, 2); }
@@ -212,6 +214,17 @@ public:
     track_->steps[step].cond_plock = plock;
   }
   void clear_conditional(uint8_t step) { set_conditional(step, 0, false); }
+  // The Machinedrum's mode number: 0 TRIG, 1 TRIG+LOCK. An MD track has no
+  // LOCK mode.
+  uint8_t condition_mode(uint8_t step) const {
+    return track_->steps[step].cond_plock ? 1 : 0;
+  }
+  void cycle_condition_mode(uint8_t step) {
+    if (track_->steps[step].cond_id != 0) {
+      track_->steps[step].cond_plock = !track_->steps[step].cond_plock;
+      track_->clear_step_oneshot(step);
+    }
+  }
 
   void set_timing_from_encoder(uint8_t step, uint8_t encoder_value) {
     track_->microtiming[step] =

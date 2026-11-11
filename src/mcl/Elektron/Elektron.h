@@ -247,6 +247,11 @@ public:
 #define FW_CAP_SPSX_PARAMS_37 FW_CAP_HIGHER(3)
 #define FW_CAP_USR_QUERY      FW_CAP_HIGHER(4)
 #define FW_CAP_MACHINE_UPDATE_EXT FW_CAP_HIGHER(5)
+// The microtiming popup takes the step's condition and condition mode, and
+// PAGE on that popup arrives as a key.
+#define FW_CAP_MICROTIMING_COND FW_CAP_HIGHER(6)
+// A condition of this value sends no condition with the popup.
+#define MICROTIMING_NO_CONDITION 255
 
 /// Base class for Elektron MidiDevice
 class ElektronDevice : public MidiDevice {
@@ -351,8 +356,14 @@ public:
   void draw_close_bank();
 
   void draw_close_microtiming();
-  void draw_microtiming(uint8_t speed, uint8_t timing);
-  void draw_microtiming_signed(uint8_t speed, int8_t microtiming);
+  // condition is the Machinedrum's condition number and mode its mode
+  // number (0 TRIG, 1 TRIG+LOCK, 5 LOCK), for the popup's condition line.
+  void draw_microtiming(uint8_t speed, uint8_t timing,
+                        uint8_t condition = MICROTIMING_NO_CONDITION,
+                        uint8_t mode = 0);
+  void draw_microtiming_signed(uint8_t speed, int8_t microtiming,
+                               uint8_t condition = MICROTIMING_NO_CONDITION,
+                               uint8_t mode = 0);
   void draw_pattern_idx(uint8_t idx, uint8_t idx_other, uint8_t chain_mask);
   void draw_open_swing();
   void draw_close_swing();

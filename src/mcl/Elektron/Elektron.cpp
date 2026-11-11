@@ -348,27 +348,31 @@ void ElektronDevice::sendCommand(ElektronCommand command, uint8_t param) {
 }
 
 
-void ElektronDevice::draw_microtiming(uint8_t speed, uint8_t timing) {
-  uint8_t a = timing >> 7;
-  uint8_t b = timing & 0x7F;
-  uint8_t data[6] = {0x70, 0x3C, 0x20, speed, a, b};
-  sendRequest(data, 6);
-  // waitBlocking();
+// The popup command: the timing in two 7-bit bytes, then the step's
+// condition and mode when there is one to show.
+static void send_microtiming(ElektronDevice *device, uint8_t command,
+                             uint8_t speed, uint8_t timing, uint8_t condition,
+                             uint8_t mode) {
+  uint8_t data[8] = {0x70,   0x3C,          command,   speed,
+                     (uint8_t)(timing >> 7), (uint8_t)(timing & 0x7F),
+                     condition, mode};
+  device->sendRequest(data, condition == MICROTIMING_NO_CONDITION ? 6 : 8);
 }
 
-void ElektronDevice::draw_microtiming_signed(uint8_t speed,
-                                             int8_t microtiming) {
+void ElektronDevice::draw_microtiming(uint8_t speed, uint8_t timing,
+                                      uint8_t condition, uint8_t mode) {
+  send_microtiming(this, 0x20, speed, timing, condition, mode);
+}
+
+void ElektronDevice::draw_microtiming_signed(uint8_t speed, int8_t microtiming,
+                                             uint8_t condition, uint8_t mode) {
   int16_t encoded = (int16_t)microtiming + 127;
   if (encoded < 0) {
     encoded = 0;
   } else if (encoded > 254) {
     encoded = 254;
   }
-  uint8_t a = (uint8_t)encoded >> 7;
-  uint8_t b = (uint8_t)encoded & 0x7F;
-  uint8_t data[6] = {0x70, 0x3C, 0x27, speed, a, b};
-  sendRequest(data, 6);
-  // waitBlocking();
+  send_microtiming(this, 0x27, speed, (uint8_t)encoded, condition, mode);
 }
 
 void ElektronDevice::draw_pattern_idx(uint8_t idx, uint8_t idx_other, uint8_t chain_mask) {

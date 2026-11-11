@@ -77,6 +77,8 @@ struct spsx_retrig_state_t {
 
 class SPSXSeqTrack : public SPSXSeqDataTrack {
 public:
+    bool plays_lock_only() const override { return true; }
+
     uint64_t oneshot_mask;
 
     SPSXTrigNotes notes;

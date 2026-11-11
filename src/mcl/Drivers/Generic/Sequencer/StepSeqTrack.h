@@ -217,6 +217,12 @@ public:
     virtual bool conditional_plock_value(uint8_t step) const = 0;
     virtual void set_conditional_value(uint8_t step, uint8_t condition,
                                        bool plock) = 0;
+    // The Machinedrum's mode number: 0 TRIG, 1 TRIG+LOCK, 5 LOCK.
+    virtual uint8_t condition_mode_value(uint8_t step) const = 0;
+    // Step to the next mode, in the Machinedrum's order.
+    virtual void cycle_condition_mode_value(uint8_t step) = 0;
+    // Only a sequencer that plays LOCK offers it.
+    virtual bool plays_lock_only() const { return false; }
     virtual uint64_t mute_mask_value() const = 0;
     virtual void clear_step_mute(uint8_t step) = 0;
     virtual void toggle_step_mute(uint8_t step) = 0;
@@ -372,6 +378,25 @@ public:
         // came from the Machinedrum stays LOCK while it stays on the lock
         // side, so nudging its microtiming or condition does not change it.
         descriptor.cond_explicit = descriptor.cond_explicit && plock;
+    }
+    uint8_t condition_mode_value(uint8_t step) const override {
+        const auto& descriptor = steps[step];
+        return descriptor.cond_lock_only() ? 5 : (descriptor.cond_plock ? 1 : 0);
+    }
+    void cycle_condition_mode_value(uint8_t step) override {
+        auto& descriptor = steps[step];
+        // A step with no condition has nothing for a mode to gate.
+        if (descriptor.cond_id == 0) return;
+        // TRIG -> LOCK -> TRIG+LOCK -> TRIG.
+        if (!descriptor.cond_plock) {
+            descriptor.cond_plock = true;
+            descriptor.cond_explicit = this->plays_lock_only();
+        } else if (descriptor.cond_explicit) {
+            descriptor.cond_explicit = false;
+        } else {
+            descriptor.cond_plock = false;
+        }
+        clear_step_oneshot_state(step);
     }
     uint64_t mute_mask_value() const override { return mute_mask; }
     void clear_step_mute(uint8_t step) override {

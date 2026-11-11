@@ -82,6 +82,12 @@ public:
   uint8_t paramForEncoder(uint8_t encoder) const;
   uint8_t encoderForParam(uint8_t param) const;
 
+  // True when the microtiming popup shows the condition and mode MCL sends
+  // with it, and PAGE on that popup arrives as a key.
+  bool microtimingCondition() const {
+    return (fw_caps & FW_CAP_MICROTIMING_COND) != 0;
+  }
+
   /** Stores the kit settings of the machinedrum (usually set by MDTask). **/
   MDKit kit;
   MDPattern pattern;

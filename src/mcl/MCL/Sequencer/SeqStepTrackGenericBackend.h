@@ -137,15 +137,19 @@ public:
       step_edit()->close_microtiming(param_context());
     }
   }
-  void draw_microtiming(uint8_t encoder_value) const {
+  void draw_microtiming(uint8_t encoder_value,
+                        uint8_t condition = MICROTIMING_NO_CONDITION,
+                        uint8_t mode = 0) const {
     if (!uses_kit_sound()) {
       return;
     }
     if (uses_signed_microtiming()) {
       step_edit()->draw_microtiming_signed(
-          param_context(), speed(), microtiming_from_encoder(encoder_value));
+          param_context(), speed(), microtiming_from_encoder(encoder_value),
+          condition, mode);
     } else {
-      step_edit()->draw_microtiming(param_context(), speed(), encoder_value);
+      step_edit()->draw_microtiming(param_context(), speed(), encoder_value,
+                                    condition, mode);
     }
   }
   void clear_step_edit_popup() const {
@@ -346,6 +350,22 @@ public:
     }
   }
   void clear_conditional(uint8_t step) { set_conditional(step, 0, false); }
+  // The Machinedrum's mode number: 0 TRIG, 1 TRIG+LOCK, 5 LOCK.
+  uint8_t condition_mode(uint8_t step) const {
+    return kind_ == KIND_MD ? (tracks_.md->steps[step].cond_plock ? 1 : 0)
+                            : tracks_.stepseq->condition_mode_value(step);
+  }
+  void cycle_condition_mode(uint8_t step) {
+    if (kind_ == KIND_MD) {
+      auto &s = tracks_.md->steps[step];
+      if (s.cond_id != 0) {
+        s.cond_plock = !s.cond_plock;
+        tracks_.md->clear_step_oneshot(step);
+      }
+    } else {
+      tracks_.stepseq->cycle_condition_mode_value(step);
+    }
+  }
   void set_timing_from_encoder(uint8_t step, uint8_t encoder_value) {
     if (kind_ == KIND_MD) {
       int8_t mt = SeqTrack::timing_to_microtiming(

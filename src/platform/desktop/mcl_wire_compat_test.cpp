@@ -1350,6 +1350,68 @@ bool checkConditionModes() {
            !track.steps[9].cond_explicit;
 }
 
+// MCL sends a step's condition and mode with the microtiming popup, in the
+// Machinedrum's numbers, and steps the mode in the Machinedrum's order.
+bool checkMicrotimingPopupCondition() {
+    MidiUartClass output;
+    const bool wasConnected = MD.connected;
+    MidiUartClass* const wasUart = MD.uart;
+    MD.connected = true;
+    MD.uart = &output;
+    bool ok = true;
+    std::array<uint8_t, 32> packet{};
+    const auto sent = [&](const uint8_t* expected, size_t bytes) {
+        const size_t n = output.desktop_egress(packet.data(), packet.size());
+        return n == bytes && std::memcmp(packet.data(), expected, bytes) == 0;
+    };
+
+    // Without a condition the command is the one older firmware expects.
+    output.init();
+    MD.draw_microtiming(2, 130);
+    const uint8_t plain[] = {0xF0, 0x00, 0x20, 0x3C, 0x02, 0x00, 0x70,
+                             0x3C, 0x20, 2,    1,    2,    0xF7};
+    ok &= sent(plain, sizeof(plain));
+
+    // With one, the condition and mode follow the timing. MCL's 90% is the
+    // Machinedrum's condition 1; mode 5 is LOCK.
+    output.init();
+    MD.draw_microtiming(2, 130, seq_cond_to_md(SEQ_COND_90PCT), 5);
+    const uint8_t ruler[] = {0xF0, 0x00, 0x20, 0x3C, 0x02, 0x00, 0x70, 0x3C,
+                             0x20, 2,    1,    2,    1,    5,    0xF7};
+    ok &= sent(ruler, sizeof(ruler));
+
+    output.init();
+    MD.draw_microtiming_signed(0, -7, seq_cond_to_md(SEQ_COND_ITER_BASE), 1);
+    const uint8_t signedForm[] = {0xF0, 0x00, 0x20, 0x3C, 0x02,
+                                  0x00, 0x70, 0x3C, 0x27, 0,
+                                  0,    120,  SEQ_COND_ITER_BASE, 1, 0xF7};
+    ok &= sent(signedForm, sizeof(signedForm));
+
+    // PAGE steps an SPS-X step TRIG -> LOCK -> TRIG+LOCK -> TRIG, reported
+    // as the Machinedrum's mode numbers 0, 5, 1.
+    SPSXSeqTrack& track = mcl_seq.spsx_tracks[4];
+    track.set_conditional_value(6, SEQ_COND_ITER_BASE, false);
+    ok &= track.condition_mode_value(6) == 0;
+    track.cycle_condition_mode_value(6);
+    ok &= track.condition_mode_value(6) == 5 && track.steps[6].cond_lock_only();
+    track.cycle_condition_mode_value(6);
+    ok &= track.condition_mode_value(6) == 1 && track.steps[6].cond_plock &&
+          !track.steps[6].cond_explicit;
+    track.cycle_condition_mode_value(6);
+    ok &= track.condition_mode_value(6) == 0 && !track.steps[6].cond_plock;
+    ok &= track.steps[6].cond_id == SEQ_COND_ITER_BASE;
+    // A step with no condition has no mode to step.
+    track.set_conditional_value(7, SEQ_COND_100PCT, false);
+    track.cycle_condition_mode_value(7);
+    ok &= track.condition_mode_value(7) == 0 && !track.steps[7].cond_plock &&
+          !track.steps[7].cond_explicit;
+    track.set_conditional_value(6, SEQ_COND_100PCT, false);
+
+    MD.connected = wasConnected;
+    MD.uart = wasUart;
+    return ok;
+}
+
 int main(int argc, char** argv) {
     if (argc == 4 && std::strcmp(argv[1], "--roundtrip-kit") == 0)
         return roundtripKitFile(argv[2], argv[3]);
@@ -1391,6 +1453,10 @@ int main(int argc, char** argv) {
         checkSequencerNegotiation(MODEL_ENVDEST, 2);
     if (!checkConditionModes()) {
         std::fprintf(stderr, "MCL condition mode checks failed\n");
+        return 1;
+    }
+    if (!checkMicrotimingPopupCondition()) {
+        std::fprintf(stderr, "MCL microtiming popup condition checks failed\n");
         return 1;
     }
     if (!globalVersions || !machineRoutes || !kitV1 || !kitV2 || !patternStockFallback || !patternCompact ||

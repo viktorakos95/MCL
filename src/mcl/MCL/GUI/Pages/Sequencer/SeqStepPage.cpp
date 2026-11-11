@@ -126,24 +126,43 @@ void draw_active_step_masks(SeqStepPage &page, SeqStepTrackRef active_track,
   }
 }
 
+// Open or redraw the microtiming popup on the device. A Machinedrum that
+// shows conditions there is sent the step's condition and mode with it, in
+// its own condition numbers.
+void notify_remote_microtiming(SeqStepTrackRef active_track,
+                               uint8_t encoder_value, uint8_t step) NOINLINE();
+void notify_remote_microtiming(SeqStepTrackRef active_track,
+                               uint8_t encoder_value, uint8_t step) {
+  uint8_t condition = MICROTIMING_NO_CONDITION;
+  uint8_t mode = 0;
+  if (step != 255 && active_track.uses_kit_sound() &&
+      MD.microtimingCondition()) {
+    condition = seq_cond_to_md(active_track.conditional_id(step));
+    mode = active_track.condition_mode(step);
+  }
+  active_track.draw_microtiming(encoder_value, condition, mode);
+}
+
+// step is the held step whose popup the device should show, or 255 to draw
+// on MCL's own display only.
 void draw_active_microtiming(SeqStepTrackRef active_track, uint8_t encoder_value,
-                             bool notify_remote) NOINLINE();
+                             bool notify_remote, uint8_t step = 255) NOINLINE();
 void draw_active_microtiming(SeqStepTrackRef active_track, uint8_t encoder_value,
-                             bool notify_remote) {
+                             bool notify_remote, uint8_t step) {
 #if !defined(__AVR__)
   if (active_track.uses_signed_microtiming()) {
     mcl_gui.draw_microtiming_spsx(
         active_track.speed(),
         active_track.microtiming_from_encoder(encoder_value));
     if (notify_remote) {
-      active_track.draw_microtiming(encoder_value);
+      notify_remote_microtiming(active_track, encoder_value, step);
     }
     return;
   }
 #endif
   mcl_gui.draw_microtiming(active_track.speed(), encoder_value);
   if (notify_remote) {
-    active_track.draw_microtiming(encoder_value);
+    notify_remote_microtiming(active_track, encoder_value, step);
   }
 }
 
@@ -405,11 +424,18 @@ void SeqStepPage::loop() {
           active_track.set_conditional(step, condition, cond_plock);
           active_track.set_timing_from_encoder(step, seq_param2.cur);
 
+          // A Machinedrum that shows the condition on its microtiming
+          // popup gets it there; an older one gets the short popup text.
+          const bool popup_condition =
+              has_kit_sound && MD.microtimingCondition();
           if (seq_param2_changed) {
             set_microtiming_overlay_active(true);
-            draw_active_microtiming(active_track, seq_param2.cur, true);
+            draw_active_microtiming(active_track, seq_param2.cur, true, step);
+          } else if (seq_param1_changed && popup_condition) {
+            set_microtiming_overlay_active(true);
+            notify_remote_microtiming(active_track, seq_param2.cur, step);
           }
-          if (seq_param1_changed && has_kit_sound) {
+          if (seq_param1_changed && has_kit_sound && !popup_condition) {
             char str[5];
             if (condition > 0) {
               conditional_str(str, seq_param1.getValue(), true);
@@ -571,6 +597,10 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       seq_param2.old = seq_param2.cur;
       seq_param2.min = active_track.timing_encoder_min();
       seq_param2.max = active_track.timing_encoder_max();
+      // The device's popup is open on another held step: bring it to this one.
+      if (microtiming_overlay_active()) {
+        notify_remote_microtiming(active_track, seq_param2.cur, step);
+      }
       resetEncoderFocus();
       if (!active_track.get_step(step, mask_type)) {
         reset_undo();
@@ -789,6 +819,27 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           } else if (seq_param1.cur > 0) {
             seq_param1.cur -= 1;
           }
+          return true;
+        }
+        case MDX_KEY_PAGE: {
+          // PAGE on the Machinedrum's microtiming popup steps the condition
+          // mode of the held steps, and the popup shows the result.
+          if (!MD.microtimingCondition()) {
+            break;
+          }
+          for (uint8_t n = 0; n < kStepPageVisibleSteps; n++) {
+            uint8_t held = n + page_offset;
+            if (note_interface.is_note_on(n) && held < active_track.length()) {
+              active_track.cycle_condition_mode(held);
+            }
+          }
+          // The knob's side follows the mode's lock flag.
+          seq_param1.cur = active_track.knob_conditional_from_step(
+              active_track.conditional_id(step),
+              active_track.conditional_plock(step));
+          seq_param1.old = seq_param1.cur;
+          set_microtiming_overlay_active(true);
+          notify_remote_microtiming(active_track, seq_param2.cur, step);
           return true;
         }
         case MDX_KEY_LEFT: {
