@@ -405,6 +405,55 @@ bool checkTonalLegacyKitExport() {
     return ok;
 }
 
+// An all-zero noise generator seed leaves the Machinedrum's random LFO
+// stuck, so a kit never goes out with one: the seed slot of an LFO's run
+// state carries 0x029A unless it already holds something.
+bool checkLfoSeedMarker() {
+    bool ok = true;
+    const auto seeded = [](const MDLFO& lfo) {
+        return lfo.state[25] == 0x9a && lfo.state[26] == 0x02;
+    };
+
+    // A freshly initialised record: the marker and nothing else. The AVR
+    // build sends exactly this run state with an old-format kit.
+    MDLFO fresh;
+    fresh.init(5);
+    ok &= fresh.destinationTrack == 5 && seeded(fresh);
+    for (uint8_t i = 0; i < sizeof(fresh.state); ++i) {
+        if (i != 25 && i != 26) ok &= fresh.state[i] == 0;
+    }
+
+    // A seed that is already there is left alone.
+    MDLFO running;
+    running.init(0);
+    std::memset(running.state, 0, sizeof(running.state));
+    running.state[23] = 0x11;
+    running.ensure_lfsr_magic();
+    ok &= running.state[23] == 0x11 && running.state[25] == 0 &&
+          running.state[26] == 0;
+
+    // An old-format kit whose LFO states are all zero goes out seeded.
+    const bool wasSpsx = MD.is_spsx;
+    MD.is_spsx = false;
+    for (unsigned track = 0; track < 16; ++track) {
+        MD.kit.models[track] = 0x10u;
+        std::memset(MD.kit.lfos[track].state, 0, sizeof(MD.kit.lfos[track].state));
+    }
+    std::array<uint8_t, 2048> message{};
+    ElektronDataToSysexEncoder encoder(message.data());
+    const auto length = MD.kit.toSysex(&encoder);
+    auto fixture = std::make_unique<SysexFixture>();
+    MDKit decoded;
+    ok &= length != 0 &&
+          publishToMidiSysex(fixture->sysex, message.data(), length) &&
+          decoded.fromSysex(&fixture->midi);
+    for (unsigned track = 0; ok && track < 16; ++track) {
+        ok &= seeded(decoded.lfos[track]);
+    }
+    MD.is_spsx = wasSpsx;
+    return ok;
+}
+
 // Cross-codec fixture entry point: accepts a firmware-emitted full kit and
 // writes the actual MCL decoder/encoder result for byte comparison.
 int roundtripKitFile(const char* input, const char* output) {
@@ -1421,6 +1470,10 @@ int main(int argc, char** argv) {
     }
     const bool octaves=checkTonalOctaveMessages();
     const bool legacyOctaves=checkTonalLegacyKitExport();
+    if (!checkLfoSeedMarker()) {
+        std::fprintf(stderr, "MCL LFO seed marker checks failed\n");
+        return 1;
+    }
     if(!octaves || !legacyOctaves) {
         std::fprintf(stderr,"MCL tonal octave checks failed: messages=%d legacy-kit=%d\n",octaves,legacyOctaves);
         return 1;
