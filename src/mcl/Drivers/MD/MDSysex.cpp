@@ -117,11 +117,19 @@ void MDSysexListenerClass::end() {
     if (param > 7) { return; }
 
     {
-      uint8_t *p = &MD.kit.lfos[track].destinationTrack;
+      // Parameters 0-4 are the five settings at the head of the LFO record.
+      // Speed, depth and mix live in the parameter row; the record's next
+      // bytes are the Machinedrum's run state and are left alone.
 #if MCL_FEATURE_HOST_ARRANGER
-      bool kit_edited = p[param] != value;
+      bool kit_edited = false;
 #endif
-      p[param] = value;
+      if (param < 5) {
+        uint8_t *p = &MD.kit.lfos[track].destinationTrack;
+#if MCL_FEATURE_HOST_ARRANGER
+        kit_edited = p[param] != value;
+#endif
+        p[param] = value;
+      }
 
       //LFOS, LFOD, LFOM
       if (4 < param && param < 8) {

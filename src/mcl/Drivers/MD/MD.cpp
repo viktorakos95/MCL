@@ -2003,7 +2003,7 @@ void MDClass::setMachine(uint8_t track, MDKit *kit) {
 #endif
   // 138 bytes approx
   assignMachine(track, kit->get_model(track), kit->get_tonal(track), kit->get_tuning(track));
-  setLFO(track, reinterpret_cast<MDLFO *>(&(kit->lfos[track])), false);
+  setLFO(track, &(kit->lfos[track]), false);
   setTrigGroup(track, kit->trigGroups[track]);
   setMuteGroup(track, kit->muteGroups[track]);
   // uart->useRunningStatus = true;

@@ -271,6 +271,7 @@ bool SPSMachine::get_tonal() {
   }
   return false;
 }
+#endif
 
 // ---- Compact LFO state pack/unpack (SPS-X v65+ kits) ----
 // State layout matches host/elektron/MDTypes.cpp (pack/unpack_compact_lfo_state).
@@ -320,21 +321,13 @@ static void unpack_compact_lfo_state(MDLFO &lfo, const uint8_t in[4], int track)
     memcpy(&lfo.state[15], &hold1, sizeof(int32_t));
   }
 }
-#endif
-
 
 void MDKit::get_lfo(uint8_t track, MDLFO *lfo) const {
-#if defined(__AVR__)
-  // A stored machine gets an idle run state and the speed, depth and mix
-  // that the parameter row carries.
-  memset(lfo, 0, sizeof(MDLFO));
-  memcpy(&lfo->speed, &params[track][MODEL_LFOS], 3);
-#endif
-  memcpy(lfo, &lfos[track], sizeof(MDKitLFO));
+  memcpy(lfo, &lfos[track], sizeof(MDLFO));
 }
 
 void MDKit::set_lfo(uint8_t track, const MDLFO *lfo) {
-  memcpy(&lfos[track], lfo, sizeof(MDKitLFO));
+  memcpy(&lfos[track], lfo, sizeof(MDLFO));
 }
 
 uint8_t MDKit::get_model(uint8_t track) { return models[track]; }
@@ -362,9 +355,11 @@ uint8_t *MDKit::fx_params(uint8_t fx) {
 
 #if defined(__AVR__)
 // Kit 65.1 fields that only kit transfers and track load/save touch live in
-// the bank-one tail: five LFO-B settings per track, sixteen output routes and
-// the reserved bytes, which go back as received.
-static constexpr uint8_t kKit65Routes = 16 * 5;
+// the bank-one tail: the nine-byte LFO-B record of each track (five settings
+// and four bytes of run state, as the kit carries them), sixteen output
+// routes and the reserved bytes, which go back as received.
+static constexpr uint8_t kKit65LfoB = 9;
+static constexpr uint8_t kKit65Routes = 16 * kKit65LfoB;
 static constexpr uint8_t kKit65Reserved = kKit65Routes + 16;
 static_assert(BANK1_KIT65_LEN == kKit65Reserved +
                   (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT,
@@ -413,7 +408,7 @@ void MDMachine::upgrade_v1() {
 
 void MDKit::get_ext(uint8_t track, MDMachine *machine) const {
 #if defined(__AVR__)
-  kit65_read(track * 5, machine->lfoB, 5);
+  kit65_read(track * kKit65LfoB, machine->lfoB, 5);
   kit65_read(kKit65Routes + track, &machine->outputRouting, 1);
 #else
   memcpy(machine->lfoB, &lfosB[track].destinationTrack, 5);
@@ -423,7 +418,16 @@ void MDKit::get_ext(uint8_t track, MDMachine *machine) const {
 
 void MDKit::set_ext(uint8_t track, const MDMachine *machine) {
 #if defined(__AVR__)
-  kit65_write(track * 5, machine->lfoB, 5);
+  // The run state stays with the track, as it does in the full record. It is
+  // kept in the kit's packed form, where FREE and HOLD share the same bytes,
+  // so a change between them starts the new mode from rest.
+  uint8_t record[kKit65LfoB];
+  kit65_read(track * kKit65LfoB, record, sizeof(record));
+  if (record[4] % 3 != machine->lfoB[4] % 3) {
+    memset(record + 5, 0, 4);
+  }
+  memcpy(record, machine->lfoB, 5);
+  kit65_write(track * kKit65LfoB, record, sizeof(record));
   kit65_write(kKit65Routes + track, &machine->outputRouting, 1);
 #else
   memcpy(&lfosB[track].destinationTrack, machine->lfoB, 5);
@@ -512,7 +516,6 @@ bool MDKit::fromSysex(MidiClass *midi) {
   decoder.stop7Bit();
 
   // LFO-A section: compact 9 bytes/track for SPS-X, full 36 for legacy/MDX
-#if !defined(__AVR__)
   if (is_spsx_kit) {
     decoder.start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
@@ -529,39 +532,13 @@ bool MDKit::fromSysex(MidiClass *midi) {
       lfos[i].mix = 0;
     }
     decoder.stop7Bit();
-  } else
-#else
-  if (is_spsx_kit) {
-    // Compact LFO-A: keep the five settings. The four state bytes are not
-    // kept; the 36-byte record stored in grid tracks gets an idle state and
-    // the speed, depth and mix that the parameter row already carries.
-    decoder.start7Bit();
-    for (uint8_t i = 0; i < 16; i++) {
-      uint8_t compact[9];
-      decoder.get(compact, 9);
-      memcpy(&lfos[i].destinationTrack, compact, 5);
-    }
-    decoder.stop7Bit();
   } else {
-    // Legacy LFO-A: keep the five settings and skip the 31-byte run state.
-    decoder.start7Bit();
-    for (uint8_t i = 0; i < 16; i++) {
-      uint8_t record[5 + 31];
-      decoder.get(record, sizeof(record));
-      memcpy(&lfos[i].destinationTrack, record, 5);
-    }
-    decoder.stop7Bit();
-  }
-#endif
-#if !defined(__AVR__)
-  {
     decoder.start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
       decoder.get((uint8_t *)&lfos[i], 5 + 31);
     }
     decoder.stop7Bit();
   }
-#endif
 
   // reverb/delay/eq/dynamics are four consecutive uint8_t[8] members; read the
   // 32-byte run in one call (identical bytes, fewer call sites).
@@ -621,20 +598,20 @@ bool MDKit::fromSysex(MidiClass *midi) {
   }
 #else
   {
-    // LFO-B settings (the four state bytes of each record are dropped), then
-    // routing and the reserved bytes. A legacy kit gets the defaults.
+    // LFO-B records, then routing and the reserved bytes. A legacy kit gets
+    // the defaults.
     uint8_t ext[kKit65Reserved - kKit65Routes +
                 (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT];
     decoder.start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
-      uint8_t compact[9] = {i, 0, 0, 0, 0};
+      uint8_t compact[kKit65LfoB] = {i, 0, 0, 0, 0, 0, 0, 0, 0};
       if (is_spsx_kit) {
-        decoder.get(compact, 9);
+        decoder.get(compact, sizeof(compact));
       } else {
         memcpy_P(&params[i][MD_PARAMS_PER_TRACK], md_extended_param_defaults,
                  sizeof(md_extended_param_defaults));
       }
-      kit65_write(i * 5, compact, 5);
+      kit65_write(i * kKit65LfoB, compact, sizeof(compact));
     }
     decoder.stop7Bit();
     memset(ext, MD_KIT_ROUTE_GLOBAL, 16);
@@ -699,7 +676,6 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
   encoder->stop7Bit();
 
   // LFO-A section: compact 9 bytes/track for SPS-X, full 36 for MDX/legacy.
-#if !defined(__AVR__)
   if (emit_spsx) {
     encoder->start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
@@ -709,31 +685,7 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
       encoder->pack(compact_state, 4);
     }
     encoder->stop7Bit();
-  } else
-#else
-  if (emit_spsx) {
-    // Compact LFO-A: the five settings and an idle four-byte state.
-    encoder->start7Bit();
-    for (uint8_t i = 0; i < 16; i++) {
-      encoder->pack(&lfos[i].destinationTrack, 5);
-      encoder->fill8(0, 4);
-    }
-    encoder->stop7Bit();
   } else {
-    // Legacy LFO-A: the five settings and an idle 31-byte run state, which
-    // must carry the noise generator marker.
-    encoder->start7Bit();
-    for (uint8_t i = 0; i < 16; i++) {
-      MDLFO record;
-      record.init(0);
-      encoder->pack(&lfos[i].destinationTrack, 5);
-      encoder->pack(record.state, sizeof(record.state));
-    }
-    encoder->stop7Bit();
-  }
-#endif
-#if !defined(__AVR__)
-  {
     encoder->start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
       // Ensure LFSR magic marker is set for firmware compat
@@ -742,7 +694,6 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
     }
     encoder->stop7Bit();
   }
-#endif
 
   // reverb/delay/eq/dynamics are four consecutive uint8_t[8] members; pack the
   // 32-byte run in one call (identical bytes, fewer call sites).
@@ -777,9 +728,8 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
                 (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT];
     encoder->start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
-      kit65_read(i * 5, ext, 5);
-      encoder->pack(ext, 5);
-      encoder->fill8(0, 4);
+      kit65_read(i * kKit65LfoB, ext, kKit65LfoB);
+      encoder->pack(ext, kKit65LfoB);
     }
     encoder->stop7Bit();
     kit65_read(kKit65Routes, ext, sizeof(ext));

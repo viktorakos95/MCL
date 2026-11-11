@@ -414,8 +414,7 @@ bool checkLfoSeedMarker() {
         return lfo.state[25] == 0x9a && lfo.state[26] == 0x02;
     };
 
-    // A freshly initialised record: the marker and nothing else. The AVR
-    // build sends exactly this run state with an old-format kit.
+    // A freshly initialised record: the marker and nothing else.
     MDLFO fresh;
     fresh.init(5);
     ok &= fresh.destinationTrack == 5 && seeded(fresh);
@@ -449,6 +448,75 @@ bool checkLfoSeedMarker() {
           decoded.fromSysex(&fixture->midi);
     for (unsigned track = 0; ok && track < 16; ++track) {
         ok &= seeded(decoded.lfos[track]);
+    }
+    MD.is_spsx = wasSpsx;
+    return ok;
+}
+
+// The Machinedrum's LFO run state comes back as it was received: all 31
+// bytes in an old-format kit, and in kit 65.1 the phase of a FREE LFO or the
+// two held values of a HOLD LFO.
+bool checkLfoRunStateRoundTrip() {
+    bool ok = true;
+    const bool wasSpsx = MD.is_spsx;
+    const auto roundTrip = [&ok](MDKit& decoded) {
+        std::array<uint8_t, 2048> message{};
+        ElektronDataToSysexEncoder encoder(message.data());
+        const auto length = MD.kit.toSysex(&encoder);
+        auto fixture = std::make_unique<SysexFixture>();
+        ok &= length != 0 &&
+              publishToMidiSysex(fixture->sysex, message.data(), length) &&
+              decoded.fromSysex(&fixture->midi);
+    };
+
+    MD.is_spsx = false;
+    for (unsigned track = 0; track < 16; ++track) {
+        MD.kit.models[track] = 0x10u;
+        MDLFO& lfo = MD.kit.lfos[track];
+        lfo.init(track);
+        lfo.type = track % 3;
+        for (unsigned i = 0; i < sizeof(lfo.state); ++i) {
+            lfo.state[i] = uint8_t(1 + track * 7 + i * 3);
+        }
+    }
+    {
+        auto decoded = std::make_unique<MDKit>();
+        roundTrip(*decoded);
+        for (unsigned track = 0; ok && track < 16; ++track) {
+            ok &= std::memcmp(&decoded->lfos[track], &MD.kit.lfos[track],
+                              5 + 31) == 0;
+        }
+    }
+
+    MD.is_spsx = true;
+    for (unsigned track = 0; track < 16; ++track) {
+        for (MDLFO* lfo : {&MD.kit.lfos[track], &MD.kit.lfosB[track]}) {
+            lfo->init(track);
+            lfo->type = track % 3;
+            const int32_t phase = 0x1234 + track;
+            const int32_t hold0 = -200 - int32_t(track), hold1 = 300 + track;
+            std::memcpy(&lfo->state[27], &phase, sizeof(phase));
+            std::memcpy(&lfo->state[11], &hold0, sizeof(hold0));
+            std::memcpy(&lfo->state[15], &hold1, sizeof(hold1));
+        }
+    }
+    {
+        auto decoded = std::make_unique<MDKit>();
+        roundTrip(*decoded);
+        for (unsigned track = 0; ok && track < 16; ++track) {
+            const MDLFO* got[2] = {&decoded->lfos[track], &decoded->lfosB[track]};
+            const MDLFO* sent[2] = {&MD.kit.lfos[track], &MD.kit.lfosB[track]};
+            for (unsigned which = 0; which < 2; ++which) {
+                const uint8_t mode = sent[which]->type % 3;
+                if (mode == 0) {
+                    ok &= std::memcmp(&got[which]->state[27],
+                                      &sent[which]->state[27], 4) == 0;
+                } else if (mode == 2) {
+                    ok &= std::memcmp(&got[which]->state[11],
+                                      &sent[which]->state[11], 8) == 0;
+                }
+            }
+        }
     }
     MD.is_spsx = wasSpsx;
     return ok;
@@ -1472,6 +1540,10 @@ int main(int argc, char** argv) {
     const bool legacyOctaves=checkTonalLegacyKitExport();
     if (!checkLfoSeedMarker()) {
         std::fprintf(stderr, "MCL LFO seed marker checks failed\n");
+        return 1;
+    }
+    if (!checkLfoRunStateRoundTrip()) {
+        std::fprintf(stderr, "MCL LFO run state round trip failed\n");
         return 1;
     }
     if(!octaves || !legacyOctaves) {
