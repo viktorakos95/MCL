@@ -126,6 +126,9 @@ void MenuPageBase::init(bool generate_row_names) {
   R.use_icons_knob(); // for grid page
   R.use_menu_options();
   R.use_menu_layouts();
+  // gen_menu_device_names() adds one option row for each device.
+  RM_REQUIRE(sizeof(menu_option_t) * NUM_DEVS, __T_machine_names_short,
+             __T_icons_knob, __T_menu_options, __T_menu_layouts);
   DEBUG_PRINT(F("R.Size() = "));
   DEBUG_PRINTLN(R.Size());
   R.restore_menu_layout_deps();

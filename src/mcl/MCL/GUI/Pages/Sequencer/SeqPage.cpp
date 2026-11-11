@@ -767,6 +767,8 @@ void SeqPage::init() {
   R.use_icons_knob();
   R.use_machine_names_short();
   R.use_machine_param_names();
+  RM_REQUIRE(0, __T_icons_knob, __T_machine_names_short,
+             __T_machine_param_names);
   MidiUartParent::handle_midi_lock = _midi_lock_tmp;
 }
 

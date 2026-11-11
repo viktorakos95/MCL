@@ -292,6 +292,9 @@ void GridPage::init() {
   R.use_icons_knob();
 #ifdef PLATFORM_TBD
   R.use_icons_logo();
+  RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
+#else
+  RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob);
 #endif
 }
 
