@@ -1,5 +1,6 @@
 #include "Project.h"
 #include "MDTrack.h"
+#include "MCLSysConfig.h"
 
 #include <array>
 #include <cstdio>
@@ -121,6 +122,60 @@ static void cloneCase(const char* from, const char* to, bool upgraded) {
     verifyPair(from, to, upgraded ? 1 : 0);
 }
 
+// A project from MCL 5.0x (version 3013) opens directly. Its project and grid
+// headers are restamped in place, nothing is set aside as .old, the selected
+// pair is kept and every stored slot is left as it was.
+static void restampCase(const char* name) {
+    require(proj.new_project(name), "create 5.0x project");
+    proj.close_project();
+    populatePair(name, 0, PROJ_PREV_VERSION);
+    populatePair(name, 2, PROJ_PREV_VERSION);
+    const std::string path = std::string("/Projects/") + name + "/" + name + ".mcl";
+    File header;
+    require(header.open(path.c_str(), O_RDWR), "open 5.0x project header");
+    const uint32_t old_version = PROJ_PREV_VERSION;
+    const uint8_t active = 2;
+    require(header.seekSet(0) &&
+            header.write(&old_version, sizeof(old_version)) == sizeof(old_version) &&
+            header.seekSet(offsetof(ProjectHeader, active_grid_pair)) &&
+            header.write(&active, sizeof(active)) == sizeof(active) && header.sync(),
+            "write 5.0x project header");
+    header.close();
+
+    std::array<uint8_t, GRID_SLOT_BYTES> before{}, after{};
+    Grid grid;
+    require(grid.open_file(gridPath(name, 4).c_str()) &&
+            grid.read(before.data(), before.size(), 3, 5), "read slot before");
+    grid.close_file();
+
+    require(proj.load_project(name), "5.0x project did not open");
+    require(proj.version == PROJ_VERSION, "open project not current");
+    proj.close_project();
+
+    uint32_t stamped = 0;
+    require(header.open(path.c_str(), O_READ) &&
+            header.read(&stamped, sizeof(stamped)) == sizeof(stamped), "reread header");
+    header.close();
+    require(stamped == PROJ_VERSION, "project header not restamped");
+    uint8_t pair = 255;
+    require(proj.read_active_grid_pair(name, &pair) && pair == 2, "active pair lost");
+    require(!SD.exists((std::string("/Projects/") + name + "/" + name + ".old").c_str()),
+            "5.0x project file set aside");
+    for (uint8_t g = 0; g < NUM_GRIDS; ++g) {
+        require(grid.open_file(gridPath(name, 4 + g).c_str()) && grid.read_header() &&
+                grid.version == PROJ_VERSION, "active grid header not restamped");
+        grid.close_file();
+        // A pair that was not opened keeps its 5.0x header and stays readable.
+        require(grid.open_file(gridPath(name, g).c_str()) && grid.read_header() &&
+                grid.version == PROJ_PREV_VERSION, "backup grid header changed");
+        grid.close_file();
+    }
+    require(grid.open_file(gridPath(name, 4).c_str()) &&
+            grid.read(after.data(), after.size(), 3, 5), "read slot after");
+    grid.close_file();
+    require(before == after, "stored slot changed by restamp");
+}
+
 int main() {
     const fs::path root = fs::temp_directory_path() /
         ("mcl-clone-storage-" + std::to_string(
@@ -132,6 +187,9 @@ int main() {
         mcl_sd.mcl_root[0] = '\0';
         cloneCase("Fresh", "FreshClone", false);
         cloneCase("Upgraded", "UpgradedClone", true);
+        // Opening a project saves the system config, which needs its file.
+        require(mcl_cfg.cfg_init(), "create config file");
+        restampCase("Old502");
         // A partial source cannot produce a successful or retained destination.
         const auto truncated = root / fs::path(gridPath("Fresh", 0)).relative_path();
         fs::resize_file(truncated, 8192);
@@ -139,7 +197,7 @@ int main() {
         require(!fs::exists(root / "Projects/TruncatedClone"), "failed clone left behind");
         require(fs::file_size(truncated) == 8192,
                 "source modified by failed clone");
-        std::puts("Project cloning passed: fresh/upgraded pairs, lengths, trigs, locks, full slots and failure cleanup");
+        std::puts("Project cloning passed: fresh/upgraded pairs, lengths, trigs, locks, full slots, failure cleanup and a 5.0x project opened in place");
     } catch (const std::exception& error) {
         std::fprintf(stderr, "Project cloning failed: %s\n", error.what());
         result = 1;
