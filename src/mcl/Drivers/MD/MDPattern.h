@@ -128,12 +128,14 @@ public:
 
   /** Extended lock rows (64..MAX_LOCK_ROWS-1). Base class locks[64][64]
    *  covers the first 64 rows; this array extends storage for current SPS-X
-   *  patterns with deep automation. ext_lockTracks/ext_lockParams are widened
-   *  so they can hold the matching track/param mapping for extended rows.
-   *  Memory cost: about 35.1 KiB on hosted/rp2040 builds. **/
+   *  patterns with deep automation. ext_lockTracks/ext_lockParams hold the
+   *  matching track (0-15) and parameter (0-37) of each extended row, or -1,
+   *  so one byte each is enough, as for the first 64 rows. The RP2040 build
+   *  has no RAM to spare: 16-bit entries here cost it 1,088 bytes.
+   *  Memory cost: about 34 KiB on hosted/rp2040 builds. **/
   int8_t  ext_locks[MAX_LOCK_ROWS - 64][64];
-  int16_t ext_lockTracks[MAX_LOCK_ROWS - 64];
-  int16_t ext_lockParams[MAX_LOCK_ROWS - 64];
+  int8_t  ext_lockTracks[MAX_LOCK_ROWS - 64];
+  int8_t  ext_lockParams[MAX_LOCK_ROWS - 64];
 #endif
 
 #if !defined(__AVR__)
@@ -164,8 +166,8 @@ public:
       lockTracks[row] = (int8_t)track;
       lockParams[row] = (int8_t)param;
     } else {
-      ext_lockTracks[row - 64] = track;
-      ext_lockParams[row - 64] = param;
+      ext_lockTracks[row - 64] = (int8_t)track;
+      ext_lockParams[row - 64] = (int8_t)param;
     }
   }
 #endif

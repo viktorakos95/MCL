@@ -137,7 +137,10 @@ constexpr size_t SPSX_CACHE_LEN = SPSX_TRACK_LEN * NUM_MD_TRACKS;
 
 #if defined(PLATFORM_TBD)
 // DEV1 TBD tracks carry StepSeqTrackData plus the authoritative P4 sound map.
-constexpr size_t TBD_TRACK_LEN = MEMORY_ALIGN(2048);
+// The slot is the track's stored size (1968 bytes; TBDTrack.cpp asserts the
+// fit). It was rounded up to 2048, and those 80 spare bytes in each of the
+// 16 slots were the difference between the RP2040 build linking and not.
+constexpr size_t TBD_TRACK_LEN = MEMORY_ALIGN(1968);
 constexpr size_t TBD_CACHE_LEN = TBD_TRACK_LEN * 16;
 #endif
 
