@@ -1,6 +1,7 @@
 #pragma once
 
 #include "DeviceContext.h"
+#include "MidiDeviceParam.h"
 #include <inttypes.h>
 
 class MidiDevice;
@@ -164,6 +165,14 @@ public:
                          uint8_t param, uint8_t value,
                          MidiUartClass *uart_ = nullptr,
                          bool update_kit = false);
+  // Text for a value (at most three characters and a NUL); false when the
+  // device shows the plain number.
+  virtual bool param_value_text(const DeviceContext &ctx, uint8_t target,
+                                uint8_t param, uint8_t value, char *out);
+  // The values an edit may set; 0-127 by default.
+  virtual MidiDeviceParamRange param_range(const DeviceContext &ctx,
+                                           uint8_t target,
+                                           uint8_t param) const;
   virtual uint8_t sequencer_lock_param_count(const DeviceContext &ctx,
                                              uint8_t target) const;
   virtual bool sequencer_lock_param_info(const DeviceContext &ctx,

@@ -185,6 +185,11 @@ public:
     return DeviceParamResolver::target_for_idx(param_device_idx(), param_dest())
         .lock_param_label(param_id, dst, (uint8_t)dst_len);
   }
+  // Four bytes; false when the value shows as its plain number.
+  bool lock_value_text(uint8_t param_id, uint8_t value, char *dst) const {
+    return DeviceParamResolver::target_for_idx(param_device_idx(), param_dest())
+        .value_text(param_id, value, dst);
+  }
 
   uint8_t length() const {
     return kind_ == KIND_MD ? tracks_.md->length : tracks_.stepseq->length;

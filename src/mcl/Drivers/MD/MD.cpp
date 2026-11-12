@@ -323,6 +323,12 @@ public:
                          uint8_t param, uint8_t value,
                          MidiUartClass *uart_ = nullptr,
                          bool update_kit = false) override;
+  virtual bool param_value_text(const DeviceContext &ctx, uint8_t target,
+                                uint8_t param, uint8_t value,
+                                char *out) override;
+  virtual MidiDeviceParamRange param_range(const DeviceContext &ctx,
+                                           uint8_t target,
+                                           uint8_t param) const override;
   virtual bool sequencer_lock_param_label(const DeviceContext &ctx,
                                           uint8_t target, uint8_t param,
                                           char *out, uint8_t len) override;
@@ -1179,6 +1185,21 @@ bool MDParamCapability::set_param(const DeviceContext &ctx, uint8_t target,
     return true;
   }
   return false;
+}
+
+bool MDParamCapability::param_value_text(const DeviceContext &ctx,
+                                         uint8_t target, uint8_t param,
+                                         uint8_t value, char *out) {
+  (void)ctx;
+  return target < NUM_MD_TRACKS && md_param_value_text(param, value, out);
+}
+
+MidiDeviceParamRange MDParamCapability::param_range(const DeviceContext &ctx,
+                                                    uint8_t target,
+                                                    uint8_t param) const {
+  (void)ctx;
+  return target < NUM_MD_TRACKS ? md_param_range(param)
+                                : MidiDeviceParamRange{0, 127};
 }
 
 bool MDParamCapability::sequencer_lock_param_label(const DeviceContext &ctx,

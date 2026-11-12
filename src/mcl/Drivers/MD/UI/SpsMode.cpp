@@ -161,6 +161,9 @@ void SpsMode::resync_from_kit() {
   uint8_t base = param_base();
   for (uint8_t i = 0; i < 4; i++) {
     uint8_t param = base + i;
+    // The lowest edit (RTIM 2) is applied on change in poll_encoders, so a
+    // stored value below it is shown and kept until it is edited.
+    enc[i].max = md_param_range(param).max;
     if (param >= param_count()) {
       enc[i].setValue(0);
       continue;
@@ -515,6 +518,9 @@ void SpsMode::poll_encoders() {
     enc[i].update(&snapshot[i]);
     if (enc[i].cur < enc[i].min) enc[i].cur = enc[i].min;
     if (enc[i].cur > enc[i].max) enc[i].cur = enc[i].max;
+    if (enc[i].hasChanged()) {
+      enc[i].cur = md_param_range(param_base() + i).clamp(enc[i].cur);
+    }
     if (enc[i].hasChanged()) {
       send_param(i);
       enc[i].old = enc[i].cur;
