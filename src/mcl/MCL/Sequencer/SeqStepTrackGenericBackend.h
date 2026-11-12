@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Sequencer/Euclidean.h"
 #include "../Drivers/Generic/Sequencer/StepSeqDefines.h"
 #include "../Drivers/Generic/Sequencer/StepSeqTrack.h"
 #include "../Drivers/MD/MD.h"
@@ -31,6 +32,10 @@ public:
   bool uses_signed_microtiming() const { return kind_ == KIND_STEPSEQ; }
   bool clears_mute_on_pattern_clear() const { return kind_ == KIND_STEPSEQ; }
   bool shows_lock_value_popup() const { return kind_ == KIND_MD; }
+  // Euclidean mode is a Machinedrum-track feature (Euclidean.h); step-sequencer tracks never have it.
+  bool euc_enabled() const {
+    return kind_ == KIND_MD && euc_slot_find(tracks_.md->track_number)->enabled;
+  }
 
   bool uses_kit_sound() const {
     return kind_ == KIND_MD ? true : !tracks_.stepseq->owns_sound_data();
