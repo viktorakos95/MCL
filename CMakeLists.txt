@@ -158,3 +158,8 @@ target_link_libraries(mcl_wire_compat_test PRIVATE
 add_executable(mcl_project_clone_test EXCLUDE_FROM_ALL
     tests/project_clone_storage.cpp)
 target_link_libraries(mcl_project_clone_test PRIVATE mcl_native_compile_oracle)
+
+# Names, value text, edit ranges and defaults of Machinedrum parameters 24-37.
+add_executable(mcl_md_ext_params_test EXCLUDE_FROM_ALL
+    tests/md_ext_params_test.cpp)
+target_link_libraries(mcl_md_ext_params_test PRIVATE mcl_native_compile_oracle)
