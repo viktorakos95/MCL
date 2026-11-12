@@ -582,6 +582,7 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           active_track.conditional_plock(step));
       seq_param1.cur = condition;
       seq_param1.old = seq_param1.cur;
+      popup_cond_plock = condition < active_track.condition_count();
 
       if (active_track.uses_note_pitch()) {
         uint8_t pitch_param = active_track.pitch_lock_param_id();
@@ -808,6 +809,29 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
         case MDX_KEY_UP:
         case MDX_KEY_DOWN: {
           uint8_t num_cond = active_track.condition_count();
+          if (MD.microtimingCondition()) {
+            // On the Machinedrum's popup the arrows pick the condition only,
+            // with no wrap; PAGE owns the mode. The knob keeps its side, also
+            // across "no condition".
+            bool plock;
+            uint8_t cond =
+                seq_cond_knob_to_step(seq_param1.cur, num_cond, &plock);
+            if (seq_param1.cur == num_cond) {
+              cond = 0;
+              plock = popup_cond_plock;
+            }
+            if (key == MDX_KEY_UP) {
+              if (cond < num_cond) {
+                cond++;
+              }
+            } else if (cond > 0) {
+              cond--;
+            }
+            popup_cond_plock = plock;
+            seq_param1.cur =
+                cond ? seq_cond_step_to_knob(cond, plock, num_cond) : num_cond;
+            return true;
+          }
           if (func_down) {
             if (seq_param1.cur != num_cond) {
               seq_param1.cur = num_cond * 2 - seq_param1.cur;

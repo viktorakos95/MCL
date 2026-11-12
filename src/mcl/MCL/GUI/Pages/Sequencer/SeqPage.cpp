@@ -602,7 +602,7 @@ static const uint8_t ENHANCED_MASK_WINDOW_NONE = 255;
 uint8_t enhanced_mask_window_requested = ENHANCED_MASK_WINDOW_NONE;
 bool enhanced_mask_window_suspended = false;
 
-static inline bool enhanced_mask_window_available() {
+static inline __attribute__((always_inline)) bool enhanced_mask_window_available() {
   return MD.connected && MD.global.extendedMode == 2;
 }
 
@@ -829,8 +829,14 @@ void SeqPage::config_mask_info(bool silent) {
       clear_enhanced_mask_window();
       seq_panel_popup_text((uint8_t)-1, 2);
     } else {
-      seq_page_active_step_track().popup_text(str, 1);
-      if (mask_type == MASK_SWING || mask_type == MASK_SLIDE) {
+      const bool mask_window =
+          mask_type == MASK_SWING || mask_type == MASK_SLIDE;
+      // The Machinedrum's own Swing/Slide page names itself; the text is
+      // only for a Machinedrum that has no such page.
+      if (!mask_window || !enhanced_mask_window_available()) {
+        seq_page_active_step_track().popup_text(str, 1);
+      }
+      if (mask_window) {
         if (show_seq_menu) {
           suspend_enhanced_mask_window();
         } else {
