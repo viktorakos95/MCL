@@ -508,6 +508,25 @@ bool DeviceParamCapability::set_param(const DeviceContext &ctx, uint8_t target,
   return false;
 }
 
+bool DeviceParamCapability::param_value_text(const DeviceContext &ctx,
+                                             uint8_t target, uint8_t param,
+                                             uint8_t value, char *out) {
+  (void)ctx;
+  (void)target;
+  (void)param;
+  (void)value;
+  (void)out;
+  return false;
+}
+
+MidiDeviceParamRange DeviceParamCapability::param_range(
+    const DeviceContext &ctx, uint8_t target, uint8_t param) const {
+  (void)ctx;
+  (void)target;
+  (void)param;
+  return MidiDeviceParamRange{0, 127};
+}
+
 uint8_t DeviceParamCapability::sequencer_lock_param_count(
     const DeviceContext &ctx, uint8_t target) const {
   return param_count(ctx, target);

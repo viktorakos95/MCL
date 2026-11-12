@@ -125,38 +125,45 @@ void SpsOverlayPage::display() {
   const char *bottom_labels[4];
   bool top_show[4]    = {false, false, false, false};
   bool bottom_show[4] = {false, false, false, false};
+  // Value text as the Machinedrum shows it (RTRG OFF/INF, RTIM 1/N...).
+  char top_text[4][4];
+  char bottom_text[4][4];
+  const char *top_values[4] = {top_text[0], top_text[1], top_text[2],
+                               top_text[3]};
+  const char *bottom_values[4] = {bottom_text[0], bottom_text[1],
+                                  bottom_text[2], bottom_text[3]};
   for (uint8_t i = 0; i < 4; i++) {
     const uint8_t tp = page_base + i;
     const uint8_t bp = page_base + 4 + i;
     top_labels[i] = (tp < param_count) ? model_param_name(model, tp) : nullptr;
     bottom_labels[i] =
         (bp < param_count) ? model_param_name(model, bp) : nullptr;
+    md_param_value_text(tp, (uint8_t)top_encs[i].cur, top_text[i]);
+    md_param_value_text(bp, (uint8_t)bottom_encs[i].cur, bottom_text[i]);
     // Always show the value text on locked slots so the user sees
     // the lock value clearly.
     top_show[i]    = top_locked[i];
     bottom_show[i] = bot_locked[i];
   }
 
-  mcl_gui.draw_encoder_strip(0,  top_strip,    top_labels,    top_show);
-  mcl_gui.draw_encoder_strip(32, bottom_strip, bottom_labels, bottom_show);
+  mcl_gui.draw_encoder_strip(0,  top_strip,    top_labels,    top_show,
+                             top_values);
+  mcl_gui.draw_encoder_strip(32, bottom_strip, bottom_labels, bottom_show,
+                             bottom_values);
 
   // Invert covering both dial + value text on locked slots.
   constexpr uint8_t kCellW = 32;
   constexpr uint8_t kDialW = 11;
   for (uint8_t i = 0; i < 4; i++) {
     if (top_locked[i]) {
-      char val[4];
-      mcl_gui.put_value_at((uint8_t)top_encs[i].cur, val);
-      uint8_t vw = (uint8_t)strlen(val) * 6;
+      uint8_t vw = (uint8_t)strlen(top_text[i]) * 6;
       uint8_t inner_w = (vw > kDialW) ? vw : kDialW;
       uint8_t cx = i * kCellW;
       uint8_t inv_x = cx + (kCellW - inner_w) / 2 - 2;
       invert_rect(inv_x, 0 + 3, inner_w + 4, 23);
     }
     if (bot_locked[i]) {
-      char val[4];
-      mcl_gui.put_value_at((uint8_t)bottom_encs[i].cur, val);
-      uint8_t vw = (uint8_t)strlen(val) * 6;
+      uint8_t vw = (uint8_t)strlen(bottom_text[i]) * 6;
       uint8_t inner_w = (vw > kDialW) ? vw : kDialW;
       uint8_t cx = i * kCellW;
       uint8_t inv_x = cx + (kCellW - inner_w) / 2 - 2;

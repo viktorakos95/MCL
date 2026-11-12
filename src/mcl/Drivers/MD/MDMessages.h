@@ -362,6 +362,8 @@ public:
     params[MODEL_ENVDCY]  = 127;
     params[MODEL_ENVMIX]  = 127;
     params[MODEL_LFO2SPD] = 64;
+    params[MODEL_RTIM]    = MD_RTIM_FASTEST_INDEX;
+    params[MODEL_RENV]    = 1;
     level = 127;
     model = GND_MODEL;
     trigGroup = 127;

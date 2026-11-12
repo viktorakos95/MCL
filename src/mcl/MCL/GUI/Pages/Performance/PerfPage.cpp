@@ -129,6 +129,12 @@ void PerfPage::config_encoder_range() {
                                              ? 2
                                              : (param_count ? param_count - 1
                                                             : 0);
+  if (learn && page_mode > PERF_DESTINATION) {
+    // A scene lock: 0 shows OFF, then come the parameter's values.
+    ((MCLEncoder *)encoders[3])->max =
+        DeviceParamResolver::perf_value_range(encoders[1]->cur,
+                                              encoders[2]->cur).max + 1;
+  }
 }
 
 void PerfPage::config_encoders(uint8_t show_val) {
@@ -169,7 +175,6 @@ void PerfPage::config_encoders(uint8_t show_val) {
     }
 
     encoders[3]->cur = v;
-    ((MCLEncoder *)encoders[3])->max = 128;
 
     config_encoder_range();
   }
@@ -198,6 +203,17 @@ void PerfPage::update_params() {
       p->dest = encoders[1]->cur;
       p->param = encoders[2]->cur;
       if (encoders[3]->hasChanged() && BUTTON_DOWN(Buttons.ENCODER4)) { GUI.ignoreNextEvent(Buttons.ENCODER4); }
+      Encoder *lock = encoders[3];
+      if (lock->hasChanged() && lock->cur > 0) {
+        // An edit moves the lock into the parameter's range (RTIM starts at
+        // 2); turning down past its lowest value shows OFF. A stored value
+        // below the range stays until it is edited.
+        uint8_t lowest =
+            DeviceParamResolver::perf_value_range(p->dest, p->param).min + 1;
+        if (lock->cur < lowest) {
+          lock->cur = lock->cur < lock->old ? 0 : lowest;
+        }
+      }
       if (encoders[3]->cur > 0) {
         if (p->val == 255) { PerfData::scenes[scene].count++; }
         p->val = encoders[3]->cur - 1;
@@ -267,8 +283,20 @@ void PerfPage::display() {
     }
 
     bool show_value = mcl_gui.show_encoder_value(encoders[3]);
+    // Values with a name (RTRG OFF/INF, ENV DEST AMP...) take the label slot.
+    char value_text[4];
+    bool label_is_progmem = true;
+    if (show_value && is_lock &&
+        DeviceParamResolver::perf_value_text(encoders[1]->cur,
+                                             encoders[2]->cur, v,
+                                             value_text)) {
+      lock_label = value_text;
+      label_is_progmem = false;
+      show_value = false;
+    }
     mcl_gui.draw_light_encoder(MCLGUI::knob_x0 + 3 * MCLGUI::knob_w + 7, 6, v,
-                               lock_label, is_lock, show_value);
+                               lock_label, is_lock, show_value,
+                               label_is_progmem);
 
   } else {
     draw_dest(1, encoders[1]->cur, false);

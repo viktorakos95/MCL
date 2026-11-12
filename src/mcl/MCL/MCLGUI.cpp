@@ -470,7 +470,8 @@ void MCLGUI::draw_encoder(uint8_t x, uint8_t y, Encoder *encoder) {
 
 void MCLGUI::draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
                                 const char *const labels[4],
-                                const bool show_values[4]) {
+                                const bool show_values[4],
+                                const char *const values[4]) {
   // 128 px wide, four 32-px columns. The bottom 8-px row is shared:
   // value (6x8) when show_values[n] is true, otherwise the label
   // (TomThumb) sits in the same slot. This keeps the dial centred and
@@ -495,7 +496,12 @@ void MCLGUI::draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
 
       if (show_values[n]) {
         char val[4];
-        put_value_at(encoders[n]->cur, val);
+        if (values != nullptr && values[n] != nullptr) {
+          strncpy(val, values[n], sizeof(val) - 1);
+          val[sizeof(val) - 1] = '\0';
+        } else {
+          put_value_at(encoders[n]->cur, val);
+        }
         uint8_t vlen = (uint8_t)strlen(val);
         uint8_t vw = vlen * 6;
         oled_display.setFont();

@@ -39,6 +39,11 @@ struct DeviceParamTarget {
                       MidiUartClass *uart_ = nullptr) const;
   bool send_modulated_param(uint8_t param, uint8_t value,
                             MidiUartClass *uart_ = nullptr) const;
+  // The device's text for a value (at most three characters and a NUL);
+  // false when it shows the plain number, and `out` may be unchanged.
+  bool value_text(uint8_t param, uint8_t value, char *out) const;
+  // The values an edit may set.
+  MidiDeviceParamRange value_range(uint8_t param) const;
 
   uint8_t lock_param_count() const;
   bool lock_param_info(uint8_t param, MidiDeviceParamInfo *info) const;
@@ -86,6 +91,11 @@ DeviceParamTarget target_for_idx(DeviceIdx device_idx, uint8_t dest);
 
 uint8_t perf_target_count();
 DevicePerfTarget perf(uint8_t dest);
+// Value text and edit range of a parameter of a performance or LFO
+// destination. Destinations past the device targets (LFO tracks,
+// performance controls) have none: no text, 0-127.
+bool perf_value_text(uint8_t dest, uint8_t param, uint8_t value, char *out);
+MidiDeviceParamRange perf_value_range(uint8_t dest, uint8_t param);
 uint8_t perf_data_dest_for_target(DeviceIdx device_idx, uint8_t target);
 uint8_t perf_dest_for_target(DeviceIdx device_idx, uint8_t target);
 bool perf_dest_to_target(uint8_t perf_dest, DeviceIdx *device_idx,

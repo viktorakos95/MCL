@@ -69,6 +69,19 @@ bool DeviceParamTarget::get_base_param(uint8_t param, uint8_t *value) const {
   return get_param(param, value);
 }
 
+bool DeviceParamTarget::value_text(uint8_t param, uint8_t value,
+                                   char *out) const {
+  return valid() && device->params()->param_value_text(context(), target,
+                                                       param, value, out);
+}
+
+MidiDeviceParamRange DeviceParamTarget::value_range(uint8_t param) const {
+  if (!valid()) {
+    return MidiDeviceParamRange{0, 127};
+  }
+  return device->params()->param_range(context(), target, param);
+}
+
 bool DeviceParamTarget::set_base_param(uint8_t param, uint8_t value,
                                        MidiUartClass *uart_) const {
   if (!valid()) {

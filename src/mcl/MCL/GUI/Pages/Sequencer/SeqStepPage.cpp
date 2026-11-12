@@ -927,7 +927,9 @@ void SeqStepMidiEvents::onControlChangeCallback_Midi(uint8_t *msg) {
     char str2[4];
     mclstr_init_dash_space(str2);
     active_track.copy_lock_param_label(track_param, str, sizeof(str));
-    mcl_gui.put_value_at(value, str2);
+    if (!active_track.lock_value_text(track_param, value, str2)) {
+      mcl_gui.put_value_at(value, str2);
+    }
     oled_display.textbox(str, str2);
   }
   if (store_lock == 1) {

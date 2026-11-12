@@ -204,6 +204,11 @@ bool lfo_preview_is_centered(uint8_t wav_type) {
   return (centered_mask >> wav_type) & 1;
 }
 
+MidiDeviceParamRange lfo_value_range(LFOSeqTrack *track, uint8_t param_idx) {
+  return DeviceParamResolver::perf_value_range(track->params[param_idx].dest,
+                                               track->params[param_idx].param);
+}
+
 void update_lfo_base_param(Encoder **encoders, LFOSeqTrack *track,
                            uint8_t encoder_idx, uint8_t param_idx) NOINLINE();
 void update_lfo_base_param(Encoder **encoders, LFOSeqTrack *track,
@@ -211,7 +216,11 @@ void update_lfo_base_param(Encoder **encoders, LFOSeqTrack *track,
   if (!encoders[encoder_idx]->hasChanged()) {
     return;
   }
-  uint8_t value = encoders[encoder_idx]->cur;
+  // An edit moves the value into the parameter's range; a stored value
+  // below it (RTIM under 2 from an older Kit) stays until then.
+  uint8_t value = lfo_value_range(track, param_idx)
+                      .clamp(encoders[encoder_idx]->cur);
+  encoders[encoder_idx]->cur = value;
   track->params[param_idx].offset = value;
   if (track->params[param_idx].dest != 0 &&
       LFOTrackRef::set_base_param(track->params[param_idx].dest,
@@ -288,6 +297,11 @@ void draw_lfo_value_knob(uint8_t knob, Encoder *encoder, LFOSeqTrack *track,
     value = track->last_wav_value[param_idx] == 255
                 ? track->params[param_idx].offset
                 : track->last_wav_value[param_idx];
+  } else if (DeviceParamResolver::perf_value_text(
+                 track->params[param_idx].dest,
+                 track->params[param_idx].param, value, label)) {
+    // Values with a name (RTRG OFF/INF, ENV DEST AMP...) take the label slot.
+    show_base = false;
   }
   mcl_gui.draw_light_encoder(x + 7, 6, value, label, highlight, show_base,
                              false);
@@ -433,9 +447,11 @@ void LFOPage::config_encoders() {
   }
   else if (page_mode == LFO_MODULATION) {
     set_lfo_encoder(encoders[0], lfo_track->params[0].depth, 127);
-    set_lfo_encoder(encoders[1], lfo_track->params[0].offset, 127);
+    set_lfo_encoder(encoders[1], lfo_track->params[0].offset,
+                    lfo_value_range(lfo_track, 0).max);
     set_lfo_encoder(encoders[2], lfo_track->params[1].depth, 127);
-    set_lfo_encoder(encoders[3], lfo_track->params[1].offset, 127);
+    set_lfo_encoder(encoders[3], lfo_track->params[1].offset,
+                    lfo_value_range(lfo_track, 1).max);
   }
 
   //  loop();

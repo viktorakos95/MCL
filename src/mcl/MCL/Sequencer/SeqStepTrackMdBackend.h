@@ -131,6 +131,10 @@ public:
                                          param_id);
     return copy_short_label(label, dst, (uint8_t)dst_len, 3);
   }
+  // Four bytes; false when the value shows as its plain number.
+  bool lock_value_text(uint8_t param_id, uint8_t value, char *dst) const {
+    return md_param_value_text(param_id, value, dst);
+  }
 
   uint8_t length() const { return track_->length; }
   uint8_t speed() const { return track_->speed; }

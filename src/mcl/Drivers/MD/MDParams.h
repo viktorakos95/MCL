@@ -3,6 +3,8 @@
 #ifndef MD_PARAMS_H__
 #define MD_PARAMS_H__
 
+#include "../MidiDeviceParam.h"
+
 /**
  * \addtogroup MD Elektron MachineDrum
  *
@@ -800,6 +802,12 @@
 #define SPS_EXTENDED_CC_MAX      (SPS_EXTENDED_PARAM_COUNT * 4 - 1)
 #define SPS_MAX_LOCK_ROWS        (16 * SPS_PARAMS_PER_TRACK)
 
+// RTIM selects one of 15 retrigger times, 1/384 (0) to 1/2 (14). 1/128 is
+// the fastest a Machinedrum edit selects; stored values below it play and
+// read as it.
+#define MD_RTIM_COUNT         15
+#define MD_RTIM_FASTEST_INDEX 2
+
 struct SpsExtendedCcAddress {
   uint8_t channel = 0;
   uint8_t cc = 0;
@@ -1044,6 +1052,16 @@ static_assert(MODEL_ENVDEST < MODEL_MUTE,
 #define MD_GUI_TRACK_1 0x40
 
 extern const char* model_param_name(uint8_t model, uint8_t param);
+
+// Track parameter values as the Machinedrum shows them: RTRG OFF/1-126/INF,
+// RTIM as N of the fraction 1/N, RENV OFF/ON, ENV DEST AMP/FLF/FLW. Writes
+// at most three characters and a NUL to `out` (four bytes); every other
+// parameter gets its number. Returns false when the text is that number.
+bool md_param_value_text(uint8_t param, uint8_t value, char *out);
+
+// The values an edit of a track parameter may set: RTIM 2-14, RENV 0-1,
+// ENV DEST 0-2, everything else 0-127.
+MidiDeviceParamRange md_param_range(uint8_t param);
 
 extern const char *MDLFONames[8];
 

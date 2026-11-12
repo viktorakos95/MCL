@@ -86,10 +86,12 @@ public:
   // on the 128x64 panel). Layout per column: label on top, dial in
   // middle, value below (only when show_values[i] is true). Pass nullptr
   // for any unused encoder; nullptr labels print blank. Reuses
-  // draw_md_encoder so the look matches the rest of the GUI.
+  // draw_md_encoder so the look matches the rest of the GUI. `values`, when
+  // given, holds each encoder's value text in place of its number.
   void draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
                           const char *const labels[4],
-                          const bool show_values[4]);
+                          const bool show_values[4],
+                          const char *const values[4] = nullptr);
 
   bool show_encoder_value(Encoder *encoder, int timeout = SHOW_VALUE_TIMEOUT);
 

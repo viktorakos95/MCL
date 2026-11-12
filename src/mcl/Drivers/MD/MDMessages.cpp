@@ -386,10 +386,12 @@ static void kit65_read(uint8_t at, uint8_t *dst, uint8_t count) {
 }
 #endif
 
-// Envelope open, LFO-B speed centred, retrig off with envelope reset on.
+// The Machinedrum's defaults for a new Kit or machine: envelope open
+// (ATK 0, HLD 0, DCY 127, EMX 127), LFO-B speed centred, retrig off at the
+// fastest time (1/128) with envelope reset on, no bus sends, ENV DEST AMP.
 static const uint8_t md_extended_param_defaults[SPS_PARAMS_PER_TRACK -
                                                 MD_PARAMS_PER_TRACK] PROGMEM = {
-    0, 0, 127, 127, 64, 0, 0, 0, 0, 1, 0, 0, 0, 0};
+    0, 0, 127, 127, 64, 0, 0, 0, MD_RTIM_FASTEST_INDEX, 1, 0, 0, 0, 0};
 
 void MDMachine::init_extended() {
   memcpy_P(&params[MD_PARAMS_PER_TRACK], md_extended_param_defaults,
@@ -578,20 +580,8 @@ bool MDKit::fromSysex(MidiClass *midi) {
     // later toSysex(SPS-X) round-trips cleanly. Mirrors host MDTypes.cpp
     // (versions <65 fallback) — envelope bypass-on, retrig off + RENV on.
     for (uint8_t i = 0; i < 16; i++) {
-      memset(&params[i][MD_PARAMS_PER_TRACK], 0, SPS_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK);
-      params[i][MODEL_ENVATT]  = 0;
-      params[i][MODEL_ENVHLD]  = 0;
-      params[i][MODEL_ENVDCY]  = 127;
-      params[i][MODEL_ENVMIX]  = 127;
-      params[i][MODEL_LFO2SPD] = 64;
-      params[i][MODEL_LFO2DEP] = 0;
-      params[i][MODEL_LFO2MIX] = 0;
-      params[i][MODEL_RTRG]    = 0;
-      params[i][MODEL_RTIM]    = 0;
-      params[i][MODEL_RENV]    = 1;   // envelope reset ON
-      params[i][MODEL_BUS1]    = 0;
-      params[i][MODEL_BUS2]    = 0;
-      params[i][MODEL_BUS3]    = 0;
+      memcpy_P(&params[i][MD_PARAMS_PER_TRACK], md_extended_param_defaults,
+               sizeof(md_extended_param_defaults));
       lfosB[i].init(i);
     }
     init_user_fx();

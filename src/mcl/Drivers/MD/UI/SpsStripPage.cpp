@@ -89,6 +89,10 @@ void SpsStripPage::display() {
   const char *labels[4];
   bool show[4];
   bool locked[4] = {false, false, false, false};
+  // Value text as the Machinedrum shows it (RTRG OFF/INF, RTIM 1/N...).
+  char value_text[4][4];
+  const char *values[4] = {value_text[0], value_text[1], value_text[2],
+                           value_text[3]};
   uint8_t base = MD.ui.sps_mode.sub_page() * 4;
   uint8_t param_count = MD.ui.sps_mode.param_count();
   const uint8_t track = (MD.currentTrack < 16) ? MD.currentTrack : 0;
@@ -99,6 +103,7 @@ void SpsStripPage::display() {
       encs[i] = nullptr;
       labels[i] = nullptr;
       show[i] = false;
+      value_text[i][0] = '\0';
       continue;
     }
     uint8_t lock_v;
@@ -113,8 +118,9 @@ void SpsStripPage::display() {
       show[i] = MD.ui.sps_mode.show_strip_value(i);
     }
     labels[i] = model_param_name(model, param);
+    md_param_value_text(param, (uint8_t)encs[i]->cur, value_text[i]);
   }
-  mcl_gui.draw_encoder_strip(y_top, encs, labels, show);
+  mcl_gui.draw_encoder_strip(y_top, encs, labels, show, values);
 
   // Invert covering both dial + value text on locked slots.
   // Width = max(text_width, dial_width) + 2 px each side; height
@@ -123,9 +129,7 @@ void SpsStripPage::display() {
   constexpr uint8_t kDialW = 11;
   for (uint8_t i = 0; i < 4; i++) {
     if (!locked[i]) continue;
-    char val[4];
-    mcl_gui.put_value_at((uint8_t)encs[i]->cur, val);
-    uint8_t vw = (uint8_t)strlen(val) * 6;
+    uint8_t vw = (uint8_t)strlen(value_text[i]) * 6;
     uint8_t inner_w = (vw > kDialW) ? vw : kDialW;
     uint8_t cx = i * kCellW;
     uint8_t inv_x = cx + (kCellW - inner_w) / 2 - 2;
