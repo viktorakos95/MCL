@@ -135,6 +135,7 @@ bool MNMClass::probe() {
     // calculated before proceeding.
     mcl_gui.delay_progress(400);
 
+    fw_caps = 0; // A new connection learns its capabilities again.
     if (!get_fw_caps()) {
       oled_display.textbox_P(mclstr_upgrade, mclstr_monomachine);
       oled_display.display();

@@ -204,41 +204,47 @@ uint8_t ElektronDevice::get_track_state(uint16_t &mute_state,
 bool ElektronDevice::get_fw_caps() {
   send_system_command(this, 0x30);
 
-  uint8_t msgType = waitBlocking();
-
-  fw_caps = 0;
-
-  uint8_t begin = sysex_protocol.header_size + 1;
-  auto listener = getSysexListener();
-  if (!listener || !listener->sysex || listener->msg_rd >= NUM_SYSEX_MSGS) {
-    return false;
-  }
-
-  const uint8_t msg_rd = listener->msg_rd;
-  if (!listener->sysex->ledger[msg_rd].ptr) {
-    return false;
-  }
-  const uint16_t record_len = listener->sysex->ledger[msg_rd].recordLen;
-  if (listener->sysex->ledger[msg_rd].state != SYSEX_STATE_FIN ||
-      record_len <= begin) {
-    return false;
-  }
-
-  SysexView sysex(listener->sysex, msg_rd);
-  uint8_t b = 0;
-  if (msgType == 0x72 && sysex.getByte(begin) == 0x30) {
-    if (record_len < static_cast<uint16_t>(begin) + 5u) {
+  // The reply can follow another message: MDX announces a kit dump it has
+  // just loaded (0x54) before it answers. Wait past such messages, and
+  // change fw_caps only when a reply is read, so a kit send (which uses this
+  // query to wait) can never make an X.20 Machinedrum look like an older
+  // one. Probes clear fw_caps themselves.
+  const uint16_t start_clock = read_slowclock();
+  uint16_t elapsed = 0;
+  do {
+    const uint8_t msgType = waitBlocking(1000 - elapsed);
+    if (msgType == 255) {
       return false;
     }
-    begin++;
-    uint8_t *caps = (uint8_t *)&fw_caps;
-    for (uint8_t n = 0; n < 4; n++) {
-      b = sysex.getByte(begin++);
-      if (b == 0xF7) { break; }
-      caps[n] = b;
+    uint8_t begin = sysex_protocol.header_size + 1;
+    auto listener = getSysexListener();
+    if (!listener || !listener->sysex || listener->msg_rd >= NUM_SYSEX_MSGS) {
+      return false;
     }
-    return true;
-  }
+    const uint8_t msg_rd = listener->msg_rd;
+    const uint16_t record_len = listener->sysex->ledger[msg_rd].recordLen;
+    if (msgType == 0x72 && listener->sysex->ledger[msg_rd].ptr &&
+        listener->sysex->ledger[msg_rd].state == SYSEX_STATE_FIN &&
+        record_len > begin) {
+      SysexView sysex(listener->sysex, msg_rd);
+      if (sysex.getByte(begin) == 0x30) {
+        if (record_len < static_cast<uint16_t>(begin) + 5u) {
+          return false;
+        }
+        begin++;
+        uint32_t caps_value = 0;
+        uint8_t *caps = (uint8_t *)&caps_value;
+        for (uint8_t n = 0; n < 4; n++) {
+          const uint8_t b = sysex.getByte(begin++);
+          if (b == 0xF7) { break; }
+          caps[n] = b;
+        }
+        fw_caps = caps_value;
+        return true;
+      }
+    }
+    elapsed = clock_diff(start_clock, read_slowclock());
+  } while (elapsed < 1000);
   return false;
 }
 

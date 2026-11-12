@@ -1,4 +1,5 @@
 #include <chrono>
+#include <atomic>
 #include <thread>
 #include "Drivers/MD/MD.h"
 #include "Drivers/MD/MDSysex.h"
@@ -409,6 +410,33 @@ bool checkUsrMetadata() {
     md_usr.invalidate(); ok &= poll(0, 4);
     md_usr.kitChanged();
     ok &= deliver() && md_usr.descriptor(194) == 0;
+    // MDX announces a kit dump it has loaded (0x54) before it answers the
+    // capability query MCL sends straight after the kit. Seen in MAME at
+    // dd02815d3: notice 12 ms before the reply. Neither may empty fw_caps.
+    MD.uart = &MidiUart;
+    MD.fw_caps = FW_CAP_USR_QUERY | FW_CAP_SPSX;
+    MidiUart.init();
+    const uint8_t noticeThenCaps[]{0xf0,0,0x20,0x3c,2,0,0x54,0x7f,0xf7,
+                                   0xf0,0,0x20,0x3c,2,0,0x72,0x30,0x7e,0x7f,0x7b,0x01,0xf7};
+    ok &= MidiUart.desktop_ingress(noticeThenCaps, sizeof(noticeThenCaps)) == sizeof(noticeThenCaps);
+    ok &= MD.get_fw_caps() && MD.fw_caps == 0x017b7f7eUL && MD.currentKit == 0x7f;
+    MD.fw_caps = FW_CAP_USR_QUERY | FW_CAP_SPSX;
+    MidiUart.init();
+    ok &= MidiUart.desktop_ingress(noticeThenCaps, 9) == 9; // the notice alone
+    {
+        // Nothing advances the millisecond clock in this binary; tick it so
+        // the query can time out.
+        std::atomic<bool> ticking{true};
+        std::thread clock([&ticking] {
+            while (ticking) {
+                g_clock_ms = uint16_t(g_clock_ms + 1);
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
+            }
+        });
+        ok &= !MD.get_fw_caps() && MD.fw_caps == (FW_CAP_USR_QUERY | FW_CAP_SPSX);
+        ticking = false;
+        clock.join();
+    }
     MD.midi = oldMidi; MDSysexListener.setup(oldMidi);
     mcl_seq.md_tracks[0].clear_locks();
     md_usr.reset();

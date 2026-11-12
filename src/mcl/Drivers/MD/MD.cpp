@@ -1505,6 +1505,7 @@ bool MDClass::probe() {
 
   // Begin main probe sequence — derive port from uart pointer
   uint8_t probe_port = port;
+  fw_caps = 0; // A new connection learns its capabilities again.
   if (uart->device.getBlockingId(DEVICE_MD, DEVICE_SPS, probe_port, CALLBACK_TIMEOUT)) {
     uint8_t count = 3;
 
