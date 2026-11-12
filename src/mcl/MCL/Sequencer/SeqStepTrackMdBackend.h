@@ -98,11 +98,12 @@ public:
     MD.popup_text(text, persistent);
   }
 
-  uint8_t lock_param_count() const { return MD_PARAMS_PER_TRACK; }
+  // Parameters 24-37 reach here only from an X.20 peer.
+  uint8_t lock_param_count() const { return SPS_PARAMS_PER_TRACK; }
   uint8_t lock_slot_count() const { return NUM_LOCKS; }
 
   bool lock_param_info(uint8_t param_id, SeqStepLockParamInfo &info) const {
-    if (param_id >= MD_PARAMS_PER_TRACK) {
+    if (param_id >= SPS_PARAMS_PER_TRACK) {
       return false;
     }
     info = SeqStepLockParamInfo();
@@ -116,14 +117,14 @@ public:
   }
 
   uint8_t current_lock_value(uint8_t param_id) const {
-    return param_id < MD_PARAMS_PER_TRACK && track_index() < NUM_MD_TRACKS
+    return param_id < SPS_PARAMS_PER_TRACK && track_index() < NUM_MD_TRACKS
                ? MD.kit.params[track_index()][param_id]
                : 0;
   }
 
   bool copy_lock_param_label(uint8_t param_id, char *dst,
                              size_t dst_len) const {
-    if (dst == nullptr || dst_len == 0 || param_id >= MD_PARAMS_PER_TRACK ||
+    if (dst == nullptr || dst_len == 0 || param_id >= SPS_PARAMS_PER_TRACK ||
         track_index() >= NUM_MD_TRACKS) {
       return false;
     }
@@ -435,7 +436,7 @@ private:
       return false;
     }
     uint8_t value = MD.paramForEncoder(key - 0x10);
-    if (value >= MD_PARAMS_PER_TRACK) {
+    if (value >= SPS_PARAMS_PER_TRACK) {
       return false;
     }
     *param = value;
@@ -444,7 +445,7 @@ private:
 
   bool md_key_for_param(uint8_t param, uint8_t *key) const {
     if (key == nullptr || track_index() >= NUM_MD_TRACKS ||
-        param >= MD_PARAMS_PER_TRACK) {
+        param >= SPS_PARAMS_PER_TRACK) {
       return false;
     }
     uint8_t encoder = MD.encoderForParam(param);

@@ -273,6 +273,7 @@ void MCLSeq::setup() {
   for (uint8_t i = 0; i < num_md_tracks; i++) {
     md_tracks[i].track_number = i;
     md_tracks[i].set_length(16);
+    md_tracks[i].set_default_swing();
     md_tracks[i].speed = SEQ_SPEED_1X;
     md_tracks[i].mute_state = SEQ_MUTE_OFF;
     md_arp_tracks[i].init();

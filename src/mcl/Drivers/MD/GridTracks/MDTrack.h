@@ -71,6 +71,8 @@ public:
     return sizeof(MDTrack) - sizeof(void*);
   }
   void init();
+  // A track built for an empty grid slot gets the default swing mask.
+  void init(uint8_t, SeqTrack *) override { seq_data.set_default_swing(); }
   void init_defaults() override {
     machine.init();
     mod_data.init();

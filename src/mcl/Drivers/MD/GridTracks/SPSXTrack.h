@@ -79,6 +79,10 @@ public:
   }
 
   void init();
+  // A track built for an empty grid slot gets the default swing mask.
+  void init(uint8_t, SeqTrack *) override {
+    seq_storage.seq_data.legacy.set_default_swing();
+  }
   void init_defaults() override {
     machine.init();
     seq_storage.init_storage();
