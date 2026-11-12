@@ -904,6 +904,9 @@ void apply_project_config(MCLSysConfigData *dst,
   memcpy((uint8_t *)dst + PROJECT_CONFIG_OFFSET,
          (const uint8_t *)&source + PROJECT_CONFIG_OFFSET,
          PROJECT_CONFIG_SIZE);
+  if (dst->load_mode < LOAD_MANUAL || dst->load_mode > LOAD_QUEUE) {
+    dst->load_mode = LOAD_MANUAL;  // (a project saved with a stray value: the grid load page indexes a table with it)
+  }
   dst->md_sample_bank = project_config_sample_bank_setting(source);
   dst->md_sample_bank_capture = 0;
   dst->active_arrangement_idx = source.active_arrangement_idx;

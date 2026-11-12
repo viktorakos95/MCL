@@ -4,6 +4,7 @@
 #include "StackMonitor.h"
 #include "Project.h"
 #include "Sequencer/PtcGroups.h"
+#include "Grid/GridChain.h"
 #include "platform.h"
 #include <string.h>
 
@@ -227,6 +228,10 @@ bool MCLSd::load_init() {
           oled_display.clearDisplay();
           return wait_for_project_or_headless_boot();
 
+        }
+
+        if (mcl_cfg.load_mode < LOAD_MANUAL || mcl_cfg.load_mode > LOAD_QUEUE) {
+          mcl_cfg.load_mode = LOAD_MANUAL;  // (a stray value: the grid load page indexes a table with it)
         }
 
         // roll_ignores_mute lives one byte past the versioned struct (see
