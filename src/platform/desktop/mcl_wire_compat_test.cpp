@@ -291,6 +291,36 @@ bool checkUsrMetadata() {
     std::this_thread::sleep_for(std::chrono::milliseconds(1010));
     md_usr.service();
     ok &= output.desktop_egress(request.data(), request.size()) == 0;
+    // With FW_CAP_USR_LABELS the kit's USR machines fetch their labels.
+    {
+        uint32_t oldModels[16];
+        std::memcpy(oldModels, MD.kit.models, sizeof(oldModels));
+        for (auto &model : MD.kit.models) model = 0;
+        MD.kit.models[5] = 196; // slot 2
+        MD.fw_caps |= FW_CAP_USR_LABELS;
+        ok &= md_usr.label(196, 0) == nullptr;
+        ok &= poll(5, 1) && request[11] == 2;
+        static const char labels[] = "FREQDEC\0P3\0\0P4\0\0P5\0\0P6\0\0P7\0\0LAST";
+        reply[17] = 3; // another slot's reply cannot publish
+        std::memcpy(reply.data() + 18, labels, 32);
+        reply[50] = 0xf7;
+        ok &= deliver(51) && md_usr.label(196, 0) == nullptr;
+        reply[17] = 2;
+        ok &= deliver(51) && std::strcmp(md_usr.label(196, 0), "FRE") == 0;
+        ok &= std::strcmp(md_usr.label(196, 1), "DEC") == 0;
+        ok &= std::strcmp(md_usr.label(196, 7), "LAS") == 0;
+        ok &= md_usr.label(197, 0) == nullptr && md_usr.label(196, 8) == nullptr;
+        output.init(); md_usr.service(); // complete: nothing more to ask
+        ok &= output.desktop_egress(request.data(), request.size()) == 0;
+        md_usr.invalidate();
+        ok &= md_usr.label(196, 0) == nullptr;
+        ok &= poll(0, 1) && deliver() && poll(1, 1) && deliver() &&
+              poll(2, 1) && deliver() && poll(5, 1) && request[11] == 2;
+        reply[17] = 2; std::memcpy(reply.data() + 18, labels, 32); reply[50] = 0xf7;
+        ok &= deliver(51) && std::strcmp(md_usr.label(196, 0), "FRE") == 0;
+        MD.fw_caps = FW_CAP_USR_QUERY | FW_CAP_SPSX;
+        std::memcpy(MD.kit.models, oldModels, sizeof(oldModels));
+    }
     MD.kit.models[0] = 194 | mdTuningModelFlags(MD_TUNING_TONAL);
     ok &= MD.pitchParameter(0) == 3 && MD.getKitModelTuning(0) != nullptr;
     char label[8]{}; uint8_t pitchMax = 0; bool midiModel = true;

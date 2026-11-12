@@ -831,9 +831,9 @@ void SeqPage::config_mask_info(bool silent) {
     } else {
       const bool mask_window =
           mask_type == MASK_SWING || mask_type == MASK_SLIDE;
-      // The Machinedrum's own Swing/Slide page names itself; the text is
-      // only for a Machinedrum that has no such page.
-      if (!mask_window || !enhanced_mask_window_available()) {
+      // An X.20 Machinedrum's own Swing/Slide page names itself; others
+      // keep the text.
+      if (!mask_window || !enhanced_mask_window_available() || !MD.x20()) {
         seq_page_active_step_track().popup_text(str, 1);
       }
       if (mask_window) {

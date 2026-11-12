@@ -250,6 +250,8 @@ public:
 // The microtiming popup takes the step's condition and condition mode, and
 // PAGE on that popup arrives as a key.
 #define FW_CAP_MICROTIMING_COND FW_CAP_HIGHER(6)
+// The 0x70/0x44 USR query answers page 5: one slot's parameter labels.
+#define FW_CAP_USR_LABELS     FW_CAP_HIGHEST(0)
 // A condition of this value sends no condition with the popup.
 #define MICROTIMING_NO_CONDITION 255
 

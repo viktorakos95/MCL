@@ -98,7 +98,8 @@ public:
     MD.popup_text(text, persistent);
   }
 
-  // Parameters 24-37 reach here only from an X.20 peer.
+  // Parameters 24-37 arrive only from an X.20 peer (parseCC and
+  // paramForEncoder stop at 23 for any other), so no capability test here.
   uint8_t lock_param_count() const { return SPS_PARAMS_PER_TRACK; }
   uint8_t lock_slot_count() const { return NUM_LOCKS; }
 

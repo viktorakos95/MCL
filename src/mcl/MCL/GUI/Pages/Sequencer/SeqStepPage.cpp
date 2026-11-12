@@ -598,8 +598,9 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       seq_param2.old = seq_param2.cur;
       seq_param2.min = active_track.timing_encoder_min();
       seq_param2.max = active_track.timing_encoder_max();
-      // The device's popup is open on another held step: bring it to this one.
-      if (microtiming_overlay_active()) {
+      // An X.20 Machinedrum's popup is open on another held step: bring it
+      // to this one. Older firmware keeps its popup where it is.
+      if (microtiming_overlay_active() && MD.microtimingCondition()) {
         notify_remote_microtiming(active_track, seq_param2.cur, step);
       }
       resetEncoderFocus();
