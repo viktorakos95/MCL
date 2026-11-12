@@ -679,10 +679,14 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
 
     // Import lock values from pattern rows. Row indices are int16_t now and
     // can exceed 64; use lock_row() to handle the extended-rows extension array.
+    // MDX X.20 and later play a lock on a step without a trig; a stock
+    // Machinedrum or X.14 only on a step with a trig, so only those locks are
+    // kept from them. Only MDX X.20 or later sends a compact pattern, which
+    // also marks the steps whose locks are switched off.
+    const bool compact = pattern->version == MD_PATTERN_VERSION_SPSX;
+    const bool trigless_locks = (MD.fw_caps & FW_CAP_SPSX) != 0;
     const uint8_t pattern_param_count =
-        pattern->version == MD_PATTERN_VERSION_SPSX
-            ? MD_PATTERN_LOCK_SLOTS
-            : 24;
+        compact ? MD_PATTERN_LOCK_SLOTS : 24;
     for (uint8_t p = 0; p < pattern_param_count; p++) {
         int16_t row = pattern->paramLocks[trk][p];
         if (row < 0) continue;
@@ -690,9 +694,13 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
         const int8_t *row_data = pattern->lock_row((uint16_t)row);
         for (uint8_t s = 0; s < 64; s++) {
             int8_t lockval = row_data[s];
-            if (lockval >= 0 && SPSX_IS_BIT_SET64(trig_mask, s)) {
-                set_track_locks(s, p, lockval);
+            if (lockval < 0) continue;
+            if (compact ? (pattern->ext_step_flags[trk][s] & 1) == 0
+                        : !trigless_locks &&
+                              !SPSX_IS_BIT_SET64(trig_mask, s)) {
+                continue;
             }
+            set_track_locks(s, p, lockval);
         }
     }
 
@@ -711,17 +719,11 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
                 (pattern->ext_condition_mode_high[trk] >> s) & 1;
         }
 
-        // Copy full lock-params mapping. MD_PATTERN_LOCK_SLOTS is sized to match
-        // host NUM_LOCKS (== SPSX_NUM_LOCKS), so this is a 1:1 copy.
-        static_assert(MD_PATTERN_LOCK_SLOTS == SPSX_NUM_LOCKS,
-                      "ext_locks_params width must match SPSX track lock slots");
-        constexpr uint8_t lock_slot_count = MD_PATTERN_LOCK_SLOTS;
-        for (uint8_t i = 0; i < lock_slot_count; i++) {
-            locks_params[i] = pattern->ext_locks_params[trk][i];
-        }
-        for (uint8_t i = lock_slot_count; i < SPSX_NUM_LOCKS; ++i) {
-            locks_params[i] = 0;
-        }
+        // set_track_locks() above has already given each imported parameter
+        // its lock slot. Copying the pattern's own slot list over it would
+        // move locks to other parameters wherever a parameter has no lock
+        // left to import (locks switched off), or when merging into a track
+        // that already has locks.
 
         // Per-track length/speed override pattern-level defaults
         if (pattern->ext_track_lengths[trk] != 0) {

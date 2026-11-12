@@ -1280,11 +1280,14 @@ void MDSeqTrack::merge_from_md(uint8_t track_number, MDPattern *pattern) {
     merge_length = NUM_MD_STEPS;
   }
 
+  // MDX X.20 and later play a lock on a step without a trig. A stock
+  // Machinedrum or X.14 plays a lock only on a step with a trig, so only those
+  // locks are kept from them. Only MDX X.20 or later sends a compact pattern.
 #if !defined(__AVR__)
-  const uint8_t num_params =
-      pattern->version == MD_PATTERN_VERSION_SPSX
-          ? MD_PATTERN_LOCK_SLOTS
-          : 24;
+  const bool trigless_locks = (MD.fw_caps & FW_CAP_SPSX) != 0;
+  const bool compact = pattern->version == MD_PATTERN_VERSION_SPSX;
+  const uint8_t num_params = compact ? MD_PATTERN_LOCK_SLOTS : 24;
+  uint64_t lock_steps = 0;
 #else
   uint8_t num_params = 24;
 #endif
@@ -1308,13 +1311,28 @@ void MDSeqTrack::merge_from_md(uint8_t track_number, MDPattern *pattern) {
     for (uint8_t s = 0; s < 64; s++) {
 #if !defined(__AVR__)
       int8_t lockval = pattern->lock_row((uint16_t)idx)[s];
+      if (lockval < 0) {
+        continue;
+      }
+      // A compact pattern marks the steps whose locks are switched off.
+      if (compact ? (pattern->ext_step_flags[track_number][s] & 1) == 0
+                  : !trigless_locks &&
+                        !IS_BIT_SET64(pattern->trigPatterns[track_number],
+                                      s)) {
+        continue;
+      }
+      SET_BIT64(lock_steps, s);
+      set_track_locks(s, i, lockval);
 #else
+      // The capability is read here, not once before the loops: that costs
+      // 60 more bytes of flash.
       int8_t lockval = pattern->locks[idx][s];
-#endif
       if (lockval >= 0 &&
-          IS_BIT_SET64(pattern->trigPatterns[track_number], s)) {
+          ((MD.fw_caps & FW_CAP_SPSX) ||
+           IS_BIT_SET64(pattern->trigPatterns[track_number], s))) {
         set_track_locks(s, i, lockval);
       }
+#endif
     }
   }
 
@@ -1352,18 +1370,17 @@ void MDSeqTrack::merge_from_md(uint8_t track_number, MDPattern *pattern) {
   }
 
 #if !defined(__AVR__)
-  // Apply SPSX step flags (conditionals) and microtiming
+  // Apply SPSX step flags (conditionals) and microtiming, also to a step
+  // that has locks and no trig.
   if (pattern->version >= 0x40) {
     uint8_t ticks_per_step = get_ticks_per_step();
     for (uint8_t a = 0; a < merge_length; a++) {
-      if (steps[a].trig) {
+      if (steps[a].trig || IS_BIT_SET64(lock_steps, a)) {
         uint8_t flags = pattern->ext_step_flags[track_number][a];
         steps[a].cond_id = seq_cond_from_md(flags >> 2);
         steps[a].cond_plock = (flags >> 1) & 1;
-        int8_t mt = pattern->ext_microtiming[track_number][a];
-        if (mt != 0) {
-          microtiming[a] = spsx_microtiming_to_md_microtiming(mt, ticks_per_step);
-        }
+        microtiming[a] = spsx_microtiming_to_md_microtiming(
+            pattern->ext_microtiming[track_number][a], ticks_per_step);
       }
     }
   }

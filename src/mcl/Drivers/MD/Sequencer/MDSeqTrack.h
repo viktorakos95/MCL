@@ -118,6 +118,8 @@ public:
   void clear_param_locks(uint8_t param_id);
   bool is_param(uint8_t param_id);
 
+  // Imports the track's trigs and locks from a received pattern. A lock on a
+  // step without a trig is kept only from MDX X.20 or later.
   void merge_from_md(uint8_t track_number, MDPattern *pattern);
 
   virtual void set_length(uint8_t len, bool expand = false) override;

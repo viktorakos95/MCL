@@ -1666,6 +1666,124 @@ bool checkMdxPatternTiming() {
     return true;
 }
 
+// MDX X.20 and later play locks on steps without trigs; a stock Machinedrum
+// or X.14 does not, and MCL keeps only the locks it would play.
+bool checkTriglessLockImport() {
+    constexpr uint8_t kTrack = 4;
+    constexpr uint8_t kParam = MODEL_P2;
+    constexpr uint8_t kOther = MODEL_P4;
+    constexpr uint8_t kCondition = 3;  // Machinedrum 3, MCL 5
+    const auto build = [&]() {
+        MD.pattern.clearPattern();
+        MD.pattern.patternLength = 16;
+        MD.pattern.trigPatterns[kTrack] = UINT64_C(1) << 2;
+        // Step 2 has a trig, 6 and 9 have none; 9's locks are switched off.
+        MD.pattern.addLock(kTrack, 2, kParam, 40);
+        MD.pattern.addLock(kTrack, 6, kParam, 50);
+        MD.pattern.addLock(kTrack, 6, kOther, 51);
+        MD.pattern.addLock(kTrack, 9, kParam, 60);
+        MD.pattern.ext_step_flags[kTrack][2] = 1;
+        MD.pattern.ext_step_flags[kTrack][6] = 1 | 2 | (kCondition << 2);
+        MD.pattern.ext_step_flags[kTrack][9] = 0;
+        MD.pattern.ext_microtiming[kTrack][6] = 64;
+    };
+    struct Expect {
+        uint8_t step2, step6, other6, step9;
+    };
+    const auto check = [&](const char* name, MDPattern& decoded,
+                           const Expect& expect, bool compact) {
+        SPSXSeqTrack spsx;
+        spsx.length = 16;
+        spsx.speed = SEQ_SPEED_1X;
+        spsx.merge_from_md(kTrack, &decoded);
+        MDSeqTrack md;
+        md.init();
+        md.length = 16;
+        md.speed = SEQ_SPEED_1X;
+        md.merge_from_md(kTrack, &decoded);
+        const uint8_t gotSpsx[4] = {
+            spsx.get_track_lock_implicit(2, kParam),
+            spsx.get_track_lock_implicit(6, kParam),
+            spsx.get_track_lock_implicit(6, kOther),
+            spsx.get_track_lock_implicit(9, kParam)};
+        const uint8_t gotMd[4] = {
+            md.get_track_lock_implicit(2, kParam),
+            md.get_track_lock_implicit(6, kParam),
+            md.get_track_lock_implicit(6, kOther),
+            md.get_track_lock_implicit(9, kParam)};
+        const uint8_t want[4] = {expect.step2, expect.step6, expect.other6,
+                                 expect.step9};
+        bool ok = std::memcmp(gotSpsx, want, 4) == 0 &&
+                  std::memcmp(gotMd, want, 4) == 0 &&
+                  !md.steps[6].trig && !SPSX_IS_BIT_SET64(spsx.trig_mask, 6);
+        if (compact) {
+            // The trigless step keeps its condition and microtiming too.
+            const uint8_t mclCondition = seq_cond_from_md(kCondition);
+            ok = ok && spsx.steps[6].cond_id == mclCondition &&
+                 spsx.steps[6].cond_plock && spsx.microtiming[6] == 64 &&
+                 md.steps[6].cond_id == mclCondition &&
+                 md.steps[6].cond_plock &&
+                 md.microtiming[6] ==
+                     spsx_microtiming_to_md_microtiming(
+                         64, SeqTrack::get_ticks_per_step(SEQ_SPEED_1X));
+        }
+        if (!ok) {
+            std::fprintf(stderr,
+                         "trigless locks %s: spsx=%u/%u/%u/%u md=%u/%u/%u/%u "
+                         "want=%u/%u/%u/%u\n",
+                         name, gotSpsx[0], gotSpsx[1], gotSpsx[2], gotSpsx[3],
+                         gotMd[0], gotMd[1], gotMd[2], gotMd[3], want[0],
+                         want[1], want[2], want[3]);
+        }
+        return ok;
+    };
+
+    const bool wasSpsx = MD.is_spsx;
+    const uint32_t wasCaps = MD.fw_caps;
+    bool ok = true;
+    std::array<uint8_t, 8192> message{};
+    {
+        // Compact pattern: only MDX X.20 or later sends one.
+        MD.is_spsx = true;
+        MD.fw_caps = FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37;
+        build();
+        ElektronDataToSysexEncoder encoder(message.data());
+        const uint16_t length = MD.pattern.toSysex(&encoder);
+        auto decoded = std::make_unique<MDPattern>();
+        ok = ok && length != 0 && message[7] == MD_PATTERN_VERSION_SPSX &&
+             decodePatternMessage(message.data(), length, *decoded) &&
+             check("compact", *decoded, {40, 50, 51, 255}, true);
+    }
+    {
+        // Stock format from an SPS-X peer: every lock is kept; the format
+        // cannot mark locks as switched off.
+        MD.is_spsx = true;
+        MD.fw_caps = FW_CAP_SPSX;
+        build();
+        ElektronDataToSysexEncoder encoder(message.data());
+        const uint16_t length = MD.pattern.toSysex(&encoder);
+        auto decoded = std::make_unique<MDPattern>();
+        ok = ok && length != 0 && message[7] == 0x03 &&
+             decodePatternMessage(message.data(), length, *decoded) &&
+             check("stock-spsx", *decoded, {40, 50, 51, 60}, false);
+    }
+    {
+        // Stock Machinedrum or X.14: only locks on trigs.
+        MD.is_spsx = false;
+        MD.fw_caps = 0;
+        build();
+        ElektronDataToSysexEncoder encoder(message.data());
+        const uint16_t length = MD.pattern.toSysex(&encoder);
+        auto decoded = std::make_unique<MDPattern>();
+        ok = ok && length != 0 && message[7] == 0x03 &&
+             decodePatternMessage(message.data(), length, *decoded) &&
+             check("stock", *decoded, {40, 255, 255, 255}, false);
+    }
+    MD.is_spsx = wasSpsx;
+    MD.fw_caps = wasCaps;
+    return ok;
+}
+
 // Microtiming between MDX/SPS-X steps (1/384-note ticks, at most 23 and one
 // short of the next step) and MD track steps (12 ticks per step at 1x).
 bool checkMicrotimingConversion() {
@@ -1794,6 +1912,10 @@ int main(int argc, char** argv) {
     }
     if (!checkMdxPatternTiming()) {
         std::fprintf(stderr, "MCL MDX pattern timing import checks failed\n");
+        return 1;
+    }
+    if (!checkTriglessLockImport()) {
+        std::fprintf(stderr, "MCL trigless lock import checks failed\n");
         return 1;
     }
     if (!checkMicrotimingConversion()) {
