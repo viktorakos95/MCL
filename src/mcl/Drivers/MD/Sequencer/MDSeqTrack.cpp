@@ -143,24 +143,30 @@ static uint64_t md_rotate_mask(uint64_t mask, uint8_t length, uint8_t dir) {
 #endif
 
 #if !defined(__AVR__)
-static int16_t md_div_round_closest(int32_t numerator, int32_t denominator) {
-  if (denominator == 0) {
+// At every speed an SPS-X step has twice the ticks of an MD track step, so
+// one MD track tick is two 1/384-note ticks.
+int8_t spsx_microtiming_to_md_microtiming(int8_t microtiming,
+                                          uint16_t md_ticks_per_step) {
+  if (microtiming == 0 || md_ticks_per_step == 0) {
     return 0;
   }
-  if (numerator >= 0) {
-    return (int16_t)((numerator + denominator / 2) / denominator);
-  }
-  return (int16_t)(-(((-numerator) + denominator / 2) / denominator));
+  const int16_t spsx_ticks =
+      stepseq_microtiming_to_ticks(microtiming, md_ticks_per_step * 2);
+  // An odd offset falls between two MD track ticks: take the one nearer the
+  // grid, which keeps the step inside its own step.
+  return SeqTrack::ticks_to_microtiming(spsx_ticks / 2, md_ticks_per_step);
 }
 
-static int8_t spsx_microtiming_to_md_microtiming(int8_t microtiming,
-                                                 uint16_t ticks_per_step) {
-  if (microtiming == 0) {
+int8_t md_microtiming_to_spsx_microtiming(int8_t microtiming,
+                                          uint16_t md_ticks_per_step) {
+  if (microtiming == 0 || md_ticks_per_step == 0) {
     return 0;
   }
-  int16_t ticks =
-      md_div_round_closest((int32_t)microtiming * ticks_per_step, 512);
-  return SeqTrack::ticks_to_microtiming(ticks, ticks_per_step);
+  const int16_t md_ticks =
+      SeqTrack::microtiming_to_ticks(microtiming, md_ticks_per_step);
+  // Limited to the SPS-X range: 23 ticks, and one tick short of the next
+  // step at fast speeds.
+  return stepseq_ticks_to_microtiming(md_ticks * 2, md_ticks_per_step * 2);
 }
 #endif
 

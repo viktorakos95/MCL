@@ -10,23 +10,8 @@
 namespace {
 
 int8_t legacy_md_microtiming_to_spsx(int8_t microtiming, uint8_t speed) {
-  if (microtiming == 0) {
-    return 0;
-  }
-
-  uint16_t ticks_per_step = SeqTrack::get_speed_multiplier_int(speed);
-  int16_t ticks = SeqTrack::microtiming_to_ticks(microtiming, ticks_per_step);
-  int32_t numerator = (int32_t)ticks * 512;
-  int16_t spsx_microtiming =
-      numerator >= 0
-          ? (int16_t)((numerator + ticks_per_step / 2) / ticks_per_step)
-          : (int16_t)-(((-numerator) + ticks_per_step / 2) / ticks_per_step);
-  if (spsx_microtiming < -127) {
-    spsx_microtiming = -127;
-  } else if (spsx_microtiming > 127) {
-    spsx_microtiming = 127;
-  }
-  return (int8_t)spsx_microtiming;
+  return md_microtiming_to_spsx_microtiming(
+      microtiming, SeqTrack::get_ticks_per_step(speed));
 }
 
 void copy_spsx_machine_to_md(const SPSMachine &src, MDMachine &dest) {

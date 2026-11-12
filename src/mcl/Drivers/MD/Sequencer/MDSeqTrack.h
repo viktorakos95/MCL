@@ -178,4 +178,16 @@ private:
   SlideDispatchContext *slide_ctx = nullptr;
 };
 
+#if !defined(__AVR__)
+// Microtiming between an SPS-X step (MDX patterns and SPS-X tracks: +-127 is
+// +-min(ticks per step - 1, 23) ticks of 1/384 note) and an MD track step
+// (+-127 is about +-1 step, in ticks of 1/192 note). md_ticks_per_step is the
+// MD track's ticks per step at the track's speed. The offset keeps its time,
+// to the nearest tick both can hold.
+int8_t spsx_microtiming_to_md_microtiming(int8_t microtiming,
+                                          uint16_t md_ticks_per_step);
+int8_t md_microtiming_to_spsx_microtiming(int8_t microtiming,
+                                          uint16_t md_ticks_per_step);
+#endif
+
 #endif /* MDSEQTRACK_H__ */

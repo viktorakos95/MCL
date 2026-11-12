@@ -1529,6 +1529,77 @@ bool checkMicrotimingPopupCondition() {
     return ok;
 }
 
+// Microtiming between MDX/SPS-X steps (1/384-note ticks, at most 23 and one
+// short of the next step) and MD track steps (12 ticks per step at 1x).
+bool checkMicrotimingConversion() {
+    SPSXSeqTrack& spsx = mcl_seq.spsx_tracks[0];
+    for (uint8_t speed = SEQ_SPEED_1X; speed <= SEQ_SPEED_4X; ++speed) {
+        const uint16_t mdTps = SeqTrack::get_ticks_per_step(speed);
+        const uint16_t spsxTps = spsx.get_ticks_per_step(speed);
+        if (spsxTps != mdTps * 2)
+            return false;
+        const int16_t range = spsxTps - 1 < 23 ? spsxTps - 1 : 23;
+        // MDX pattern -> MD track -> SPS-X.
+        for (int mt = -127; mt <= 127; ++mt) {
+            const int16_t sent = stepseq_microtiming_to_ticks((int8_t)mt, spsxTps);
+            const int8_t md =
+                spsx_microtiming_to_md_microtiming((int8_t)mt, mdTps);
+            const int16_t played =
+                2 * SeqTrack::microtiming_to_ticks(md, mdTps);
+            const int16_t error = played - sent;
+            // An odd tick falls between two MD track ticks: the nearer the
+            // grid of the two.
+            const bool exact = (sent & 1) == 0;
+            if ((exact ? error != 0 : (error != (sent > 0 ? -1 : 1)))) {
+                std::fprintf(stderr,
+                             "microtiming spsx->md speed=%u mt=%d sent=%d "
+                             "played=%d\n",
+                             speed, mt, sent, played);
+                return false;
+            }
+            const int8_t back = md_microtiming_to_spsx_microtiming(md, mdTps);
+            if (stepseq_microtiming_to_ticks(back, spsxTps) != played) {
+                std::fprintf(stderr,
+                             "microtiming spsx->md->spsx speed=%u mt=%d\n",
+                             speed, mt);
+                return false;
+            }
+        }
+        // MD track -> SPS-X track -> MD track.
+        for (int mt = -128; mt <= 127; ++mt) {
+            const int16_t md = SeqTrack::microtiming_to_ticks((int8_t)mt, mdTps);
+            int16_t want = 2 * md;
+            if (want > range) want = range;
+            if (want < -range) want = -range;
+            const int8_t converted =
+                md_microtiming_to_spsx_microtiming((int8_t)mt, mdTps);
+            const int16_t played =
+                stepseq_microtiming_to_ticks(converted, spsxTps);
+            if (played != want) {
+                std::fprintf(stderr,
+                             "microtiming md->spsx speed=%u mt=%d md=%d "
+                             "played=%d want=%d\n",
+                             speed, mt, md, played, want);
+                return false;
+            }
+            const int8_t back =
+                spsx_microtiming_to_md_microtiming(converted, mdTps);
+            if (SeqTrack::microtiming_to_ticks(back, mdTps) != want / 2) {
+                std::fprintf(stderr,
+                             "microtiming md->spsx->md speed=%u mt=%d\n",
+                             speed, mt);
+                return false;
+            }
+        }
+    }
+    // Known points at 1x: 64 is 12 of 24 ticks, half a step's range.
+    return stepseq_microtiming_to_ticks(64, 24) == 12 &&
+           SeqTrack::microtiming_to_ticks(
+               spsx_microtiming_to_md_microtiming(64, 12), 12) == 6 &&
+           spsx_microtiming_to_md_microtiming(0, 12) == 0 &&
+           md_microtiming_to_spsx_microtiming(0, 12) == 0;
+}
+
 int main(int argc, char** argv) {
     if (argc == 4 && std::strcmp(argv[1], "--roundtrip-kit") == 0)
         return roundtripKitFile(argv[2], argv[3]);
@@ -1582,6 +1653,10 @@ int main(int argc, char** argv) {
     }
     if (!checkMicrotimingPopupCondition()) {
         std::fprintf(stderr, "MCL microtiming popup condition checks failed\n");
+        return 1;
+    }
+    if (!checkMicrotimingConversion()) {
+        std::fprintf(stderr, "MCL microtiming conversion checks failed\n");
         return 1;
     }
     if (!globalVersions || !machineRoutes || !kitV1 || !kitV2 || !patternStockFallback || !patternCompact ||
