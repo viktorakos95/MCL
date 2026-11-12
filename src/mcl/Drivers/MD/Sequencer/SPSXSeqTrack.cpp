@@ -23,6 +23,17 @@ uint8_t spsx_swing_q14_to_amount(uint32_t swing_q14) {
     return amount > 30 ? 30 : (uint8_t)amount;
 }
 
+// Sequencer ticks between sub-trigs for RTIM. Values below 1/128 play as
+// 1/128, as on the Machinedrum.
+static_assert(MD_RTIM_COUNT == SPSX_RTIM_COUNT,
+              "RTIM range and retrigger time table must match");
+uint16_t spsx_retrig_interval(uint8_t rtim) {
+    rtim = md_param_range(MODEL_RTIM).clamp(rtim);
+    uint16_t base_ticks = SPSX_RTIM_TICKS_96PPQN[rtim];
+    uint16_t interval = (uint16_t)(((uint32_t)base_ticks * SPSX_TICKS_PER_STEP_1X + 12) / 24);
+    return interval < 1 ? 1 : interval;
+}
+
 } // namespace
 
 uint8_t SPSXSeqTrack::pitch_lock_param() const {
@@ -227,7 +238,11 @@ void SPSXSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
                         if (v != 255) renv = v;
                     }
 
-                    if (rtrg > 0) {
+                    // An SPS-X Machinedrum retriggers every MIDI trig whose
+                    // track has RTRG on, from the RTRG/RTIM/RENV values the
+                    // step's locks have just set; sub-trigs sent from here
+                    // would double those and re-arm them on every note.
+                    if (rtrg > 0 && !MD.is_spsx) {
                         schedule_retrig(velocity, rtrg, rtim, renv);
                         retrig_scheduled_this_call = true;
                     } else {
@@ -251,12 +266,8 @@ void SPSXSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
                 retrig.remaining--;
             if (retrig.remaining > 0) {
                 // Re-read RTIM from kit (live value)
-                uint8_t rtim = MD.kit.params[track_number][MODEL_RTIM];
-                if (rtim >= SPSX_RTIM_COUNT) rtim = SPSX_RTIM_COUNT - 1;
-                uint16_t base_ticks = SPSX_RTIM_TICKS_96PPQN[rtim];
-                uint16_t interval = (uint16_t)(((uint32_t)base_ticks * SPSX_TICKS_PER_STEP_1X + 12) / 24);
-                if (interval < 1) interval = 1;
-                retrig.tick_interval = interval;
+                retrig.tick_interval = spsx_retrig_interval(
+                    MD.kit.params[track_number][MODEL_RTIM]);
                 retrig.ticks_countdown = retrig.tick_interval;
             }
         }
@@ -308,11 +319,7 @@ void SPSXSeqTrack::send_trig_inline(uint8_t velocity) {
 
 void SPSXSeqTrack::schedule_retrig(uint8_t velocity, uint8_t rtrg, uint8_t rtim, uint8_t renv) {
     if (rtrg == 0) return;
-    if (rtim >= SPSX_RTIM_COUNT) rtim = SPSX_RTIM_COUNT - 1;
-
-    uint16_t base_ticks = SPSX_RTIM_TICKS_96PPQN[rtim];
-    uint16_t interval = (uint16_t)(((uint32_t)base_ticks * SPSX_TICKS_PER_STEP_1X + 12) / 24);
-    if (interval < 1) interval = 1;
+    uint16_t interval = spsx_retrig_interval(rtim);
 
     retrig.remaining = (rtrg >= 127) ? SPSX_RETRIG_INFINITE : rtrg;
     retrig.tick_interval = interval;
