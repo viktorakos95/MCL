@@ -155,6 +155,15 @@ public:
   inline int8_t *lock_row(uint8_t row) { return (int8_t*)locks[row]; }
 #endif
 #if !defined(__AVR__)
+  /** The length and speed a track plays: its own, or the pattern's. */
+  uint8_t trackLength(uint8_t track) const {
+    return ext_track_lengths[track] ? ext_track_lengths[track]
+                                    : patternLength;
+  }
+  uint8_t trackSpeed(uint8_t track) const {
+    return ext_track_speeds[track] != 0xff ? ext_track_speeds[track]
+                                           : doubleTempo;
+  }
   inline int16_t lock_track(uint16_t row) const {
     return (row < 64) ? (int16_t)lockTracks[row] : ext_lockTracks[row - 64];
   }

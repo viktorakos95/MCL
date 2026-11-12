@@ -219,8 +219,13 @@ static void merge_md_pattern_to_seq(MDTrack &track, MDSeqTrack *md_seq_track,
   if (merge == SAVE_MERGE) {
     copy_md_seqdata(temp_seq_track.data(), md_seq_track->data());
   } else if (merge == SAVE_MD_PATTERN_IMPORT) {
+#if !defined(__AVR__)
+    track.link.length = MD.pattern.trackLength(tracknumber);
+    track.link.set_speed(SEQ_SPEED_1X + MD.pattern.trackSpeed(tracknumber));
+#else
     track.link.length = MD.pattern.patternLength;
     track.link.set_speed(SEQ_SPEED_1X + MD.pattern.doubleTempo);
+#endif
     DEBUG_PRINTLN(F("SAVE_MD_PATTERN_IMPORT"));
   }
   temp_seq_track.length = track.link.length;

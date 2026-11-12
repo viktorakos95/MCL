@@ -421,8 +421,8 @@ bool SPSXTrack::store_in_grid(GridSlot column, GridRow row,
                  sizeof(MDSeqTrackData));
         }
         if (merge == SAVE_MD_PATTERN_IMPORT) {
-          link.length = MD.pattern.patternLength;
-          link.set_speed(SEQ_SPEED_1X + MD.pattern.doubleTempo);
+          link.length = MD.pattern.trackLength(tracknumber);
+          link.set_speed(SEQ_SPEED_1X + MD.pattern.trackSpeed(tracknumber));
         }
         temp_seq_track.length = link.length;
         temp_seq_track.speed = link.speed_value();

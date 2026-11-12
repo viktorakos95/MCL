@@ -1529,6 +1529,143 @@ bool checkMicrotimingPopupCondition() {
     return ok;
 }
 
+// Rewrites the settings and track headers of an encoded compact pattern, as
+// MDX would write them, and keeps the envelope and checksum valid.
+template <typename Patch>
+bool patchCompactPattern(std::array<uint8_t, 8192>& message, uint16_t length,
+                         Patch patch) {
+    std::array<uint8_t, 8192> body{};
+    const uint16_t wireBytes = length - 15;
+    const uint16_t bodyBytes = ElektronHelper::ElektronSysexToData(
+        message.data() + 10, body.data(), wireBytes);
+    if (bodyBytes < 16 + 40 + 16 * 40)
+        return false;
+    patch(body.data() + 16, body.data() + 16 + 40);
+    if (ElektronHelper::ElektronDataToSysex(
+            body.data(), message.data() + 10, bodyBytes) != wireBytes) {
+        return false;
+    }
+    ElektronHelper::calculateSysexChecksum(
+        message.data(), (uint16_t)(length - 5));
+    return true;
+}
+
+bool decodePatternMessage(const uint8_t* message, uint16_t length,
+                          MDPattern& decoded) {
+    auto fixture = std::make_unique<SysexFixture>();
+    return publishToMidiSysex(fixture->sysex, message, length) &&
+           decoded.fromSysex(&fixture->midi);
+}
+
+// MDX pattern timing: master length 0 (INF) to 255, the ALL timing stored
+// apart from the master cycle (byte 33 bit 7), and older records.
+bool checkMdxPatternTiming() {
+    MD.is_spsx = true;
+    MD.fw_caps = FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37;
+    MD.pattern.clearPattern();
+    MD.pattern.patternLength = 64;
+    MD.pattern.scale = 0;
+    MD.pattern.doubleTempo = 0;
+    MD.pattern.trigPatterns[1] = 1;
+    MD.pattern.trigPatterns[2] = 1;
+    std::array<uint8_t, 8192> base{};
+    ElektronDataToSysexEncoder encoder(base.data());
+    const uint16_t length = MD.pattern.toSysex(&encoder);
+    if (length == 0 || base[7] != MD_PATTERN_VERSION_SPSX)
+        return false;
+
+    struct Case {
+        uint8_t mode, masterLength, allScaleSpeed, masterSpeed, allLength;
+        bool valid;
+        uint8_t length, speed, scale;
+        // Expected length/speed of track 1 (stores length 48) and track 2
+        // (stores speed 1/2x).
+        uint8_t length1, speed1, length2, speed2;
+    };
+    static const Case cases[] = {
+        // TRACK, INF, ALL 24 steps at 2x.
+        {0, 0, 0x80 | 1 | (1 << 2), 0, 24, true, 24, 1, 1, 48, 1, 24, 4},
+        // TRACK, master length 200, ALL 64 steps at 1/2x.
+        {0, 200, 0x80 | 3 | (4 << 2), 2, 64, true, 64, 4, 3, 48, 4, 64, 4},
+        // ALL ignores what the tracks store.
+        {1, 128, 0x80 | 2 | (2 << 2), 0, 40, true, 40, 2, 2, 40, 2, 40, 2},
+        {1, 0, 0x80 | 0 | (7 << 2), 5, 1, true, 1, 7, 0, 1, 7, 1, 7},
+        // Older records: INF takes the scale's length, longer ones stop at 64.
+        {0, 0, 3, 1, 0, true, 64, 1, 3, 48, 1, 64, 4},
+        {1, 100, 0, 0, 1, true, 64, 0, 0, 64, 0, 64, 0},
+        {0, 20, 1, 3, 0, true, 20, 3, 1, 48, 3, 20, 4},
+        // Invalid timing.
+        {0, 16, 0x80, 0, 0, false},
+        {0, 16, 0x80 | 1, 0, 40, false},
+        {0, 16, 0xa0 | 1, 0, 16, false},
+        {0, 16, 0, 0, 2, false},
+        {0, 16, 4, 0, 0, false},
+        {2, 16, 0, 0, 0, false},
+        {0, 16, 0, 8, 0, false},
+    };
+    for (const Case& c : cases) {
+        std::array<uint8_t, 8192> message = base;
+        if (!patchCompactPattern(message, length,
+                [&c](uint8_t* settings, uint8_t* tracks) {
+                    settings[31] = c.mode;
+                    settings[32] = c.masterLength;
+                    settings[33] = c.allScaleSpeed;
+                    settings[34] = c.masterSpeed;
+                    settings[35] = c.allLength;
+                    for (uint8_t track = 0; track < 16; ++track) {
+                        tracks[track * 40 + 32] = 0;
+                        tracks[track * 40 + 33] = 0xff;
+                    }
+                    tracks[1 * 40 + 32] = 48;
+                    tracks[2 * 40 + 33] = SEQ_SPEED_1_2X;
+                })) {
+            return false;
+        }
+        auto decoded = std::make_unique<MDPattern>();
+        const bool ok = decodePatternMessage(message.data(), length, *decoded);
+        if (ok != c.valid) {
+            std::fprintf(stderr, "mdx timing %u/%u/%02x/%u/%u: decode=%d\n",
+                         c.mode, c.masterLength, c.allScaleSpeed,
+                         c.masterSpeed, c.allLength, ok);
+            return false;
+        }
+        if (!ok)
+            continue;
+        SPSXSeqTrack spsx1, spsx2;
+        for (SPSXSeqTrack* track : {&spsx1, &spsx2}) {
+            // As SPSXTrack imports a row.
+            track->length = decoded->patternLength;
+            track->speed = decoded->doubleTempo;
+        }
+        spsx1.merge_from_md(1, decoded.get());
+        spsx2.merge_from_md(2, decoded.get());
+        if (decoded->patternLength != c.length ||
+            decoded->doubleTempo != c.speed || decoded->scale != c.scale ||
+            decoded->ext_scale_mode != c.mode ||
+            decoded->trackLength(1) != c.length1 ||
+            decoded->trackSpeed(1) != c.speed1 ||
+            decoded->trackLength(2) != c.length2 ||
+            decoded->trackSpeed(2) != c.speed2 ||
+            decoded->trackLength(5) != c.length ||
+            decoded->trackSpeed(5) != c.speed ||
+            spsx1.length != c.length1 || spsx1.speed != c.speed1 ||
+            spsx2.length != c.length2 || spsx2.speed != c.speed2) {
+            std::fprintf(stderr,
+                         "mdx timing %u/%u/%02x/%u/%u: len=%u speed=%u "
+                         "scale=%u t1=%u/%u t2=%u/%u spsx=%u/%u %u/%u\n",
+                         c.mode, c.masterLength, c.allScaleSpeed,
+                         c.masterSpeed, c.allLength, decoded->patternLength,
+                         decoded->doubleTempo, decoded->scale,
+                         decoded->trackLength(1), decoded->trackSpeed(1),
+                         decoded->trackLength(2), decoded->trackSpeed(2),
+                         spsx1.length, spsx1.speed, spsx2.length,
+                         spsx2.speed);
+            return false;
+        }
+    }
+    return true;
+}
+
 // Microtiming between MDX/SPS-X steps (1/384-note ticks, at most 23 and one
 // short of the next step) and MD track steps (12 ticks per step at 1x).
 bool checkMicrotimingConversion() {
@@ -1653,6 +1790,10 @@ int main(int argc, char** argv) {
     }
     if (!checkMicrotimingPopupCondition()) {
         std::fprintf(stderr, "MCL microtiming popup condition checks failed\n");
+        return 1;
+    }
+    if (!checkMdxPatternTiming()) {
+        std::fprintf(stderr, "MCL MDX pattern timing import checks failed\n");
         return 1;
     }
     if (!checkMicrotimingConversion()) {

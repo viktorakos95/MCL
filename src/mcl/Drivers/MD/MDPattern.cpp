@@ -154,14 +154,61 @@ bool md_compact_header(const SysexView &sysex, uint8_t &steps,
   return expected_wire == (uint16_t)(record_len - 13);
 }
 
+// Pattern timing, settings bytes 31-35:
+//   31 scale mode: 0 TRACK, 1 ALL
+//   32 master length: 0 is INF, 1-255; the master cycle does not depend on
+//      the stored steps
+//   33 bits 0-1 ALL scale, bits 2-4 ALL speed, bit 7 set when the ALL timing
+//      is stored apart from the master cycle. Without bit 7 the byte is the
+//      older scale (0-3), and the ALL length and speed follow the master.
+//   34 master speed
+//   35 ALL length (1-64) with bit 7; without it, the older tempo multiplier
+// MDX sets bit 7 on any SCALE edit, and on a track sync from MCL.
+enum {
+  MD_COMPACT_SCALE_MODE = 31,
+  MD_COMPACT_MASTER_LENGTH = 32,
+  MD_COMPACT_ALL_SCALE_SPEED = 33,
+  MD_COMPACT_MASTER_SPEED = 34,
+  MD_COMPACT_ALL_LENGTH = 35,
+  MD_COMPACT_SPLIT_TIMING = 0x80
+};
+
+bool md_compact_timing_valid(const uint8_t *settings) {
+  const uint8_t all_scale_speed = settings[MD_COMPACT_ALL_SCALE_SPEED];
+  const uint8_t all_length = settings[MD_COMPACT_ALL_LENGTH];
+  if (settings[MD_COMPACT_SCALE_MODE] > 1 ||
+      settings[MD_COMPACT_MASTER_SPEED] > 7) {
+    return false;
+  }
+  if ((all_scale_speed & MD_COMPACT_SPLIT_TIMING) == 0)
+    return all_scale_speed <= 3 && all_length <= 1;
+  return (all_scale_speed & 0x60) == 0 && all_length >= 1 &&
+         all_length <= ((all_scale_speed & 3) + 1) * 16;
+}
+
+// The length every track plays in ALL mode, and the length of a TRACK mode
+// track that has none of its own: 1-64.
+uint8_t md_compact_all_length(const uint8_t *settings) {
+  const uint8_t all_scale_speed = settings[MD_COMPACT_ALL_SCALE_SPEED];
+  if (all_scale_speed & MD_COMPACT_SPLIT_TIMING)
+    return settings[MD_COMPACT_ALL_LENGTH];
+  const uint8_t master = settings[MD_COMPACT_MASTER_LENGTH];
+  if (master == 0)
+    return ((all_scale_speed & 3) + 1) * 16;
+  return master > 64 ? 64 : master;
+}
+
+uint8_t md_compact_all_speed(const uint8_t *settings) {
+  const uint8_t all_scale_speed = settings[MD_COMPACT_ALL_SCALE_SPEED];
+  if (all_scale_speed & MD_COMPACT_SPLIT_TIMING)
+    return (all_scale_speed >> 2) & 7;
+  return settings[MD_COMPACT_MASTER_SPEED];
+}
+
 bool md_compact_settings_valid(const uint8_t *settings, uint8_t steps) {
-  uint8_t length = settings[32];
-  uint8_t speed = settings[34];
   uint8_t kit = settings[36];
-  if (length == 0 || length > steps || settings[28] > 1 ||
+  if (!md_compact_timing_valid(settings) || settings[28] > 1 ||
       settings[29] > 1 || settings[30] > 1 ||
-      settings[31] > 1 || settings[33] > 3 ||
-      speed > 7 || settings[35] > 1 ||
       (kit != 0xff && kit >= 64) ||
       !md_compact_wire_mask_fits(settings, steps) ||
       !md_compact_wire_mask_fits(settings + 8, steps) ||
@@ -755,11 +802,24 @@ bool MDPattern::fromSysex40(const SysexView &sysex) {
   accentEditAll = settings[28];
   slideEditAll = settings[29];
   swingEditAll = settings[30];
-  ext_scale_mode = settings[31];
-  patternLength = settings[32];
-  scale = settings[33];
-  doubleTempo = settings[34];
-  ext_tempo_multiplier = settings[35];
+  // MCL tracks loop on their own lengths and speeds, so import each track's
+  // playing length and speed. patternLength and doubleTempo hold the ALL
+  // timing, which every track plays in ALL mode and a TRACK mode track
+  // without its own length or speed plays. The master cycle of TRACK mode
+  // (a length of 1-255 steps or INF, and the master speed) has no place in
+  // MCL: tracks keep looping as they do with INF. A 32-step record plays at
+  // most 32 steps, as on the Machinedrum.
+  const bool all_mode = settings[MD_COMPACT_SCALE_MODE] != 0;
+  const uint8_t all_length = md_compact_all_length(settings);
+  ext_scale_mode = settings[MD_COMPACT_SCALE_MODE];
+  patternLength = all_length > steps ? steps : all_length;
+  // The stored ALL scale, kept as sent so a pattern goes back out unchanged.
+  scale = settings[MD_COMPACT_ALL_SCALE_SPEED] & 3;
+  doubleTempo = md_compact_all_speed(settings);
+  ext_tempo_multiplier =
+      (settings[MD_COMPACT_ALL_SCALE_SPEED] & MD_COMPACT_SPLIT_TIMING)
+          ? 0
+          : settings[MD_COMPACT_ALL_LENGTH];
   kit = settings[36];
   ext_chain_row = settings[37];
   ext_chain_loops = settings[38];
@@ -776,10 +836,12 @@ bool MDPattern::fromSysex40(const SysexView &sysex) {
     slidePatterns[track] = md_compact_read64(data + 8);
     accentPatterns[track] = md_compact_read64(data + 16);
     swingPatterns[track] = md_compact_read64(data + 24);
+    // ALL mode plays every track at the ALL timing, whatever the track
+    // stores.
     ext_track_lengths[track] =
-        length == 0 || length == patternLength ? 0 : length;
+        all_mode || length == 0 || length == patternLength ? 0 : length;
     ext_track_speeds[track] =
-        speed == 0xff || speed == doubleTempo ? 0xff : speed;
+        all_mode || speed == 0xff || speed == doubleTempo ? 0xff : speed;
   }
   if (!md_compact_unpack_words(
           apply, steps, used_words, shape, this)) {
