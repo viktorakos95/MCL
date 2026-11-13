@@ -522,12 +522,12 @@ void MixerPage::display() {
       (draw_encoders || preview_mute_set != 255)) {
     // oled_display.clearDisplay();
     draw_encs();
-    oled_display.setFont(&TomThumb);
+    oled_font_small();
     if (load_perf_state != 255 && load_perf_state == preview_mute_set) {
       oled_display.setCursor(111, 31);
       mcl_print_P(mclstr_load);
     }
-    oled_display.setFont();
+    oled_font_default();
   } else {
 
     uint8_t fader_level;

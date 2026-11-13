@@ -386,8 +386,8 @@ void MCL::setup() {
 
   if (!ret) {
     oled_display.clearDisplay();
-    oled_display.setFont();
-    oled_display.setTextColor(WHITE, BLACK);
+    oled_font_default();
+    oled_text_color(WHITE, BLACK);
     oled_display.setCursor(0, 0);
     mcl_print_P(mclstr_sd_card_error);
     oled_display.display();

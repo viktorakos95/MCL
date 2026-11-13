@@ -313,8 +313,8 @@ void GridPage::setup() {
 }
 
 void GridPage::cleanup() {
-  oled_display.setFont();
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_font_default();
+  oled_text_color(WHITE, BLACK);
   bank_popup = 0;
 }
 
@@ -607,7 +607,7 @@ void GridPage::display_counters() {
     val[0] = (char)0x60;
   }
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.setCursor(24, y_offset);
   oled_display.print(val);
 
@@ -656,7 +656,7 @@ void GridPage::display_grid_info() {
   oled_display.print((uint16_t)(MidiClock.get_tempo() + 0.5f));
 
   display_counters();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   //  mcl_print_P(mclstr_colon);
   // oled_display.print(MidiClock.step_counter);
 
@@ -692,7 +692,7 @@ void GridPage::display_grid_info() {
   oled_display.fillRect(oled_display.getCursorX() - 1,
                         oled_display.getCursorY() - 6, 37, 7, WHITE);
 
-  oled_display.setTextColor(BLACK, WHITE);
+  oled_text_color(BLACK, WHITE);
   if (row_headers[cur_row].name[0] != '\0') {
     char rowname[10];
     strncpy(rowname, row_headers[cur_row].name, 9);
@@ -701,7 +701,7 @@ void GridPage::display_grid_info() {
     oled_display.print(rowname);
   }
 
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
 }
 bool GridPage::is_slot_queue(uint8_t x, uint8_t y) {
   if (show_slot_menu) {
@@ -722,7 +722,7 @@ void GridPage::display_grid() {
   uint8_t x_offset = 43;
   uint8_t y_offset = 8;
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   GridColumn base_col = getCol() - cur_col;
   GridRow base_row = getRow() - cur_row;
@@ -773,10 +773,10 @@ void GridPage::display_grid() {
 
       if ((a ^ b) || io_selected) {
         oled_display.fillRect(cur_posx - 1, cur_posy - 6, 9, 7, WHITE);
-        oled_display.setTextColor(BLACK, WHITE);
+        oled_text_color(BLACK, WHITE);
         active_cue_color = BLACK;
       } else {
-        oled_display.setTextColor(WHITE, BLACK);
+        oled_text_color(WHITE, BLACK);
       }
 
       GridSlot track_grid_idx = track_idx + GRID_WIDTH * cur_grid;
@@ -807,7 +807,7 @@ void GridPage::display_grid() {
   if ((base_col + col_shift) % 4 == 0) {
     mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
   }
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
 }
 void GridPage::display_slot_menu() {
   uint8_t y_offset = 8;
@@ -846,8 +846,8 @@ void GridPage::display() {
   frames++;
   #endif
   oled_display.clearDisplay();
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_font_small();
+  oled_text_color(WHITE, BLACK);
   if (!show_slot_menu) {
     display_grid_info();
   } else {
@@ -860,7 +860,7 @@ void GridPage::display() {
   }
   display_grid();
   if (draw_encoders && clock_diff(draw_encoders_lastclock, read_clock_ms()) < 750) {
-    oled_display.setFont();
+    oled_font_default();
     mixer_page.draw_encs();
   }
   else {
@@ -877,9 +877,9 @@ void GridPage::display() {
     extern Ui tbd_ui;
     ui_data_t dbg = tbd_ui.CopyUiData();
     char buf[32];
-    oled_display.setFont();
+    oled_font_default();
     oled_display.setTextSize(1);
-    oled_display.setTextColor(WHITE, BLACK);
+    oled_text_color(WHITE, BLACK);
     oled_display.setCursor(0, 32);
     snprintf(buf, sizeof(buf), "f:%02X d:%04X", dbg.f_btns, dbg.d_btns);
     oled_display.print(buf);
