@@ -64,6 +64,30 @@ inline __attribute__((always_inline)) void prepare_tx_buffers(MidiUartClass *pri
   uart_sidechannel = !uart_sidechannel;
 }
 
+// A queued fill starts, and a fill cycle ends, when the longest MD track
+// (length x speed) wraps: MDX's master length, for MCL's own tracks.
+template <class Track>
+void check_fill_wrap(MCLSeq &self, Track *tracks) {
+  if (!(self.fill_state & (MCLSeq::FillQueued | MCLSeq::FillCycle))) {
+    self.fill_wrap_prev = 255;
+    return;
+  }
+  uint8_t longest = 0;
+  uint16_t ticks = 0;
+  for (uint8_t i = 0; i < self.num_md_tracks; i++) {
+    const uint16_t loop =
+        uint16_t(tracks[i].length) * tracks[i].get_ticks_per_step();
+    if (loop > ticks) {
+      ticks = loop;
+      longest = i;
+    }
+  }
+  const uint8_t step = tracks[longest].step_count;
+  if (step == 0 && self.fill_wrap_prev != 0 && self.fill_wrap_prev != 255)
+    self.fill_wrapped();
+  self.fill_wrap_prev = step;
+}
+
 inline __attribute__((always_inline)) void run_md_tick(MCLSeq &self, MidiUartClass *uart,
                                 MidiUartClass *uart2, bool legacy_tick) {
   if (!seq_grid_x_runs_md_tracks()) return;
@@ -109,6 +133,7 @@ inline __attribute__((always_inline)) void run_md_tick(MCLSeq &self, MidiUartCla
     for (uint8_t i = 0; i < self.num_md_tracks; i++) {
       self.spsx_tracks[i].recalc_slides();
     }
+    check_fill_wrap(self, self.spsx_tracks);
     return;
   }
 #endif
@@ -125,6 +150,7 @@ inline __attribute__((always_inline)) void run_md_tick(MCLSeq &self, MidiUartCla
   self.mdfx_track.seq();
 
   MDSeqTrack::post_seq(uart);
+  check_fill_wrap(self, self.md_tracks);
 
   for (uint8_t i = 0; i < NUM_AUX_TRACKS; i++) {
     self.aux_tracks[i].seq();
@@ -499,6 +525,25 @@ void MCLSeq::seq() {
 #if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
   TrackLoadFadeRunner::tick(uart, uart2);
 #endif
+}
+
+// Foreground: an X.20 Machinedrum shows MCL's fill on its scale LEDs.
+void MCLSeq::service_fill() {
+  const bool model = MD.connected && (MD.fw_caps & FW_CAP_MCL_FILL_STATE);
+  if (model != fill_model) {
+    fill_model = model;
+    if (model) apply_fill();  // fill_mask now follows the fill state
+  }
+  if (!model) {
+    fill_state_sent = 0;
+    return;
+  }
+  const uint8_t wire =
+      (fill_active() ? 1 : 0) | ((fill_state & FillQueued) ? 2 : 0);
+  if (wire != fill_state_sent) {
+    MD.setFillState(wire);
+    fill_state_sent = wire;
+  }
 }
 
 MCLSeq mcl_seq;

@@ -143,6 +143,100 @@ void mcl_toggle_remote_mute_window() {
 }
 #endif
 
+// With an MCL-fill Machinedrum (FW_CAP_MCL_FILL_STATE) SCALE alone acts when
+// it is released, and SCALE + UP / DOWN is MDX's fill: UP holds (or
+// unlatches), UP + DOWN latches, DOWN queues one cycle of the longest MD
+// track while playing. Another key while SCALE is held cancels SCALE's own
+// action; BANK + SCALE opens the fill view. FUNC + SCALE, SCALE with trigs
+// held and older firmware keep SCALE acting on its press.
+namespace {
+uint8_t fill_scale = 0;   // 1: SCALE press withheld, 2: SCALE used in a chord
+uint8_t fill_arrows = 0;  // arrows taken by a fill chord: 1 UP, 2 DOWN
+
+void fill_follow_hold() {
+  if ((mcl_seq.fill_state & MCLSeq::FillHeld) &&
+      !(key_interface.is_key_down(MDX_KEY_UP) &&
+        key_interface.is_key_down(MDX_KEY_SCALE)))
+    mcl_seq.set_fill_state(mcl_seq.fill_state & ~MCLSeq::FillHeld);
+}
+
+void fill_chord() {
+  const bool up = key_interface.is_key_down(MDX_KEY_UP);
+  const bool down = key_interface.is_key_down(MDX_KEY_DOWN);
+  uint8_t state = mcl_seq.fill_state;
+  if (up && down) {
+    state = MCLSeq::FillLatched;
+  } else if (up) {
+    state = (state & MCLSeq::FillLatched) ? 0 : (state | MCLSeq::FillHeld);
+  } else if (down && MidiClock.state == 2) {
+    state |= MCLSeq::FillQueued;
+  }
+  mcl_seq.set_fill_state(state);
+  fill_scale |= 2;
+}
+} // namespace
+
+__attribute__((noinline)) bool mcl_fill_key(uint8_t key, bool release) {
+#if defined(PLATFORM_TBD)
+  (void)key; (void)release;
+  return false;
+#else
+  if (!mcl_seq.fill_model) {
+    fill_scale = fill_arrows = 0;
+    return false;
+  }
+  if (key == MDX_KEY_SCALE) {
+    if (!release) {
+      if (key_interface.is_key_down(MDX_KEY_FUNC) || note_interface.notes_on)
+        return false;
+      fill_scale = 1;
+      if (bank_key_down()) {
+        mixer_page.toggle_fill_view();
+        fill_scale = 3;
+      } else if (key_interface.is_key_down(MDX_KEY_UP) ||
+                 key_interface.is_key_down(MDX_KEY_DOWN)) {
+        fill_arrows = (key_interface.is_key_down(MDX_KEY_UP) ? 1 : 0) |
+                      (key_interface.is_key_down(MDX_KEY_DOWN) ? 2 : 0);
+        fill_chord();
+      }
+      return true;
+    }
+    const uint8_t scale = fill_scale;
+    fill_scale = 0;
+    fill_follow_hold();
+    if (scale == 1) {
+      // SCALE alone: its press now, then the release below.
+      key_interface.post_key_event(MDX_KEY_SCALE, false);
+      return false;
+    }
+    if (scale & 2) {
+      // A page that consumed the chord may have asked to skip this release.
+      key_interface.ignoreNextEventClear(MDX_KEY_SCALE);
+      return true;
+    }
+    return false;
+  }
+  const uint8_t arrow = key == MDX_KEY_UP ? 1 : key == MDX_KEY_DOWN ? 2 : 0;
+  if (arrow) {
+    if (release) {
+      if (!(fill_arrows & arrow)) return false;
+      fill_arrows &= ~arrow;
+      fill_follow_hold();
+      return true;
+    }
+    if (fill_arrows & arrow) return true;  // key repeat of a chord arrow
+    if (fill_scale & 1) {
+      fill_arrows |= arrow;
+      fill_chord();
+      return true;
+    }
+    return false;
+  }
+  if (!release && (fill_scale & 1)) fill_scale |= 2;
+  return false;
+#endif
+}
+
 // In MCL.cpp:
 const lightpage_ptr_t MCL::pages_table[NUM_PAGES] PROGMEM = {
     // Core pages
@@ -344,6 +438,7 @@ void MCL::setup() {
 void MCL::loop() {
   platform_poll();
   md_usr.service();
+  mcl_seq.service_fill();
   if (md_usr.takeChanged() && isSeqPage() && SeqPage::active_device_is_md() &&
       MD.currentTrack < 16 && uint8_t(MD.kit.get_model(MD.currentTrack) - MD_USR_FIRST) < MD_USR_SLOTS)
     GUI.currentPage()->config();

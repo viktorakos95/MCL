@@ -91,6 +91,8 @@ public:
   bool redraw_mutes;
   bool show_mixer_menu;
   bool fill_edit_mode = false;
+  // The fill view was opened from another page (BANK + SCALE).
+  bool fill_view_opened = false;
 
   bool draw_encoders;
 
@@ -112,6 +114,7 @@ public:
   uint8_t mixer_track_count() const;
   SeqTrack *mixer_seq_track(uint8_t track) const;
   bool display_mute_mask();
+  void toggle_fill_view();
   bool display_fill_mask();
   TrigLEDMode mixer_led_mode() const;
   uint8_t *mixer_meter_levels();

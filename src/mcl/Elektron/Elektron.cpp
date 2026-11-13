@@ -442,6 +442,7 @@ void ElektronDevice::activate_enhanced_gui() { send_system_command(this, 0x37, 1
 void ElektronDevice::deactivate_enhanced_gui() { send_system_command(this, 0x37, 0); }
 void ElektronDevice::set_seq_page(uint8_t page) { send_system_command(this, 0x38, page); }
 void ElektronDevice::set_rec_mode(uint8_t mode) { send_system_command(this, 0x3A, mode); }
+void ElektronDevice::setFillState(uint8_t state) { send_system_command(this, 0x46, state); }
 void ElektronDevice::set_key_repeat(uint8_t mode) { send_system_command(this, 0x4E, mode); }
 void ElektronDevice::activate_key_interface() { send_system_command(this, 0x31, 1); }
 void ElektronDevice::deactivate_key_interface() { send_system_command(this, 0x31, 0); }

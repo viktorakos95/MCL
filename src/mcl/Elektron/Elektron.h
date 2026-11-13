@@ -252,6 +252,8 @@ public:
 #define FW_CAP_MICROTIMING_COND FW_CAP_HIGHER(6)
 // The 0x70/0x44 USR query answers page 5: one slot's parameter labels.
 #define FW_CAP_USR_LABELS     FW_CAP_HIGHEST(0)
+// 0x70/0x46: the MD shows MCL's fill (bit 0 on, bit 1 queued) on its scale LEDs.
+#define FW_CAP_MCL_FILL_STATE FW_CAP_HIGHEST(1)
 // A condition of this value sends no condition with the popup.
 #define MICROTIMING_NO_CONDITION 255
 
@@ -348,6 +350,8 @@ public:
   void set_seq_page(uint8_t page);
 
   void set_rec_mode(uint8_t mode);
+  // MCL's fill for the MD's indicator (FW_CAP_MCL_FILL_STATE): bit 0 on, bit 1 queued.
+  void setFillState(uint8_t state);
 
   void popup_text(uint8_t action_string, uint8_t persistent = 0);
   void popup_text(char *str, uint8_t persistent = 0);

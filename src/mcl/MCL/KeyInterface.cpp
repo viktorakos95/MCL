@@ -147,8 +147,14 @@ void KeyInterface::post_key_event(uint8_t key, bool key_release) {
   GUI.putEvent(&event);
 }
 
+// MCL.cpp: SCALE and the fill chords with an MCL-fill Machinedrum.
+bool mcl_fill_key(uint8_t key, bool key_release);
+
 void KeyInterface::key_event(uint8_t key, bool key_release) {
   set_key_state(key, !key_release);
+  if (mcl_fill_key(key, key_release)) {
+    return;
+  }
   post_key_event(key, key_release);
 }
 

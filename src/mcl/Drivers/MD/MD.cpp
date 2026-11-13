@@ -1483,7 +1483,10 @@ void MDClass::get_mutes() {
       DEBUG_PRINTLN(m);
     }
     if (state & 2) {
-      mcl_seq.set_fill_mask(DeviceIdx::Primary, fill_state);
+      // An MCL-fill MD reports which tracks take part in a fill.
+      mcl_seq.fill_model = (fw_caps & FW_CAP_MCL_FILL_STATE) != 0;
+      mcl_seq.fill_edit_mask(DeviceIdx::Primary) = fill_state;
+      mcl_seq.fill_edited();
     }
   } else {
     DEBUG_PRINTLN(F("mute state failed"));

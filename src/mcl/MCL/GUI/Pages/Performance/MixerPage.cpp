@@ -36,8 +36,9 @@ void toggle_md_fill_track(MixerTarget &target, DeviceIdx device_idx,
                           uint8_t track) NOINLINE();
 void toggle_md_fill_track(MixerTarget &target, DeviceIdx device_idx,
                           uint8_t track) {
-  uint16_t &fill_mask = mcl_seq.fill_mask_for(device_idx);
+  uint16_t &fill_mask = mcl_seq.fill_edit_mask(device_idx);
   TOGGLE_BIT16(fill_mask, track);
+  mcl_seq.fill_edited();
   send_md_fill_track(target, track, (fill_mask & (uint16_t)(1u << track)) != 0);
 }
 #endif
@@ -45,14 +46,16 @@ void toggle_md_fill_track(MixerTarget &target, DeviceIdx device_idx,
 void apply_fill_mask(DeviceIdx device_idx, MixerTarget &target,
                      uint16_t mask, uint8_t len) {
 #if defined(__AVR__)
-  mcl_seq.set_fill_mask(device_idx, mask);
+  mcl_seq.fill_edit_mask(device_idx) = mask;
+  mcl_seq.fill_edited();
   for (uint8_t t = 0; t < len; t++, mask >>= 1) {
     send_md_fill_track(target, t, (mask & 1) != 0);
   }
 #else
-  uint16_t old_mask = mcl_seq.fill_mask_for(device_idx);
+  uint16_t old_mask = mcl_seq.fill_edit_mask(device_idx);
   uint16_t changed = (old_mask ^ mask) & track_mask_for_len(len);
-  mcl_seq.set_fill_mask(device_idx, mask);
+  mcl_seq.fill_edit_mask(device_idx) = mask;
+  mcl_seq.fill_edited();
   for (uint8_t t = 0; changed != 0 && t < len; t++) {
     uint16_t bit = (uint16_t)(1u << t);
     if ((changed & bit) != 0) {
@@ -224,8 +227,37 @@ bool MixerPage::display_mute_mask() {
   return false;
 }
 
+// BANK + SCALE with an MCL-fill MD: open or close the fill view (the tracks
+// a fill plays on), as MDX's FILL view; from another page it returns there.
+void MixerPage::toggle_fill_view() {
+  if (mcl.currentPage() == MIXER_PAGE && fill_edit_mode) {
+    fill_edit_mode = false;
+    if (fill_view_opened) {
+      fill_view_opened = false;
+      mcl.setPage(mixer_return_page(last_page));
+      return;
+    }
+  } else {
+    if (mcl.currentPage() != MIXER_PAGE) {
+      last_page = mcl.currentPage();
+      mcl.setPage(MIXER_PAGE);
+      ext_key_down = 0;
+      fill_view_opened = true;
+    }
+    fill_edit_mode = true;
+  }
+  preview_mute_set = 255;
+  seq_step_page.mute_mask++;
+  if (fill_edit_mode) {
+    display_fill_mask();
+  } else {
+    display_mute_mask();
+  }
+  oled_draw_mutes();
+}
+
 bool MixerPage::display_fill_mask() {
-  uint16_t mask = mcl_seq.fill_mask_for(mixer_device_idx) &
+  uint16_t mask = mcl_seq.fill_edit_mask(mixer_device_idx) &
                   track_mask_for_len(mixer_track_count());
   if (seq_step_page.mute_mask != mask) {
     mcl_gui.set_trigleds(mask, mixer_led_mode());
@@ -259,7 +291,7 @@ void MixerPage::oled_draw_mutes() {
       preview_mute_set != 255
           ? (fill_preview ? perf_states[preview_mute_set].fill_mask[slot]
                           : perf_states[preview_mute_set].mute_mask[slot])
-          : (active_fill_preview ? mcl_seq.fill_mask_for(mixer_device_idx) : 0);
+          : (active_fill_preview ? mcl_seq.fill_edit_mask(mixer_device_idx) : 0);
   for (uint8_t i = 0; i < len; ++i, preview_mutes >>= 1) {
     SeqTrack *seq_track = mixer_seq_track(i);
     if (seq_track == nullptr) {
@@ -326,6 +358,7 @@ void MixerPage::init() {
   mcl_gui.set_trigleds(0, mixer_led_mode());
   preview_mute_set = 255;
   fill_edit_mode = false;
+  fill_view_opened = false;
   oled_display.clearDisplay();
   set_display_mode(default_mixer_param());
   first_track = 255;
@@ -643,13 +676,13 @@ void MixerPage::toggle_or_solo(bool solo) {
   sync_selected_mixer_device();
   uint8_t len = mixer_track_count();
 #if !defined(__AVR__)
-  uint16_t fill_mask = mcl_seq.fill_mask_for(mixer_device_idx);
+  uint16_t fill_mask = mcl_seq.fill_edit_mask(mixer_device_idx);
 #endif
   for (uint8_t i = 0; i < len; i++) {
     bool note_on = note_interface.is_note_on(i);
     if (fill_edit_mode) {
 #if defined(__AVR__)
-      uint16_t &fill_mask = mcl_seq.fill_mask_for(mixer_device_idx);
+      uint16_t &fill_mask = mcl_seq.fill_edit_mask(mixer_device_idx);
 #endif
       if (solo) {
         uint16_t bit = (uint16_t)(1u << i);
@@ -691,6 +724,8 @@ void MixerPage::toggle_or_solo(bool solo) {
   if (fill_edit_mode) {
 #if !defined(__AVR__)
     apply_fill_mask(mixer_device_idx, mixer_target, fill_mask, len);
+#else
+    mcl_seq.fill_edited();
 #endif
     display_fill_mask();
   }
@@ -735,7 +770,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
 #if defined(__AVR__)
               toggle_md_fill_track(mixer_target, mixer_device_idx, track);
 #else
-              uint16_t fill_mask = mcl_seq.fill_mask_for(mixer_device_idx);
+              uint16_t fill_mask = mcl_seq.fill_edit_mask(mixer_device_idx);
               TOGGLE_BIT16(fill_mask, track);
               apply_fill_mask(mixer_device_idx, mixer_target, fill_mask, len);
 #endif

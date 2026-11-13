@@ -164,6 +164,9 @@ void MCLSeq::onMidiContinueCallback(uint32_t clock_count) {
 void MCLSeq::onMidiStartImmediateCallback(uint32_t clock_count) {
   (void)clock_count;
   realtime = true;
+  // As MDX: a start or stop cancels a queued or playing fill cycle.
+  if (fill_state & (FillQueued | FillCycle))
+    set_fill_state(fill_state & (FillHeld | FillLatched));
 #if !defined(__AVR__)
   legacy_tick_counter = 0;
 #endif
@@ -302,6 +305,8 @@ void MCLSeq::onMidiStartCallback(uint32_t clock_count) {
 
 void MCLSeq::onMidiStopCallback(uint32_t clock_count) {
   (void)clock_count;
+  if (fill_state & (FillQueued | FillCycle))
+    set_fill_state(fill_state & (FillHeld | FillLatched));
 #ifdef EXT_TRACKS
   if (seq_grid_y_runs_legacy_ext_tracks()) {
     for (uint8_t i = 0; i < num_ext_tracks; i++) {
