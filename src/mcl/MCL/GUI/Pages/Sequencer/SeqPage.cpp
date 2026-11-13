@@ -958,6 +958,11 @@ bool SeqPage::display_mute_mask(MidiDevice *device, uint8_t offset) {
   return false;
 }
 
+// The length the menu showed when it opened. Applied unchanged on close, it
+// copied the active track's length to its whole poly group and wrapped those
+// tracks' steps; choosing POLY did that as its page opened.
+static uint8_t opt_length_on_open;
+
 void SeqPage::capture_seq_menu_values(bool is_md_device) {
   if (seq_page_uses_step_track_ops(is_md_device)) {
     SeqStepTrackRef bt = seq_page_active_step_track();
@@ -968,13 +973,17 @@ void SeqPage::capture_seq_menu_values(bool is_md_device) {
   } else {
     capture_ext_track_opts();
   }
+  opt_length_on_open = opt_length;
 }
 
 void SeqPage::apply_seq_menu_values(bool same_slot) {
   if (same_slot) {
     opt_speed_handler();
     opt_swing_handler();
-    opt_length_handler();
+    // Speed and swing applied unchanged change nothing; length spreads.
+    if (opt_length != opt_length_on_open) {
+      opt_length_handler();
+    }
     opt_channel_handler();
   }
 }
