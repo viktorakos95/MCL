@@ -505,12 +505,7 @@ void SeqStepPage::send_locks(uint8_t step) {
   active_track.begin_param_editor(params, sizeof(params));
 }
 
-// The arrow whose press opened the MD's microtiming popup: its key repeats
-// (the MD repeats after ~150 ms) must not edit before it is released.
-static uint8_t microtiming_open_key = 255;
-
 void SeqStepPage::disable_microtiming_overlay() {
-  microtiming_open_key = 255;
   if (microtiming_overlay_active()) {
     active_step_track().close_microtiming();
     set_microtiming_overlay_active(false);
@@ -682,11 +677,6 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
     uint8_t page_offset = page_step_offset();
     uint8_t step = (first_note == 255) ? 255 : first_note + page_offset;
 
-    if (key == microtiming_open_key) {
-      if (event_mask == EVENT_BUTTON_RELEASED) microtiming_open_key = 255;
-      return true;  // a repeat of the opening press, or its release
-    }
-
     switch (key) {
     // ENCODER BUTTONS
     case 0x10:
@@ -831,7 +821,8 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
             MD.microtimingCondition()) {
           set_microtiming_overlay_active(true);
           notify_remote_microtiming(active_track, seq_param2.cur, step);
-          microtiming_open_key = key;
+          // MCL's own ruler shows while the timing knob counts as used.
+          encoders_used_clock[1] = read_clock_ms();
           return true;
         }
         switch (key) {
