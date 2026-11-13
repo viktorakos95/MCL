@@ -1867,6 +1867,30 @@ uint8_t MDClass::pitchParameter(uint8_t track) const {
          (MD_USR_PRESENT | MD_USR_PITCH) ? descriptor & 7u : 255;
 }
 
+// MDX_tonal_pitch_base_note's octave for parameter 0 of each built-in model
+// (-1: no tonal note); USR machines use octave 1. The base note is C# of
+// that octave: 25 + 12 * octave, one octave down for TONAL-1, up for TONAL+1.
+static const int8_t kMdxTonalOctave[40] PROGMEM = {
+  -1, 1, -1, -1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+   0, 0, 0, -1, 1, 0, -1, -1, -1, -1, -1, 1, 1, 0, -1, -1,
+   2, 2, 2, 4, 4, 3, 2, -1};
+
+uint8_t MDClass::mdxTonalNote(uint8_t track, uint8_t note_num) {
+  if (!x20() || track >= 16 || note_num == 0) return 0;
+  const uint8_t tuning = kit.get_tuning(track);
+  if (tuning == MD_TUNING_DEFAULT) return 0;
+  const uint8_t model = kit.get_model(track);
+  int8_t octave = 1;
+  if (uint8_t(model - MD_USR_FIRST) >= MD_USR_SLOTS)
+    octave = model < sizeof(kMdxTonalOctave)
+        ? int8_t(pgm_read_byte(&kMdxTonalOctave[model])) : -1;
+  if (octave < 0) return 0;
+  // Step edit numbers a tonal track's notes from C# = 1 (its first value):
+  // 24 + 12 * octave + note_num, 12 lower for TONAL-1 and higher for TONAL+1.
+  return uint8_t(12 * octave + note_num +
+      (tuning == MD_TUNING_DOWN ? 12 : tuning == MD_TUNING_UP ? 36 : 24));
+}
+
 uint8_t MDClass::trackGetCCPitch(uint8_t track, uint8_t cc, int8_t *offset) {
   tuning_t const *tuning = getKitModelTuning(track);
 

@@ -152,6 +152,10 @@ public:
   virtual void requestPattern(uint8_t pattern) override;
   bool getBlockingKit(uint8_t kit, uint16_t timeout = 3000) override;
   uint8_t pitchParameter(uint8_t track) const;
+  // The note an X.20 Machinedrum shows for a step-edit note number on a tonal
+  // track (its own base note and octave per machine and tuning; C3 = 60), or
+  // 0 when it shows none.
+  uint8_t mdxTonalNote(uint8_t track, uint8_t note_num);
   virtual void init_grid_devices(DeviceIdx device_idx) override;
 #ifdef PLATFORM_TBD
   virtual bool supports_capability(MidiDeviceCapability capability) const override;

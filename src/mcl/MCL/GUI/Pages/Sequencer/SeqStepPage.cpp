@@ -344,7 +344,20 @@ void SeqStepPage::display() {
   if (show_pitch && is_ptc) {
     mclstr_init_dash(K);
     if (seq_param4.cur != 0) {
-      seq_copy_note_label(seq_param4.cur, K);
+      // An X.20 Machinedrum labels tonal notes itself (C3 = 60): show its
+      // octave, two below this label's numbering, -1 at the lowest.
+      const uint8_t mdx_note = active_track.uses_kit_sound()
+          ? MD.mdxTonalNote(seq_primary_track_index(), seq_param4.cur) : 0;
+      if (mdx_note >= 24) {
+        seq_copy_note_label(mdx_note - 24, K);
+      } else if (mdx_note) {
+        seq_copy_note_label(mdx_note - 12, K);
+        K[2] = '-';
+        K[3] = '1';
+        K[4] = '\0';
+      } else {
+        seq_copy_note_label(seq_param4.cur, K);
+      }
     }
     draw_knob(3, mclstr_ptc, K);
   }
