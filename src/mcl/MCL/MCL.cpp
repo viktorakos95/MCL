@@ -168,8 +168,12 @@ void fill_chord() {
     state = MCLSeq::FillLatched;
   } else if (up) {
     state = (state & MCLSeq::FillLatched) ? 0 : (state | MCLSeq::FillHeld);
-  } else if (down && MidiClock.state == 2) {
-    state |= MCLSeq::FillQueued;
+  } else if (down) {
+    // Again on a queued or playing cycle cancels it, as on MDX.
+    if (state & (MCLSeq::FillQueued | MCLSeq::FillCycle))
+      state &= ~(MCLSeq::FillQueued | MCLSeq::FillCycle);
+    else if (MidiClock.state == 2)
+      state |= MCLSeq::FillQueued;
   }
   mcl_seq.set_fill_state(state);
   fill_scale |= 2;
@@ -620,7 +624,8 @@ bool mcl_handleEvent(gui_event_t *event) {
         return true;
       }
       case MDX_KEY_REALTIME: {
-        mcl_seq.set_fill(true);
+        // With an MCL-fill MD, fill comes from SCALE + arrows only.
+        if (!mcl_seq.fill_model) mcl_seq.set_fill(true);
         seq_step_page.bootstrap_record();
         return true;
       }
@@ -697,7 +702,7 @@ bool mcl_handleEvent(gui_event_t *event) {
         break;
       }
       case MDX_KEY_REALTIME: {
-        mcl_seq.set_fill(false);
+        if (!mcl_seq.fill_model) mcl_seq.set_fill(false);
         return true;
       }
       case MDX_KEY_SCALE: {
