@@ -59,7 +59,7 @@ void DiagnosticPage::draw_log() {
 void DiagnosticPage::draw() {
 
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   if (mode == 0) {
     draw_perfcounter();

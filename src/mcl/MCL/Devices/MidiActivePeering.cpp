@@ -31,7 +31,7 @@ static uint8_t portToLogicalIdx(uint8_t port) {
 static bool resource_loaded = false;
 static void prepare_display() {
   oled_display.clearDisplay();
-  oled_display.setFont();
+  oled_font_default();
   oled_display.setCursor(60, 10);
   mcl_println_P(mclstr_peering);
   if (!resource_loaded) {
@@ -152,7 +152,7 @@ static void probePort(uint8_t port, DriverList drivers) {
   if (!pmidi)
     return;
   uint8_t id = pmidi->device.get_id();
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   if (id != DEVICE_NULL && port != UARTUSB_PORT &&
 #ifdef PLATFORM_TBD
       port != UARTP4_PORT &&

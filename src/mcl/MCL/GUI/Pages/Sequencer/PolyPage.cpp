@@ -77,7 +77,7 @@ void PolyPage::cleanup() {
 
 void PolyPage::draw_mask() {
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   uint16_t selected_mask = selected_tracks;
   uint8_t x = 0;
@@ -95,7 +95,7 @@ void PolyPage::draw_mask() {
     }
 
     oled_display.setCursor(ptc_group_text_x(group, x), y + 8);
-    oled_display.setTextColor(filled ? BLACK : WHITE);
+    oled_text_color(filled ? BLACK : WHITE);
     print_ptc_group_label(group);
 
     x += 16;
@@ -105,7 +105,7 @@ void PolyPage::draw_mask() {
     }
   }
 
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
   oled_display.setFont(oldfont);
 }
 

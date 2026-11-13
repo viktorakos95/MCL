@@ -56,7 +56,7 @@ void GridSavePage::display() {
 void GridSavePage::display_at(uint8_t y_offset) {
   const uint8_t body_y_offset = content_y_offset(y_offset);
   const uint8_t menu_y = MCLGUI::s_menu_y + body_y_offset;
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   if (show_track_type) {
     grid_io_draw_groups_title(mclstr_save_groups, y_offset);
   } else {
@@ -65,8 +65,8 @@ void GridSavePage::display_at(uint8_t y_offset) {
       clear_body(y_offset);
       draw_tbd_panel_header("SAVE", y_offset);
 
-      oled_display.setFont(&TomThumb);
-      oled_display.setTextColor(WHITE, BLACK);
+      oled_font_small();
+      oled_text_color(WHITE, BLACK);
       constexpr uint8_t flow_x = 39;
       oled_display.setCursor(flow_x, y_offset + 20);
       mcl_print_P(mclstr_name_snd);
@@ -95,7 +95,7 @@ void GridSavePage::display_at(uint8_t y_offset) {
     // mcl_gui.draw_text_encoder(MCLGUI::s_menu_x + MCLGUI::s_menu_w - 26,
     // MCLGUI::s_menu_y + 8, "STEP", step);
 
-    oled_display.setFont(&TomThumb);
+    oled_font_small();
     // draw data flow in the center
     constexpr uint8_t data_x = 56;
 

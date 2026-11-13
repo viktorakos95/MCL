@@ -180,7 +180,7 @@ void lfo_mult_label(uint8_t multiplier, char *out) {
 
 void draw_lfo_enable_info_label(bool enabled) {
   const uint8_t split_x = MCLGUI::pane_w / 2;
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   oled_display.fillRect(0, MCLGUI::pane_info1_y, MCLGUI::pane_w,
                         MCLGUI::pane_info_h, BLACK);
@@ -188,13 +188,13 @@ void draw_lfo_enable_info_label(bool enabled) {
                         enabled ? split_x : MCLGUI::pane_w - split_x,
                         MCLGUI::pane_info_h, WHITE);
 
-  oled_display.setTextColor(enabled ? BLACK : WHITE);
+  oled_text_color(enabled ? BLACK : WHITE);
   oled_display.setCursor(3, MCLGUI::pane_info1_y + 6);
   mcl_print_P(mclstr_on);
-  oled_display.setTextColor(enabled ? WHITE : BLACK);
+  oled_text_color(enabled ? WHITE : BLACK);
   oled_display.setCursor(split_x + 2, MCLGUI::pane_info1_y + 6);
   mcl_print_P(mclstr_off);
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
 }
 
 bool lfo_preview_is_centered(uint8_t wav_type) {
@@ -314,11 +314,11 @@ void draw_lfo_wave_preview(uint8_t knob, uint8_t wav_type) {
   const uint8_t preview_height = 7;
   const uint8_t preview_width = 15;
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(WHITE);
+  oled_font_small();
+  oled_text_color(WHITE);
   oled_display.setCursor(knob_x + 5, mcl_gui.knob_y0 + 6);
   mcl_print_P(mclstr_wav_label);
-  oled_display.setFont();
+  oled_font_default();
 
   wav_type = wav_type < LFO_SHAPE_COUNT ? wav_type : TRI_WAV;
   uint8_t ref_y = lfo_preview_is_centered(wav_type)
@@ -574,7 +574,7 @@ void LFOPage::display() {
     strcpy(info2, "LFO>DEP");
   }
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   uint8_t base_mode = lfo_track->base_mode();
   bool show_lfo_mask = base_mode == LFO_MODE_TRIG || base_mode == LFO_MODE_ONE;

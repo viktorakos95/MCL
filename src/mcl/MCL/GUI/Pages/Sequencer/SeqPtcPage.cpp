@@ -395,7 +395,7 @@ void SeqPtcPage::display() {
 
   // draw TI keyboard
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.setCursor(105, 32);
 
   ArpSeqTrack &arp = ptc_arp_track(device_idx, ptc_selected_track(device_idx));

@@ -281,7 +281,7 @@ void FileBrowserPage::draw_sidebar() {
   constexpr uint8_t x_offset = 43;
   oled_display.clearDisplay();
   oled_display.setCursor(0, 8);
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   oled_display.println(title);
   mcl_gui.draw_vertical_dashline(x_offset - 6);
 }
@@ -300,11 +300,11 @@ void FileBrowserPage::draw_filebrowser() {
     oled_display.setCursor(x_offset, y_pos);
     bool color = n == cur_row;
     if (color) {
-      oled_display.setTextColor(BLACK, WHITE);
+      oled_text_color(BLACK, WHITE);
       oled_display.fillRect(oled_display.getCursorX() - 3,
                             oled_display.getCursorY() - 6, width, 7, WHITE);
     } else {
-      oled_display.setTextColor(WHITE, BLACK);
+      oled_text_color(WHITE, BLACK);
     }
     uint16_t entry_num = first_entry + n;
     if (entry_num == cur_file) {
@@ -329,7 +329,7 @@ void FileBrowserPage::draw_filebrowser() {
 }
 
 void FileBrowserPage::display() {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   if (filemenu_active) {
     draw_menu();
     return;

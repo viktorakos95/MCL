@@ -535,7 +535,7 @@ void RAMPage::display() {
     mcl_print_P(mclstr_play_option);
     break;
   }
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.setCursor(0, 32);
 
   mcl_print_P(mclstr_ram_prefix);
@@ -547,7 +547,7 @@ void RAMPage::display() {
   } else {
     mcl_print_P(mclstr_link);
   }
-  oled_display.setFont();
+  oled_font_default();
   oled_display.setCursor(0, 24);
 
   const char *source;

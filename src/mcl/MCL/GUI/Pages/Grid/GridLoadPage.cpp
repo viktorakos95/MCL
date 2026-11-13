@@ -111,7 +111,7 @@ void GridLoadPage::display_at(uint8_t y_offset) {
   const uint8_t body_y_offset = content_y_offset(y_offset);
   const uint8_t menu_y = MCLGUI::s_menu_y + body_y_offset;
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   if (show_track_type) {
     grid_io_draw_groups_title(mclstr_load_groups, y_offset);
   } else {
@@ -200,7 +200,7 @@ void GridLoadPage::display_at(uint8_t y_offset) {
 
       // draw step count
     }
-    oled_display.setFont(&TomThumb);
+    oled_font_small();
     uint8_t step_count = (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
 
     oled_display.setCursor(MCLGUI::s_menu_x + MCLGUI::s_menu_w - 11,

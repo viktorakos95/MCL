@@ -92,7 +92,7 @@ void FXPage::display() {
     mcl_gui.draw_knob(i, encoders[i], str, false, false);
     //  mcl_gui.draw_light_encoder(30 + 20 * i, 18, encoders[i], str);
   }
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   const char *info1;
   ;
   const char *info2;

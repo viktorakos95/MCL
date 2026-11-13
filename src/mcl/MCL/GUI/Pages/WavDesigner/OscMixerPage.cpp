@@ -33,7 +33,7 @@ COLD_SMALL() void OscMixerPage::display() {
   if (show_menu) {
     WavDesignerPage::display();
   } else {
-    oled_display.setFont();
+    oled_font_default();
     oled_display.setCursor(0, 0);
     oled_display.fillRect(0, 0, 64, 32, BLACK);
 

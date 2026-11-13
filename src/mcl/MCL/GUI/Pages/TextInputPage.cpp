@@ -25,7 +25,7 @@ uint8_t _findchar(char chr) {
 }
 
 void TextInputPage::init() {
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   mcl_gui.draw_popup(title,false,24);
 }
 
@@ -155,9 +155,9 @@ void TextInputPage::display_normal() {
     uint8_t tx = s_text_x + 6 * cursor_position;
     oled_display.fillRect(tx, s_text_y, 6, 8, WHITE);
     oled_display.setCursor(s_text_x + 6 * cursor_position, s_text_y);
-    oled_display.setTextColor(BLACK);
+    oled_text_color(BLACK);
     oled_display.print(text[cursor_position]);
-    oled_display.setTextColor(WHITE);
+    oled_text_color(WHITE);
   }
   if (time > FLASH_SPEED * 2) {
     last_clock = read_clock_ms();
@@ -165,7 +165,7 @@ void TextInputPage::display_normal() {
 }
 
 void TextInputPage::display_charpane() {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.clearDisplay();
   oled_display.drawRect(0, 0, 128, 32, WHITE);
   uint8_t chidx = 0;

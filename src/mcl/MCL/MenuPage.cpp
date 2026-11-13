@@ -265,12 +265,12 @@ uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
 
     oled_display.setCursor(x_offset, y_offset + 8 * n);
     if (n == cur_row) {
-      oled_display.setTextColor(BLACK, WHITE);
+      oled_text_color(BLACK, WHITE);
       oled_display.fillRect(max(0, oled_display.getCursorX() - 3),
                             max(0, oled_display.getCursorY() - 6),
                             item_width, 7, WHITE);
     } else {
-      oled_display.setTextColor(WHITE, BLACK);
+      oled_text_color(WHITE, BLACK);
     }
     draw_item(m, first_item + n);
   }
@@ -292,12 +292,12 @@ uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
 
   // draw_item.read(getRow());
 
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   return number_of_items;
 }
 
 void MenuPageBase::draw_right_menu(uint8_t width) {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.fillRect(128 - width - 2, 0, width + 2, 32, BLACK);
   draw_menu(128 - width, 8, width);
 }
@@ -307,8 +307,8 @@ void MenuPageBase::display() {
   MenuBase *m = get_menu();
   uint8_t x_offset = 43;
   oled_display.clearDisplay();
-  oled_display.setTextColor(WHITE, BLACK);
-  oled_display.setFont(&TomThumb);
+  oled_text_color(WHITE, BLACK);
+  oled_font_small();
   oled_display.setCursor(0, 8);
   oled_display.println(m->get_name());
   mcl_gui.draw_vertical_dashline(x_offset - 6);

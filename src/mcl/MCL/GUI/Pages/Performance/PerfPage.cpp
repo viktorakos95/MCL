@@ -244,7 +244,7 @@ void PerfPage::display() {
     return;
   }
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.clearDisplay();
 
   // mcl_gui.draw_vertical_dashline(x, 0, knob_y);
@@ -310,13 +310,13 @@ void PerfPage::display() {
   oled_display.setFont(&Elektrothic);
   oled_display.setCursor(2, 10);
   // oled_display.setCursor(4, 10);
-  oled_display.setTextColor(BLACK, WHITE);
+  oled_text_color(BLACK, WHITE);
   oled_display.print((char)(0x3C + perf_id));
 
   if (learn) {
     mcl_gui.draw_panel_number(learn);
   }
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   mcl_gui.draw_panel_labels(info1, info2);
 
   if (PerfPageTargetRef::pressed_scene() < NUM_SCENES) {

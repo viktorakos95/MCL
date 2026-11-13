@@ -222,6 +222,14 @@ public:
 
 extern MCLGUI mcl_gui;
 
+// The display's font and colour setters, out of line: Adafruit_GFX inlines
+// setTextColor, and every setFont call site also loaded the display and the
+// font. The display state they set is unchanged.
+void oled_font_small();    // TomThumb
+void oled_font_default();  // the built-in 5x7 font
+void oled_text_color(uint16_t c);
+void oled_text_color(uint16_t c, uint16_t bg);
+
 // Helper function for printing PROGMEM strings
 void mcl_print_P(const char* str_P);
 void mcl_println_P(const char* str_P);
