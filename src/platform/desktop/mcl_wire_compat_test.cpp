@@ -16,6 +16,7 @@
 #include "MidiUart.h"
 #include "Project.h"
 #include "Sequencer/MCLSeq.h"
+#include "Sequencer/SeqTrackUtil.h"
 
 #include <array>
 #include <cstdio>
@@ -231,6 +232,39 @@ bool checkTonalOctaveMessages() {
         last_primary_track=track;SeqPage::last_md_model=raw;
         select.handle_track_select_legacy(SysexView(&fixture->sysex),6);
         ok &= MD.currentTrack==track && MD.kit.models[track]==raw;
+    }
+    // An X.20 Machinedrum's SCALE page follows "no swing" (0x7F) with the
+    // scope of a length/speed edit: 1 every track, 0 its own track. Without
+    // the byte, MCL's page decides (here: not a sequencer page, so all).
+    {
+        const bool md = SeqPage::active_device_is_md() && mcl.currentPage() != SEQ_EXTSTEP_PAGE;
+        const uint8_t count = SeqTrackUtil::track_count(md);
+        auto lengthOf = [md](uint8_t n) -> unsigned {
+#if !defined(__AVR__)
+            if (md && mcl_seq.using_spsx_tracks) return mcl_seq.spsx_tracks[n].length;
+#endif
+            return SeqTrackUtil::get_track(md, n).length;
+        };
+        auto send = [&](uint8_t track, uint8_t length, int scope) {
+            uint8_t msg[]{0xf0,0x7f,0x0e,0x20,track,0,16,length,0,0x7f,uint8_t(scope < 0 ? 0 : scope),0xf7};
+            const uint8_t size = scope < 0 ? 10 : 12;
+            msg[size - 1] = 0xf7;
+            ok &= publishToMidiSysex(fixture->sysex,msg,size);
+            // Keep the unrelated UI refresh out of this protocol-only test.
+            const uint8_t current = scope == 0 ? track : MD.currentTrack;
+            last_primary_track=current;SeqPage::last_md_model=MD.kit.models[current];
+            select.handle_track_select_legacy(SysexView(&fixture->sysex),size - 2);
+        };
+        send(3, 24, 1);
+        for(uint8_t n=0;n<count;++n) ok &= lengthOf(n)==24;
+        send(3, 40, 0);
+        // The track edit lands on the MD track, or on the selected external
+        // track when an external device is MCL's active one.
+        const uint8_t edited = md ? 3 : last_ext_track;
+        for(uint8_t n=0;n<count;++n) ok &= lengthOf(n)==(n==edited?40u:24u);
+        ok &= MD.currentTrack==3;
+        send(5, 32, -1); // no scope: not on a sequencer page, so every track
+        for(uint8_t n=0;n<count;++n) ok &= lengthOf(n)==32;
     }
     // Reserved octave combinations normalize like the firmware; route is independent.
     for(unsigned flags=0;flags<128;++flags) {
