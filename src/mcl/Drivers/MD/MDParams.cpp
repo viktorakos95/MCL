@@ -444,6 +444,8 @@ static const tuning_t tunings_tonal[] = {
   { TRX_SD_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_XT_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_RS_MODEL, MIDI_NOTE_CS2, sizeof(tonal_tuning), 0, tonal_tuning },
+  // Tonal on stock, X.14 and MDX; MDX's base octave matches TRX-BD's.
+  { TRX_CB_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_XC_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_B2_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_S2_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
