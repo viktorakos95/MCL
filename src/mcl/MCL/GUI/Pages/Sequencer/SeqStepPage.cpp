@@ -813,6 +813,16 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       }
       }
       if (step != 255) {
+        // As in an X.20 Machinedrum's own step edit, the first arrow press
+        // with a step held opens its microtiming popup; later presses edit.
+        if ((key == MDX_KEY_LEFT || key == MDX_KEY_RIGHT ||
+             key == MDX_KEY_UP || key == MDX_KEY_DOWN) &&
+            !microtiming_overlay_active() && active_track.uses_kit_sound() &&
+            MD.microtimingCondition()) {
+          set_microtiming_overlay_active(true);
+          notify_remote_microtiming(active_track, seq_param2.cur, step);
+          return true;
+        }
         switch (key) {
         case MDX_KEY_YES: {
           active_track.preview_step(step);
