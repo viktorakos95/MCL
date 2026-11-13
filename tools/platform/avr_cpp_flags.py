@@ -31,6 +31,6 @@ crc = 0
 for path in (script, listing):
     with open(path, "rb") as source:
         crc = zlib.crc32(source.read(), crc)
-env.Append(LINKFLAGS=["-ffunction-sections", "-Wl,-q"] +
+env.Append(LINKFLAGS=["-ffunction-sections", "-Wl,-q", "-flto-partition=one"] +
            ["-Wl,-L," + d for d in search] + ["-Wl,-T," + script,
            "-Wl,--defsym=__mcl_lowtext_crc=0x%08x" % (crc & 0xFFFFFFFF)])
