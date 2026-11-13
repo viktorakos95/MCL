@@ -25,16 +25,12 @@ public:
 #endif
   uint8_t descriptor(uint8_t model) const;
   const char *name(uint8_t model);
-#if !defined(__AVR__)
   // First three letters of a USR parameter's label, or null if not known.
   const char *label(uint8_t model, uint8_t param);
   void invalidate() {
     valid_pages_ = 0x80;
     label_epoch_ = (label_epoch_ + 1) & 0x7f;
   }
-#else
-  void invalidate() { valid_pages_ = 0x80; }
-#endif
   bool takeChanged() {
     const bool changed = (valid_pages_ & 0x80) != 0;
     valid_pages_ &= 0x7f;
@@ -50,10 +46,8 @@ private:
   uint16_t requested_at_ = 0;
   uint8_t valid_pages_ = 0, slot_count_ = 0, pending_ = 255, tag_ = 0;
   uint8_t retries_ = 0;
-#if !defined(__AVR__)
   // A slot's labels are valid while its first byte is 0x80 | label_epoch_.
   uint8_t label_slot_ = 255, label_epoch_ = 0;
-#endif
   bool kit_received_ = false, kit_dirty_ = false;
   char name_[7]{};
 #if !defined(__AVR__)

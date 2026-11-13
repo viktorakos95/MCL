@@ -215,7 +215,11 @@ constexpr size_t BANK1_USR_CACHE_LEN = 48u * 6u;
 // bytes (32).
 constexpr size_t BANK1_KIT65_START = BANK1_USR_CACHE_START + BANK1_USR_CACHE_LEN;
 constexpr size_t BANK1_KIT65_LEN = 16u * 9u + 16u + 32u;
-constexpr uint32_t BANK1_USED_END = uint32_t(BANK1_KIT65_START) + BANK1_KIT65_LEN;
+// USR parameter labels ($70/$44 page 5): per slot a validity byte and eight
+// four-character labels.
+constexpr size_t BANK1_USR_LABELS_START = BANK1_KIT65_START + BANK1_KIT65_LEN;
+constexpr size_t BANK1_USR_LABELS_LEN = 48u * 33u;
+constexpr uint32_t BANK1_USED_END = uint32_t(BANK1_USR_LABELS_START) + BANK1_USR_LABELS_LEN;
 static_assert(BANK1_USED_END <= 0x10000UL, "AVR bank-one allocation exceeds SRAM");
 #endif
 #if defined(PLATFORM_TBD)

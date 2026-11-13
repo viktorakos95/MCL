@@ -12,9 +12,13 @@ static_assert(BANK1_USR_CACHE_LEN == MD_USR_SLOTS * MD_USR_RECORD_BYTES,
               "USR metadata layout differs from the reserved SRAM region");
 static_assert(kUsrCache + MD_USR_SLOTS * MD_USR_RECORD_BYTES <= 0x10000UL,
               "USR cache overlaps the end of AVR bank one");
+// Parameter labels have their own bank-one region, after kit 65.1's fields;
+// readByte/writeByte offsets are relative to the slot records.
+static constexpr uint16_t kUsrLabels = BANK1_USR_LABELS_START - BANK1_USR_CACHE_START;
+static_assert(BANK1_USR_LABELS_LEN == MD_USR_SLOTS * MD_USR_LABEL_BYTES,
+              "USR label layout differs from the reserved SRAM region");
 #else
-// Parameter labels follow the slot records (hosted builds only: the AVR
-// image has no flash left for them).
+// Parameter labels follow the slot records.
 static constexpr uint16_t kUsrLabels = MD_USR_SLOTS * MD_USR_RECORD_BYTES;
 #endif
 
@@ -40,6 +44,11 @@ void MDUsrCache::reset() {
   pending_ = 255;
   kit_received_ = kit_dirty_ = false;
   retries_ = 0;
+#if defined(__AVR__)
+  // External SRAM is not cleared at power-on: no label is valid until read.
+  for (uint8_t slot = 0; slot < MD_USR_SLOTS; ++slot)
+    writeByte(kUsrLabels + uint16_t(slot) * MD_USR_LABEL_BYTES, 0);
+#endif
 }
 
 bool MDUsrCache::request(uint8_t page, uint8_t kit) {
@@ -100,7 +109,6 @@ void MDUsrCache::service() {
       return;
     }
   }
-#if !defined(__AVR__)
   // Then the labels of the USR machines in the kit, one slot per request.
   if (MD.fw_caps & FW_CAP_USR_LABELS) {
     for (uint8_t track = 0; track < 16; ++track) {
@@ -114,7 +122,6 @@ void MDUsrCache::service() {
       }
     }
   }
-#endif
   // Cache is complete. Further reads are driven by MD notifications.
 }
 
@@ -165,24 +172,21 @@ void MDUsrCache::receive(const SysexView &view) {
     return;
   }
   const uint8_t slots = page < 3 && page * 16 < count ? 16 : 0;
+  // page is the one requested: the AVR product asks for pages 0-2 and the
+  // label page (it reads tuning from kit 65.1, not the kit page).
 #if defined(__AVR__)
-  // The AVR product reads tuning from kit 65.1 and never asks for the kit or
-  // label pages.
-  if (page >= 3) return;
-  const uint8_t bytes = slots * MD_USR_RECORD_BYTES;
+  const uint8_t bytes = page == MD_USR_LABEL_PAGE ? MD_USR_LABEL_BYTES
+      : slots * MD_USR_RECORD_BYTES;
 #else
   const uint8_t bytes = page == MD_USR_KIT_PAGE ? 32
       : page == MD_USR_LABEL_PAGE ? MD_USR_LABEL_BYTES
       : slots * MD_USR_RECORD_BYTES;
 #endif
   if (view.get_recordLen() != uint16_t(16 + bytes)) return;
-#if !defined(__AVR__)
   if (page == MD_USR_LABEL_PAGE) {
     // label() shows only printable characters.
     if (view.getByte(16) != label_slot_) return;
-  } else
-#endif
-  if (page < 3) {
+  } else if (page < 3) {
     for (uint8_t record = 16; record < 16 + bytes; record += MD_USR_RECORD_BYTES) {
       const uint8_t flags = view.getByte(record);
       if ((flags & 0x40) || ((flags & MD_USR_TONAL) && !(flags & MD_USR_PITCH)) ||
@@ -205,16 +209,13 @@ void MDUsrCache::receive(const SysexView &view) {
   if (generation != generation_ || count != slot_count_) invalidate();
   generation_ = generation;
   slot_count_ = count;
-#if !defined(__AVR__)
   if (page == MD_USR_LABEL_PAGE) {
     const uint16_t offset = kUsrLabels + uint16_t(label_slot_) * MD_USR_LABEL_BYTES;
     writeByte(offset, 0x80 | label_epoch_);
     for (uint8_t n = 1; n < MD_USR_LABEL_BYTES; ++n)
       writeByte(offset + n, view.getByte(16 + n));
     valid_pages_ |= 0x80;
-  } else
-#endif
-  if (page < 3) {
+  } else if (page < 3) {
     const uint16_t offset = uint16_t(page) * 16 * MD_USR_RECORD_BYTES;
     for (uint8_t n = 0; n < bytes; ++n) writeByte(offset + n, view.getByte(16 + n));
     valid_pages_ |= 1u << page;
@@ -240,7 +241,6 @@ uint8_t MDUsrCache::descriptor(uint8_t model) const {
       ? readByte(uint16_t(slot) * MD_USR_RECORD_BYTES) : 0;
 }
 
-#if !defined(__AVR__)
 const char *MDUsrCache::label(uint8_t model, uint8_t param) {
   const uint8_t slot = model - MD_USR_FIRST;
   if (slot >= MD_USR_SLOTS || param >= 8) return nullptr;
@@ -254,7 +254,6 @@ const char *MDUsrCache::label(uint8_t model, uint8_t param) {
   name_[3] = 0;
   return name_[0] ? name_ : nullptr;
 }
-#endif
 
 const char *MDUsrCache::name(uint8_t model) {
   if (!(descriptor(model) & MD_USR_PRESENT)) return nullptr;

@@ -219,11 +219,9 @@ const char* model_param_name(uint8_t model, uint8_t param) {
   } else if (param >= MD_PARAMS_PER_TRACK && param < SPS_PARAMS_PER_TRACK) {
     return ext_param_name(param);
   }
-#if !defined(__AVR__)
   if (const char *label = md_usr.label(model, param)) {
     return label;
   }
-#endif
 
   uint16_t model_idx;
 
