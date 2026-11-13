@@ -538,6 +538,14 @@ void MCLSeq::service_fill() {
     fill_state_sent = 0;
     return;
   }
+  if (fill_tracks_dirty) {
+    fill_tracks_dirty = false;
+    uint16_t mutes, fills;
+    if (MD.get_track_state(mutes, fills) & 2) {
+      fill_participants[0] = fills;
+      apply_fill();
+    }
+  }
   const uint8_t wire =
       (fill_active() ? 1 : 0) | ((fill_state & FillQueued) ? 2 : 0);
   if (wire != fill_state_sent) {

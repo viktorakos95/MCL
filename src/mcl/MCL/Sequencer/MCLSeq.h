@@ -113,6 +113,8 @@ public:
   volatile uint8_t fill_state = 0;
   uint8_t fill_state_sent = 0;
   uint8_t fill_wrap_prev = 255;
+  // The MD's FILL view changed the tracks taking part: re-read them.
+  volatile bool fill_tracks_dirty = false;
   uint16_t fill_participants[2] = {0xFFFF, 0xFFFF};
   bool fill_active() const {
     return (fill_state & (FillHeld | FillLatched | FillCycle)) != 0;

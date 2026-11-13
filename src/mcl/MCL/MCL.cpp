@@ -185,6 +185,24 @@ __attribute__((noinline)) bool mcl_fill_key(uint8_t key, bool release) {
   (void)key; (void)release;
   return false;
 #else
+  if (key >= MDX_KEY_FILLHOLD) {
+    // The MD's FILL view (Enhanced mode): UP holds, YES toggles as MDX's
+    // SeqFill::toggle, and a track change is re-read in service_fill.
+    if (mcl_seq.fill_model && (key != MDX_KEY_FILLTOGGLE || !release)) {
+      uint8_t state = mcl_seq.fill_state;
+      if (key == MDX_KEY_FILLHOLD) {
+        state = release ? state & ~MCLSeq::FillHeld : state | MCLSeq::FillHeld;
+      } else if (key == MDX_KEY_FILLTOGGLE) {
+        state = (mcl_seq.fill_active() || (state & MCLSeq::FillQueued))
+                    ? 0 : MCLSeq::FillLatched;
+      } else {
+        if (!release) mcl_seq.fill_tracks_dirty = true;
+        return true;
+      }
+      mcl_seq.set_fill_state(state);
+    }
+    return true;
+  }
   if (!mcl_seq.fill_model) {
     fill_scale = fill_arrows = 0;
     return false;
