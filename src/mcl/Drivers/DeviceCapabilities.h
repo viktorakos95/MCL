@@ -22,7 +22,7 @@ using MidiDeviceMixerValue = uint8_t;
 
 class DeviceCapability {
 protected:
-  explicit DeviceCapability(MidiDevice &device) : device_(device) {}
+  constexpr explicit DeviceCapability(MidiDevice &device) : device_(device) {}
 
   MidiDevice &device_;
 };
@@ -31,9 +31,13 @@ class DeviceMixerCapability : public DeviceCapability {
 public:
   static constexpr uint8_t MUTE_PARAM = 255;
 
-  explicit DeviceMixerCapability(MidiDevice &device,
-                                 uint8_t default_param = 0,
-                                 uint8_t mute_param = MUTE_PARAM);
+  // constexpr: a static capability of a global device is constant-
+  // initialised (no start-up code).
+  constexpr explicit DeviceMixerCapability(MidiDevice &device,
+                                           uint8_t default_param = 0,
+                                           uint8_t mute_param = MUTE_PARAM)
+      : DeviceCapability(device), default_param_(default_param),
+        mute_param_(mute_param) {}
 
 #if defined(__AVR__)
   virtual uint8_t track_count(const DeviceContext &ctx) const = 0;
@@ -74,8 +78,8 @@ private:
 
 class ExtMixerCapability : public DeviceMixerCapability {
 public:
-  ExtMixerCapability(MidiDevice &device, uint8_t *levels,
-                     bool require_level_cc = false)
+  constexpr ExtMixerCapability(MidiDevice &device, uint8_t *levels,
+                               bool require_level_cc = false)
       : DeviceMixerCapability(device), levels_(levels),
         require_level_cc_(require_level_cc) {}
 
@@ -108,8 +112,8 @@ private:
 #if !defined(__AVR__)
 class MidiSeqMixerCapability : public ExtMixerCapability {
 public:
-  MidiSeqMixerCapability(MidiDevice &device, uint8_t *levels,
-                         bool require_level_cc = false)
+  constexpr MidiSeqMixerCapability(MidiDevice &device, uint8_t *levels,
+                                   bool require_level_cc = false)
       : ExtMixerCapability(device, levels, require_level_cc) {}
 
   uint8_t track_count(const DeviceContext &ctx) const override;

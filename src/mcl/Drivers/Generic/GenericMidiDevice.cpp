@@ -50,7 +50,7 @@ bool generic_midi_track_for_channel(uint8_t channel, uint8_t *track_index) {
 
 class GenericMidiMixerCapability final : public ExtMixerCapability {
 public:
-  explicit GenericMidiMixerCapability(GenericMidiDevice &device)
+  constexpr explicit GenericMidiMixerCapability(GenericMidiDevice &device)
       : ExtMixerCapability(device, device.mixer_levels, true) {}
 
 #if !defined(__AVR__)

@@ -11,12 +11,6 @@
 #include "GUI/Pages/Sequencer/SeqPages.h"
 #endif
 
-DeviceMixerCapability::DeviceMixerCapability(MidiDevice &device,
-                                             uint8_t default_param,
-                                             uint8_t mute_param)
-    : DeviceCapability(device), default_param_(default_param),
-      mute_param_(mute_param) {}
-
 #if !defined(__AVR__)
 uint8_t DeviceMixerCapability::track_count(const DeviceContext &ctx) const {
   uint8_t grid_idx = static_cast<uint8_t>(ctx.device_idx());

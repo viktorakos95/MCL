@@ -20,12 +20,10 @@ public:
   void (*taskFunction)();
 
 	/** Create a task to be executed approximately every _interval ticks, calling the function _taskFunction. **/
-  Task(uint16_t _interval, void (*_taskFunction)() = NULL) {
-    interval = _interval;
-    lastExecution = 0;
-    taskFunction = _taskFunction;
-    starting = true;
-  }
+  // constexpr: global tasks are constant-initialised (no start-up code).
+  constexpr Task(uint16_t _interval, void (*_taskFunction)() = NULL)
+      : interval(_interval), lastExecution(0), starting(true),
+        taskFunction(_taskFunction) {}
 
 	/** Execute the task by calling the taskFunction. **/
   virtual void run() {

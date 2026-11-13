@@ -13,9 +13,9 @@ class MidiClass;
 class MDTrackSelect : public MidiSysexListenerClass {
 
 public:
-  bool state;
+  bool state = false;
 
-  MDTrackSelect() : MidiSysexListenerClass(NULL, 0x7F, 0x0E) {}
+  constexpr MDTrackSelect() : MidiSysexListenerClass(NULL, 0x7F, 0x0E) {}
   void setup(MidiClass *_midi);
 
   bool is_key_interface();

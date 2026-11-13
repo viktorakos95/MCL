@@ -20,7 +20,7 @@ class MNMMixerCapability final
     : public ExtMixerCapability {
 #endif
 public:
-  explicit MNMMixerCapability(MNMClass &device)
+  constexpr explicit MNMMixerCapability(MNMClass &device)
 #if !defined(__AVR__)
       : MidiSeqMixerCapability(device, device.kit.levels) {}
 #else
