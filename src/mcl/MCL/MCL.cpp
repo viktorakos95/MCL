@@ -147,7 +147,8 @@ void mcl_toggle_remote_mute_window() {
 // it is released, and SCALE + UP / DOWN is MDX's fill: UP holds (or
 // unlatches), UP + DOWN latches, DOWN queues one cycle of the longest MD
 // track while playing. Another key while SCALE is held cancels SCALE's own
-// action; BANK + SCALE opens the fill view. FUNC + SCALE, SCALE with trigs
+// action; BANK + SCALE is the MD's FILL view, so MCL closes the bank popup
+// its BANK press opened. FUNC + SCALE, SCALE with trigs
 // held and older firmware keep SCALE acting on its press.
 namespace {
 uint8_t fill_scale = 0;   // 1: SCALE press withheld, 2: SCALE used in a chord
@@ -213,7 +214,7 @@ __attribute__((noinline)) bool mcl_fill_key(uint8_t key, bool release) {
         return false;
       fill_scale = 1;
       if (bank_key_down()) {
-        mixer_page.toggle_fill_view();
+        if (grid_page.bank_popup) grid_page.close_bank_popup();
         fill_scale = 3;
       } else if (key_interface.is_key_down(MDX_KEY_UP) ||
                  key_interface.is_key_down(MDX_KEY_DOWN)) {

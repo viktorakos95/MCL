@@ -227,35 +227,6 @@ bool MixerPage::display_mute_mask() {
   return false;
 }
 
-// BANK + SCALE with an MCL-fill MD: open or close the fill view (the tracks
-// a fill plays on), as MDX's FILL view; from another page it returns there.
-void MixerPage::toggle_fill_view() {
-  if (mcl.currentPage() == MIXER_PAGE && fill_edit_mode) {
-    fill_edit_mode = false;
-    if (fill_view_opened) {
-      fill_view_opened = false;
-      mcl.setPage(mixer_return_page(last_page));
-      return;
-    }
-  } else {
-    if (mcl.currentPage() != MIXER_PAGE) {
-      last_page = mcl.currentPage();
-      mcl.setPage(MIXER_PAGE);
-      ext_key_down = 0;
-      fill_view_opened = true;
-    }
-    fill_edit_mode = true;
-  }
-  preview_mute_set = 255;
-  seq_step_page.mute_mask++;
-  if (fill_edit_mode) {
-    display_fill_mask();
-  } else {
-    display_mute_mask();
-  }
-  oled_draw_mutes();
-}
-
 bool MixerPage::display_fill_mask() {
   uint16_t mask = mcl_seq.fill_edit_mask(mixer_device_idx) &
                   track_mask_for_len(mixer_track_count());
@@ -358,7 +329,6 @@ void MixerPage::init() {
   mcl_gui.set_trigleds(0, mixer_led_mode());
   preview_mute_set = 255;
   fill_edit_mode = false;
-  fill_view_opened = false;
   oled_display.clearDisplay();
   set_display_mode(default_mixer_param());
   first_track = 255;
