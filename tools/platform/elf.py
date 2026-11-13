@@ -101,6 +101,12 @@ def check_avr_flash_limit(env, firmware_size):
         print(f"⚠ AVR flash: {firmware_size} bytes is {-spare} over the "
               f"{AVR_APP_FLASH_LIMIT}-byte limit (allowed in a debug build)")
         return
+    if os.environ.get("MCL_AVR_LOWTEXT_FREE"):
+        # Input for tools/platform/avr_lowtext.py only, never for flashing.
+        print(f"⚠ AVR flash: {firmware_size} bytes is {-spare} over the "
+              f"{AVR_APP_FLASH_LIMIT}-byte limit (MCL_AVR_LOWTEXT_FREE layout, "
+              f"not for flashing)")
+        return
     print(f"✗ Error: AVR flash is {firmware_size} bytes, {-spare} over the "
           f"{AVR_APP_FLASH_LIMIT}-byte bootloader limit.")
     env.Exit(1)
