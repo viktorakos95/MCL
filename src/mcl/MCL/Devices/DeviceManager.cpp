@@ -50,13 +50,12 @@ inline gui_event_t ui_slot_entry_event(const gui_event_t *event,
 
 DeviceManager device_manager;
 
+// device_manager is the only instance and starts zeroed in .bss: its device
+// pointers are already null; only the logical slots need their sentinel.
 DeviceManager::DeviceManager() {
   for (uint8_t i = 0; i < MIDI_PORT_COUNT; ++i) {
-    physical_[i] = nullptr;
     logical_idx_[i] = LOGICAL_SLOT_NONE;
   }
-  primary_ = nullptr;
-  secondary_ = nullptr;
 }
 
 MidiDevice *DeviceManager::device_for_port(uint8_t port) const {

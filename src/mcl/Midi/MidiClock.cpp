@@ -11,32 +11,31 @@
 
 // #define DEBUG_MIDI_CLOCK 0
 
+// MidiClock is the only instance and starts zeroed in .bss, so the
+// constructor sets only what init() and the defaults make non-zero (state
+// PAUSED, mode OFF and the null forward pointers are zero already). init()
+// still resets every field at runtime.
 MidiClockClass::MidiClockClass() {
-  init();
-  mode = OFF;
+  counter = 10000;
+  div192th_counter_last = -1;
+  div96th_counter_last = -1;
+  clock_last_time = read_clock();
+  bar_counter = 1;
+  beat_counter = 1;
+  step_counter = 1;
+#if !defined(__AVR__)
+  div192_time = 1;
+#endif
+  clearLed();
   uart_clock_recv = &MidiUart;
   uart_transport_recv1 = &MidiUart;
-  uart_transport_recv2 = nullptr;
-
-  uart_clock_forward1 = nullptr;
-  uart_clock_forward2 = nullptr;
-  uart_clock_forward3 = nullptr;
-#ifdef PLATFORM_TBD
-  uart_clock_forward4 = nullptr;
-#endif
-
-  uart_transport_forward1 = nullptr;
-  uart_transport_forward2 = nullptr;
-  uart_transport_forward3 = nullptr;
-#ifdef PLATFORM_TBD
-  uart_transport_forward4 = nullptr;
-#endif
 
   setTempo(120);
   useImmediateClock = true;
 }
 // global uint_32 mcl_16counter;
-void MidiClockClass::init() {
+// Out of line: inlined into its callers (rx_isr among them) it costs more.
+__attribute__((noinline)) void MidiClockClass::init() {
   state = PAUSED;
   counter = 10000;
   rx_clock = rx_last_clock = 0;
