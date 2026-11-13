@@ -831,9 +831,12 @@ void SeqPage::config_mask_info(bool silent) {
     } else {
       const bool mask_window =
           mask_type == MASK_SWING || mask_type == MASK_SLIDE;
-      // An X.20 Machinedrum's own Swing/Slide page names itself; others
-      // keep the text.
-      if (!mask_window || !enhanced_mask_window_available() || !MD.x20()) {
+      // An X.20 Machinedrum's own Swing/Slide page names itself, so clear
+      // any earlier mask text (EDIT MUTE stays up otherwise); others keep
+      // the text.
+      if (mask_window && enhanced_mask_window_available() && MD.x20()) {
+        seq_panel_popup_text((uint8_t)-1, 2);
+      } else {
         seq_page_active_step_track().popup_text(str, 1);
       }
       if (mask_window) {
