@@ -980,15 +980,8 @@ void GridPage::display() {
     // Hold YES: the group boxes from the old Load/Save pages, without their
     // title bar, 2 px lower so they reach the bottom edge. The LOAD/SAVE
     // chip and the top grid row stay visible above them; when that row is
-    // the armed one, its slots in the selected groups invert there. With the
-    // bottom row armed, the boxes go to the top (rows 0-20) instead and the
-    // bottom row and panel line stay visible.
-    int8_t y_base = 2;
-    if (cur_row == MAX_VISIBLE_ROWS - 1) {
-      oled_display.fillRect(0, 0, 128, 26, BLACK);
-      y_base = -9;
-    }
-    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, y_base);
+    // the armed one, its slots in the selected groups invert there.
+    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, 2);
   }
 #endif
   if (draw_encoders && clock_diff(draw_encoders_lastclock, read_clock_ms()) < 750) {
