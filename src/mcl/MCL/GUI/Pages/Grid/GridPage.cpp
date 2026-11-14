@@ -900,11 +900,13 @@ void GridPage::display_grid() {
     mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
   }
 #if MCL_GRID_IO_PANEL
-  // AVR: an arrow marks the cursor row (the slot menu draws over this area).
+  // AVR: an arrow marks the cursor row (the slot menu draws over this area);
+  // the separator dots beside it are cleared so its tip reads as a point.
   // While Load/Save is armed, < / > at the grid's edges mark selected slots
   // in the hidden columns.
   if (!show_slot_menu) {
     uint8_t ty = y_offset + cur_row * 8;
+    oled_display.drawFastVLine(x_offset - 3, ty - 6, 7, BLACK);
     oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
     if (io_mode) {
       if (io_mask & (first_bit - 1)) {
