@@ -896,11 +896,10 @@ void GridPage::display_grid() {
   }
 
 #if MCL_GRID_IO_PANEL
-  // AVR: a solid line left of column 1 on the normal Grid page, in place of
-  // the dotted separator; while Load/Save is armed the arrow replaces it.
   if (io_mode) {
-    // Load/Save armed: an arrow left of the armed row, and < / > at the
-    // grid's edges for selected slots in the hidden columns.
+    // Load/Save armed: an arrow left of the armed row in place of the
+    // separator, and < / > at the grid's edges for selected slots in the
+    // hidden columns.
     uint8_t ty = y_offset + cur_row * 8;
     oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
     if (io_mask & (first_bit - 1)) {
@@ -909,15 +908,12 @@ void GridPage::display_grid() {
     if (io_mask & ~((uint16_t)(first_bit << MAX_VISIBLE_COLS) - 1)) {
       text_at_P(125, ty, PSTR(">"));
     }
-  } else if ((base_col + col_shift) % 4 == 0) {
-    oled_display.drawFastVLine(x_offset - 3, 3, 29, WHITE);
-  }
-#else
+  } else
+#endif
   // optionally, draw the first separator
   if ((base_col + col_shift) % 4 == 0) {
     mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
   }
-#endif
   oled_text_color(WHITE, BLACK);
 }
 void GridPage::display_slot_menu() {
