@@ -1903,16 +1903,6 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_BANKD:
         return true;
-      case MDX_KEY_UP:
-      case MDX_KEY_DOWN:
-        // Move the armed row, as on the grid.
-        return false;
-      case MDX_KEY_LEFT:
-        io_set_view(0);
-        return true;
-      case MDX_KEY_RIGHT:
-        io_set_view(GRID_WIDTH - MAX_VISIBLE_COLS);
-        return true;
       case MDX_KEY_FUNC:
         if (load && mcl_cfg.load_mode == LOAD_MANUAL) {
           GridIOPage::show_offset = !GridIOPage::show_offset;
@@ -1930,7 +1920,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         }
         return true;
       default:
-        // Any other key disarms and does its usual job.
+        // Any other key, the arrows included, disarms and does its usual
+        // job.
         io_end();
         return false;
       }
