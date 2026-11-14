@@ -118,8 +118,9 @@ public:
   void draw_leds(uint8_t x, uint8_t y, uint8_t offset, const uint64_t &lock_mask,
                  uint8_t step_count, uint8_t length, bool show_current_step);
 
+  // y_offset may be negative: AVR group select draws the boxes from row 0.
   void draw_track_type_select(uint8_t track_type_select,
-                              uint8_t y_offset = 0);
+                              int8_t y_offset = 0);
 
   void draw_panel_toggle(const char *s1, const char *s2, bool s1_active);
   void draw_panel_labels(const char *info1, const char *info2);

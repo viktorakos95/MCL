@@ -691,7 +691,6 @@ void GridPage::display_grid_info() {
   //  mcl_print_P(mclstr_colon);
   // oled_display.print(MidiClock.step_counter);
 
-  oled_display.setCursor(22, y_offset + 1 * 8);
 
   uint8_t tri_x = 10, tri_y = 12;
   if (MidiClock.state == 2) {
@@ -981,8 +980,15 @@ void GridPage::display() {
     // Hold YES: the group boxes from the old Load/Save pages, without their
     // title bar, 2 px lower so they reach the bottom edge. The LOAD/SAVE
     // chip and the top grid row stay visible above them; when that row is
-    // the armed one, its slots in the selected groups invert there.
-    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, 2);
+    // the armed one, its slots in the selected groups invert there. With the
+    // bottom row armed, the boxes go to the top (rows 0-20) instead and the
+    // bottom row and panel line stay visible.
+    int8_t y_base = 2;
+    if (cur_row == MAX_VISIBLE_ROWS - 1) {
+      oled_display.fillRect(0, 0, 128, 26, BLACK);
+      y_base = -9;
+    }
+    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, y_base);
   }
 #endif
   if (draw_encoders && clock_diff(draw_encoders_lastclock, read_clock_ms()) < 750) {
@@ -1812,8 +1818,7 @@ void GridPage::io_display_panel() {
   oled_display.fillRect(0, 0, 25, 9, WHITE);
   oled_font_default();
   oled_text_color(BLACK);
-  oled_display.setCursor(1, 1);
-  mcl_print_P(load ? mclstr_load : mclstr_save);
+  text_at_P(1, 1, load ? mclstr_load : mclstr_save);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
