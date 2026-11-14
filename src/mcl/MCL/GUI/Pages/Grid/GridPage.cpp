@@ -979,8 +979,9 @@ void GridPage::display() {
 #if MCL_GRID_IO_PANEL
   if (io_mode && GridIOPage::show_track_type) {
     // Hold YES: the group boxes from the old Load/Save pages, without their
-    // title bar, 2 px lower so they reach the bottom edge; the LOAD/SAVE
-    // chip and the armed row stay visible above them.
+    // title bar, 2 px lower so they reach the bottom edge. The LOAD/SAVE
+    // chip and the top grid row stay visible above them; when that row is
+    // the armed one, its slots in the selected groups invert there.
     mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, 2);
   }
 #endif
@@ -1679,7 +1680,6 @@ void GridPage::io_begin(uint8_t mode) {
   GridIOPage::offset = 255;
   GridIOPage::old_grid = cur_grid;
   io_saved_grid = cur_grid;
-  io_saved_cur_row = cur_row;
   draw_encoders = false;
 
   note_interface.init_notes();
@@ -1711,11 +1711,9 @@ void GridPage::io_end(bool reinit) {
   key_interface.send_md_leds();
   MD.popup_text(127, 2);
   note_interface.init_notes();
-  // Back to the grid and view row shown when Load/Save was armed (SCALE and
-  // group select may have changed them); init() reloads the slot labels, now
-  // or when the Grid page next opens.
+  // Back to the grid shown when Load/Save was armed (SCALE may have changed
+  // it); init() reloads the slot labels, now or when the Grid page opens.
   cur_grid = io_saved_grid;
-  cur_row = io_saved_cur_row;
   if (reinit) {
     init();
   }
@@ -1765,10 +1763,6 @@ void GridPage::io_group_select() {
     // The popup draws the device icons; they fit beside the grid's resources.
     RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
     R.use_icons_logo();
-    // The group boxes cover rows 10-31: show the armed row at the top, where
-    // its slots in the selected groups invert.
-    cur_row = 0;
-    reload_slot_models = false;
   }
   GridIOPage::show_track_type = true;
   MD.popup_text_P(io_mode == GRID_IO_LOAD ? mclstr_load_groups

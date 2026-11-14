@@ -93,8 +93,6 @@ public:
 #if MCL_GRID_IO_PANEL
   uint8_t io_mode;          // GRID_IO_OFF / GRID_IO_LOAD / GRID_IO_SAVE
   GridIndex io_saved_grid;  // grid shown when Load/Save was armed
-  uint8_t io_saved_cur_row; // armed row's place in the view (group select
-                            // scrolls it to the top)
   // Pending-transition animation: slots whose pending load fired within the
   // last 420 ms (set by GridTask when the load happens), one bit per slot.
   union {
