@@ -601,6 +601,9 @@ static void display_step_popup(SeqStepTrackRef track, const char *kit_str1_P,
 static const uint8_t ENHANCED_MASK_WINDOW_NONE = 255;
 uint8_t enhanced_mask_window_requested = ENHANCED_MASK_WINDOW_NONE;
 bool enhanced_mask_window_suspended = false;
+// The scope an X.20 Machinedrum's Swing/Slide window last sent (F0 7F 0F):
+// bit 0 ALL, bit 1 Slide. Older firmware never sends it.
+uint8_t enhanced_mask_scope = 0;
 
 static inline __attribute__((always_inline)) bool enhanced_mask_window_available() {
   return MD.connected && MD.global.extendedMode == 2;
@@ -639,6 +642,7 @@ static void clear_enhanced_mask_window() {
   close_enhanced_mask_window(MASK_SLIDE);
   enhanced_mask_window_requested = ENHANCED_MASK_WINDOW_NONE;
   enhanced_mask_window_suspended = false;
+  enhanced_mask_scope = 0;
 }
 
 static inline bool should_show_enhanced_mask_window() {
@@ -688,6 +692,55 @@ bool SeqPage::consume_enhanced_mask_window_exit() {
   }
   clear_enhanced_mask_window();
   return true;
+}
+
+// MCL has no pattern-wide Swing/Slide mask. With the MD's window on ALL, an
+// edit of the active track's mask is copied to every track. Choosing ALL or
+// changing track copies nothing.
+static void follow_enhanced_mask_scope() NOINLINE();
+static void follow_enhanced_mask_scope() {
+  static uint64_t last_mask;
+  static uint8_t last_key;
+  const uint8_t type = SeqPage::mask_type;
+  uint64_t mask = 0;
+  uint8_t key = 0;
+  // ALL for this window: 1 Swing, 3 Slide.
+  if (!enhanced_mask_window_suspended && should_show_enhanced_mask_window() &&
+      enhanced_mask_scope == (uint8_t)(2 * type - (2 * MASK_SWING - 1))) {
+#if defined(__AVR__)
+    // The MD tracks' masks are plain fields here: copy them whole.
+    uint64_t MDSeqTrackData::*field = type == MASK_SWING
+                                          ? &MDSeqTrackData::swing_mask
+                                          : &MDSeqTrackData::slide_mask;
+    mask = mcl_seq.md_tracks[last_primary_track].*field;
+#else
+    seq_page_active_step_track().get_mask(&mask, type);
+#endif
+    key = (uint8_t)((last_primary_track << 2) | (type - MASK_SWING + 1));
+    if (key == last_key && mask != last_mask) {
+#if defined(__AVR__)
+      for (uint8_t n = 0; n < NUM_MD_TRACKS; n++) {
+        mcl_seq.md_tracks[n].*field = mask;
+      }
+#else
+      const uint8_t count = seq_page_step_track_count();
+      for (uint8_t n = 0; n < count; n++) {
+        if (n == last_primary_track) continue;
+        SeqStepTrackRef track = seq_page_step_track_for(n);
+        uint64_t old_mask;
+        track.get_mask(&old_mask, type);
+        uint64_t diff = old_mask ^ mask;
+        for (uint8_t s = 0; diff; s++, diff >>= 1) {
+          if (diff & 1) {
+            track.set_step(s, type, IS_BIT_SET64(mask, s));
+          }
+        }
+      }
+#endif
+    }
+  }
+  last_mask = mask;
+  last_key = key;
 }
 
 void SeqPage::setup() {}
@@ -1927,6 +1980,7 @@ void SeqPage::loop() {
     }
     return;
   }
+  follow_enhanced_mask_scope();
 }
 
 void SeqPage::draw_page_index(bool show_page_index, uint8_t _playing_idx) {

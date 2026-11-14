@@ -3,6 +3,8 @@
 #include "Devices/DeviceManager.h"
 #include "Midi.h"
 #include "MCLGUI.h"
+
+extern uint8_t enhanced_mask_scope;  // GUI/Pages/Sequencer/SeqPage.cpp
 /*
 KeyInterfaceTask key_interface_task;
 
@@ -164,6 +166,11 @@ void KeyInterface::end() {
   //  return;
   //}
   if (sysex->getByte(0) != ids[0]) {
+    return;
+  }
+  if (sysex->getByte(1) == 0x0F) {
+    // An X.20 Machinedrum's Swing/Slide window scope: bit 0 ALL, bit 1 Slide.
+    enhanced_mask_scope = sysex->getByte(2);
     return;
   }
   if (sysex->getByte(1) != ids[1]) {
