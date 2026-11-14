@@ -895,10 +895,14 @@ void GridPage::display_grid() {
     }
   }
 
+  // optionally, draw the first separator
+  if ((base_col + col_shift) % 4 == 0) {
+    mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
+  }
 #if MCL_GRID_IO_PANEL
-  // AVR: no separator left of column 1; an arrow marks the cursor row
-  // instead (the slot menu draws over this area). While Load/Save is armed,
-  // < / > at the grid's edges mark selected slots in the hidden columns.
+  // AVR: an arrow marks the cursor row (the slot menu draws over this area).
+  // While Load/Save is armed, < / > at the grid's edges mark selected slots
+  // in the hidden columns.
   if (!show_slot_menu) {
     uint8_t ty = y_offset + cur_row * 8;
     oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
@@ -910,11 +914,6 @@ void GridPage::display_grid() {
         text_at_P(125, ty, PSTR(">"));
       }
     }
-  }
-#else
-  // optionally, draw the first separator
-  if ((base_col + col_shift) % 4 == 0) {
-    mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
   }
 #endif
   oled_text_color(WHITE, BLACK);
