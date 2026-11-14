@@ -841,9 +841,10 @@ void GridPage::display_grid() {
       bool a = in_area(x, y + row_shift, cur_col, cur_row, param3.cur - 1,
                        param4.cur - 1);
 #if MCL_GRID_IO_PANEL
-      if (io_mode) {
-        // Armed: no cursor; the selected slots on the armed row invert.
-        a = row_idx == io_row && (io_mask & col_bit);
+      if (io_mode && row_idx == io_row && (io_mask & col_bit)) {
+        // Armed: the selected slots on the armed row invert; the cursor
+        // stays, so the row shows before any trig is held.
+        a = true;
       }
 #endif
       bool b = is_slot_queue(track_idx, row_idx);
