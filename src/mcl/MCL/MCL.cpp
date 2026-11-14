@@ -267,8 +267,13 @@ const lightpage_ptr_t MCL::pages_table[NUM_PAGES] PROGMEM = {
     { .ptr = &page_select_page },
     { .ptr = &system_page },
     { .ptr = &mixer_page },
+#if MCL_GRID_IO_PANEL
+    { .ptr = &grid_page }, // GRID_SAVE_PAGE: Save runs on the Grid page
+    { .ptr = &grid_page }, // GRID_LOAD_PAGE: Load runs on the Grid page
+#else
     { .ptr = &grid_save_page },
     { .ptr = &grid_load_page },
+#endif
 
     // Main sequence pages
     { .ptr = &seq_step_page },
@@ -574,7 +579,8 @@ bool mcl_handleEvent(gui_event_t *event) {
         }
         if (current_page == GRID_LOAD_PAGE ||
             current_page == GRID_SAVE_PAGE ||
-            (current_page == GRID_PAGE && grid_page.show_slot_menu)) { // ||
+            (current_page == GRID_PAGE &&
+             (grid_page.show_slot_menu || grid_page.io_armed()))) { // ||
 //            (current_page == MIXER_PAGE && mixer_page.preview_mute_set != 255))
           return false;
         }
@@ -611,6 +617,7 @@ bool mcl_handleEvent(gui_event_t *event) {
         if (current_page != TEXT_INPUT_PAGE &&
             current_page != GRID_SAVE_PAGE &&
             current_page != GRID_LOAD_PAGE &&
+            !(current_page == GRID_PAGE && grid_page.io_armed()) &&
             !key_interface.is_key_down(MDX_KEY_PATSONG)) {
           mcl.setPage(PAGE_SELECT_PAGE);
           return true;

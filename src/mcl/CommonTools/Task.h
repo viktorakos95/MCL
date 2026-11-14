@@ -25,6 +25,12 @@ public:
       : interval(_interval), lastExecution(0), starting(true),
         taskFunction(_taskFunction) {}
 
+  // Only for a global that is not constant-initialised (it starts zeroed in
+  // .bss): sets `starting` and leaves the zero interval, clock and function
+  // to .bss, so the global constructor stores nothing else.
+  struct ZeroInit {};
+  explicit Task(ZeroInit) : starting(true) {}
+
 	/** Execute the task by calling the taskFunction. **/
   virtual void run() {
     if (taskFunction != NULL) {

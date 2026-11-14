@@ -574,6 +574,13 @@ void GridTask::transition_handler() {
             if (grid_page.active_slots[n] != slots_changed[n]) {
               active_state_dirty.mark();
             }
+#if MCL_GRID_IO_PANEL
+            // A pending load just fired: the Grid page flashes the slot.
+            if (grid_page.active_slots[n] == SLOT_PENDING) {
+              grid_page.settle_bits[n >> 3] |= (uint8_t)(1 << (n & 7));
+              grid_page.settle_clock = read_clock_ms();
+            }
+#endif
             grid_page.active_slots[n] = slots_changed[n];
           }
 #if MCL_FEATURE_HOST_ARRANGER_RECORD_HOOKS
@@ -689,4 +696,4 @@ bool GridTask::transition_load(GridSlot n, GridColumn track_idx,
   return true;
 }
 
-GridTask grid_task(0);
+GridTask grid_task;

@@ -84,8 +84,11 @@ public:
   static constexpr bool using_spsx_tracks = false;
 #endif
 
-  uint16_t neighbor_trig_mask = 0;
-  uint16_t fill_mask[2] = {0, 0};
+  // mcl_seq is the only instance and starts zeroed in .bss, so zero-valued
+  // fields here take no initialiser (each one is a store in the AVR global
+  // constructor).
+  uint16_t neighbor_trig_mask;
+  uint16_t fill_mask[2];
   static uint8_t fill_slot(DeviceIdx device_idx) {
     return device_idx == DeviceIdx::Secondary ? 1 : 0;
   }
@@ -109,12 +112,12 @@ public:
   // queued cycle turn them on, and fill_mask follows. Older peers keep the
   // mixer editing fill_mask directly.
   enum : uint8_t { FillHeld = 1, FillLatched = 2, FillQueued = 4, FillCycle = 8 };
-  bool fill_model = false;
-  volatile uint8_t fill_state = 0;
-  uint8_t fill_state_sent = 0;
+  bool fill_model;
+  volatile uint8_t fill_state;
+  uint8_t fill_state_sent;
   uint8_t fill_wrap_prev = 255;
   // The MD's FILL view changed the tracks taking part: re-read them.
-  volatile bool fill_tracks_dirty = false;
+  volatile bool fill_tracks_dirty;
   uint16_t fill_participants[2] = {0xFFFF, 0xFFFF};
   bool fill_active() const {
     return (fill_state & (FillHeld | FillLatched | FillCycle)) != 0;

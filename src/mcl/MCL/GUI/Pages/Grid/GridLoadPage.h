@@ -13,14 +13,14 @@ class GridLoadPage : public GridIOPage {
  }
  uint8_t track_select_array[NUM_SLOTS];
  GridRow load_row;
- void get_modestr(char *modestr);
+ static void get_modestr(char *modestr);
  void load();
  void group_select();
- void group_load(GridRow row, GridSlot load_offset = 255);
+ static void group_load(GridRow row, GridSlot load_offset = 255);
  bool handleEvent(gui_event_t *event);
- void display_load();
+ static void display_load();
  void display_at(uint8_t y_offset);
- void md_popup_title(uint8_t mode, bool persistent = true);
+ static void md_popup_title(uint8_t mode, bool persistent = true);
  void loop();
  void display();
  void action() { load(); }

@@ -353,7 +353,8 @@ public:
   SaveQueue save_queue;
 #endif
 
-  GridTask(uint16_t interval) : Task(interval) { setup(interval); }
+  // grid_task is the only instance (interval 0, no task function).
+  GridTask() : Task(ZeroInit()) {}
 
   void setup(uint16_t interval = 0);
 

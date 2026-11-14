@@ -544,9 +544,10 @@ bool MCLGUI::show_encoder_value(Encoder *encoder, int timeout) {
   return false;
 }
 
-void MCLGUI::draw_text_encoder(uint8_t x, uint8_t y, const char *name,
-                               const char *value, bool highlight,
-                               bool name_is_progmem) {
+NOINLINE() void MCLGUI::draw_text_encoder(uint8_t x, uint8_t y,
+                                          const char *name,
+                                          const char *value, bool highlight,
+                                          bool name_is_progmem) {
 #if !defined(__AVR__)
   char name_buf[8]; // Short labels fit on the encoder caption
   const char *label = name;

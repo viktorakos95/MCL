@@ -210,6 +210,27 @@ void GridIOPage::track_select_array_from_type_select(
   }
 }
 
+// Carry the trigs held on this grid into track_select, then switch grids.
+void GridIOPage::toggle_grid() {
+  for (uint8_t n = 0; n < GRID_WIDTH; n++) {
+    GridSlot slot = n + old_grid * GRID_WIDTH;
+    if (note_interface.is_note(n) || note_interface.is_note(slot)) {
+      TOGGLE_BIT32(track_select, slot);
+      if (note_interface.is_note_on(n)) {
+        note_interface.ignoreNextEvent(n);
+      }
+      if (slot != n && note_interface.is_note_on(slot)) {
+        note_interface.ignoreNextEvent(slot);
+      }
+      note_interface.clear_note(n);
+      if (slot != n) {
+        note_interface.clear_note(slot);
+      }
+    }
+  }
+  old_grid = !old_grid;
+}
+
 bool GridIOPage::handleEvent(gui_event_t *event) {
   if (EVENT_NOTE(event)) {
     uint8_t track = event->source;
@@ -273,23 +294,7 @@ bool GridIOPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON2)) {
     toggle_grid:
-      for (uint8_t n = 0; n < GRID_WIDTH; n++) {
-        GridSlot slot = n + old_grid * GRID_WIDTH;
-        if (note_interface.is_note(n) || note_interface.is_note(slot)) {
-          TOGGLE_BIT32(track_select, slot);
-          if (note_interface.is_note_on(n)) {
-            note_interface.ignoreNextEvent(n);
-          }
-          if (slot != n && note_interface.is_note_on(slot)) {
-            note_interface.ignoreNextEvent(slot);
-          }
-          note_interface.clear_note(n);
-          if (slot != n) {
-            note_interface.clear_note(slot);
-          }
-        }
-      }
-      old_grid = !old_grid;
+      toggle_grid();
       paint_track_select_leds();
       return true;
     }

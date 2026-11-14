@@ -50,7 +50,7 @@ void MCLActionsMidiEvents::onProgramChangeCallback_Midi2(uint8_t *msg) {
 
     if (mcl_cfg.uart2_prg_mode == 0) {
       uint8_t track_select_array[NUM_SLOTS];
-      grid_load_page.track_select_array_from_type_select(track_select_array);
+      GridIOPage::track_select_array_from_type_select(track_select_array);
       grid_task.load_queue.put(mcl_cfg.load_mode,msg[1],track_select_array);
     } else {
       DEBUG_PRINTLN(F("set row"));

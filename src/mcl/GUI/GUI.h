@@ -22,10 +22,13 @@ class GuiClass {
 protected:
 public:
   EventManager events;
-  bool display_mirror = false;
-  bool skip_display_once = false;
+  // GUI is the only instance and starts zeroed in .bss, so zero-valued
+  // fields take no initialiser (each one is a store in the AVR global
+  // constructor).
+  bool display_mirror;
+  bool skip_display_once;
   bool use_screen_saver = true;
-  bool screen_saver = false;
+  bool screen_saver;
   Vector<event_handler_t, 4> eventHandlers;
   Vector<Task *, 4> tasks;
   Stack<LightPage *, 8> pageStack;

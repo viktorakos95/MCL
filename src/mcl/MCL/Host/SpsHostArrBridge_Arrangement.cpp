@@ -516,7 +516,7 @@ void SpsHostArrBridge::onLoadSlots(uint8_t tag, const uint8_t* b, uint16_t n) {
         memset(trackSelect, 0, sizeof(trackSelect));
         mcl_cfg.load_mode = mode;
         mcl_cfg.track_type_select = trackMask;
-        grid_load_page.track_select_array_from_type_select(trackSelect);
+        GridIOPage::track_select_array_from_type_select(trackSelect);
         mcl_cfg.track_type_select = oldGroupMask;
         mcl_cfg.load_mode = oldMode;
 
@@ -762,7 +762,7 @@ void SpsHostArrBridge::onSaveSlots(uint8_t tag, const uint8_t* b,
     if ((flags & GRID_SAVE_GROUP_SELECT) != 0) {
         uint16_t oldGroupMask = mcl_cfg.track_type_select;
         mcl_cfg.track_type_select = mask;
-        grid_save_page.track_select_array_from_type_select(trackSelect);
+        GridIOPage::track_select_array_from_type_select(trackSelect);
         mcl_cfg.track_type_select = oldGroupMask;
     } else {
         for (uint8_t slot = 0;

@@ -21,6 +21,9 @@
 #include "Grid/MCLActions.h"
 #include "MCLClipBoard.h"
 #include "MCLStrings.h"
+#if MCL_GRID_IO_PANEL
+#include "MDTrack.h"
+#endif
 
 #define PERF_ENC 1
 
@@ -263,6 +266,11 @@ void close_slot_menu_from_mouse(GridPage &page) {
 
 void GridPage::init() {
   DEBUG_PRINTLN(F("Grid page init"));
+#if MCL_GRID_IO_PANEL
+  if (io_mode) {
+    io_end(false);
+  }
+#endif
   if (mcl_cfg.grid_page_mode == PERF_ENC) {
     encoders[0] = &perf_param1;
     encoders[1] = &perf_param2;
@@ -313,6 +321,11 @@ void GridPage::setup() {
 }
 
 void GridPage::cleanup() {
+#if MCL_GRID_IO_PANEL
+  if (io_mode) {
+    io_end(false);
+  }
+#endif
   oled_font_default();
   oled_text_color(WHITE, BLACK);
   bank_popup = 0;
@@ -321,7 +334,7 @@ void GridPage::cleanup() {
 void GridPage::load_row(uint8_t n, GridRow row) {
   if (row >= GRID_LENGTH) { return; }
   if (IS_BIT_CLEAR16(grid_page.bank_popup_loadmask, n)) {
-    grid_load_page.group_load(row);
+    GridLoadPage::group_load(row);
     SET_BIT16(grid_page.bank_popup_loadmask, n);
   }
 }
@@ -391,6 +404,11 @@ void GridPage::load_old_col() {
 }
 
 void GridPage::loop() {
+#if MCL_GRID_IO_PANEL
+  if (io_mode == GRID_IO_LOAD) {
+    io_loop();
+  }
+#endif
   if (mcl_cfg.grid_page_mode == PERF_ENC) {
      //need to limit range of the alternate encoders
      encoder_t *enc = nullptr;
@@ -431,7 +449,11 @@ void GridPage::loop() {
     grid_slot_page.loop();
     return;
   } else {
-    if (mcl_cfg.grid_page_mode == PERF_ENC) {
+    if (mcl_cfg.grid_page_mode == PERF_ENC
+#if MCL_GRID_IO_PANEL
+        && io_mode != GRID_IO_LOAD
+#endif
+    ) {
       if (encoders[0]->hasChanged() || encoders[1]->hasChanged() || encoders[2]->hasChanged() || encoders[3]->hasChanged()) {
          //mcl.setPage(MIXER_PAGE);
          draw_encoders_lastclock = read_clock_ms();
@@ -596,6 +618,18 @@ void GridPage::load_slot_models() {
   }
 }
 
+// Cursor + print in one out-of-line call: each inline pair costs ~30 bytes.
+static void text_at(uint8_t x, uint8_t y, const char *str) NOINLINE();
+static void text_at(uint8_t x, uint8_t y, const char *str) {
+  oled_display.setCursor(x, y);
+  oled_display.print(str);
+}
+[[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) NOINLINE();
+[[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) {
+  oled_display.setCursor(x, y);
+  mcl_print_P(str_P);
+}
+
 void GridPage::display_counters() {
   uint8_t y_offset = 8;
 
@@ -608,8 +642,7 @@ void GridPage::display_counters() {
   }
 
   oled_font_small();
-  oled_display.setCursor(24, y_offset);
-  oled_display.print(val);
+  text_at(24, y_offset, val);
 
   mcl_print_P(mclstr_colon);
   oled_display.print(MidiClock.beat_counter);
@@ -626,8 +659,7 @@ void GridPage::display_counters() {
         val[1] = (char)0x60;
       }
     }
-    oled_display.setCursor(24, y_offset + 8);
-    oled_display.print(val);
+    text_at(24, y_offset + 8, val);
     mcl_print_P(mclstr_colon);
     oled_display.print(mcl_actions.nearest_beat);
   }
@@ -637,8 +669,7 @@ static void draw_grid_device_label(uint8_t x, uint8_t y,
                                    MidiDevice *device) {
   const char *name = device->name;
   char label[3] = {name[0] ? name[0] : ' ', name[1] ? name[1] : ' ', '\0'};
-  oled_display.setCursor(x, y);
-  oled_display.print(label);
+  text_at(x, y, label);
 }
 
 static void draw_bank_row_label(uint8_t row, char *val) NOINLINE();
@@ -677,7 +708,24 @@ void GridPage::display_grid_info() {
   draw_grid_device_label(0, y_offset + 3 * 8,
                          device_manager.secondary_device());
 
-  oled_display.setCursor(10, y_offset + (MAX_VISIBLE_ROWS - 1) * 8);
+  display_position();
+
+  oled_display.fillRect(0, y_offset + 2 * 8 - 6, 37, 7, WHITE);
+
+  oled_text_color(BLACK, WHITE);
+  if (row_headers[cur_row].name[0] != '\0') {
+    char rowname[10];
+    strncpy(rowname, row_headers[cur_row].name, 9);
+    rowname[9] = '\0';
+
+    text_at(1, y_offset + 2 * 8, rowname);
+  }
+
+  oled_text_color(WHITE, BLACK);
+}
+// Bottom line of the info column: grid, column and row, e.g. "X:01 A01".
+void GridPage::display_position() {
+  oled_display.setCursor(10, 32);
   oled_display.print((char)('X' + cur_grid));
   oled_display.print(':');
 
@@ -687,22 +735,8 @@ void GridPage::display_grid_info() {
   oled_display.print(val);
   mcl_print_P(mclstr_space);
   draw_bank_row_label(param2.cur, val);
-
-  oled_display.setCursor(1, y_offset + 2 * 8);
-  oled_display.fillRect(oled_display.getCursorX() - 1,
-                        oled_display.getCursorY() - 6, 37, 7, WHITE);
-
-  oled_text_color(BLACK, WHITE);
-  if (row_headers[cur_row].name[0] != '\0') {
-    char rowname[10];
-    strncpy(rowname, row_headers[cur_row].name, 9);
-    rowname[9] = '\0';
-
-    oled_display.print(rowname);
-  }
-
-  oled_text_color(WHITE, BLACK);
 }
+
 bool GridPage::is_slot_queue(uint8_t x, uint8_t y) {
   if (show_slot_menu) {
     return false;
@@ -717,6 +751,32 @@ bool GridPage::is_slot_queue(uint8_t x, uint8_t y) {
   }
   return false;
 }
+
+#if MCL_GRID_IO_PANEL
+// Dotted ring in the 1-pixel gap around a grid cell, marching every 140 ms:
+// the same walk and 2-on/2-off pattern as the SPS-X grid's dotted orbit.
+// 11x9 ring: top left to right, down, back along the bottom, up.
+static void draw_pending_orbit(uint8_t x, uint8_t y, uint8_t idx) {
+  int8_t dx = 1, dy = 0;
+  for (uint8_t i = 0; i < 36; i++, idx++) {
+    if ((idx & 3) < 2) {
+      oled_display.drawPixel(x, y, WHITE);
+    }
+    if (i == 10) {
+      dx = 0;
+      dy = 1;
+    } else if (i == 18) {
+      dx = -1;
+      dy = 0;
+    } else if (i == 28) {
+      dx = 0;
+      dy = -1;
+    }
+    x += dx;
+    y += dy;
+  }
+}
+#endif
 
 void GridPage::display_grid() {
   uint8_t x_offset = 43;
@@ -733,6 +793,19 @@ void GridPage::display_grid() {
   bool blink_hint = MidiClock.getBlinkHint(false);
 
 //  encoders[1]->handler = NULL;
+
+#if MCL_GRID_IO_PANEL
+  const uint16_t io_mask = io_mode ? io_visible_mask() : 0;
+  const GridRow io_row = getRow();
+  const uint16_t now = read_clock_ms();
+  const uint8_t orbit_phase = (uint8_t)(now / 140) & 3;
+  if (settle_mask && clock_diff(settle_clock, now) >= 420) {
+    settle_mask = 0;
+  }
+  const uint16_t settle16 = settle_bits[cur_grid * 2] |
+                            (settle_bits[cur_grid * 2 + 1] << 8);
+  const uint16_t first_bit = 1u << base_col;
+#endif
 
   GridSpan row_shift = 0;
   GridSpan col_shift = 0;
@@ -751,6 +824,9 @@ void GridPage::display_grid() {
     uint8_t cur_posx = x_offset;
     uint8_t cur_posy = y_offset + y * 8;
     GridSpan w = grid_width;
+#if MCL_GRID_IO_PANEL
+    uint16_t col_bit = first_bit << col_shift;
+#endif
     for (uint8_t x = col_shift; x < MAX_VISIBLE_COLS + col_shift && x < w;
          x++) {
       oled_display.setCursor(cur_posx, cur_posy);
@@ -764,6 +840,12 @@ void GridPage::display_grid() {
       //  Highlight the current cursor position + slot menu apply range
       bool a = in_area(x, y + row_shift, cur_col, cur_row, param3.cur - 1,
                        param4.cur - 1);
+#if MCL_GRID_IO_PANEL
+      if (io_mode) {
+        // Armed: no cursor; the selected slots on the armed row invert.
+        a = row_idx == io_row && (io_mask & col_bit);
+      }
+#endif
       bool b = is_slot_queue(track_idx, row_idx);
       bool io_selected = false;
 #ifdef PLATFORM_TBD
@@ -789,6 +871,15 @@ void GridPage::display_grid() {
           oled_display.drawPixel(cur_posx - 1, cur_posy - 6, active_cue_color);
         }
       }
+#if MCL_GRID_IO_PANEL
+      if (active_slot == SLOT_PENDING &&
+          mcl_actions.links[track_grid_idx].row == row_idx) {
+        draw_pending_orbit(cur_posx - 2, cur_posy - 7, orbit_phase);
+      } else if (active && (settle16 & col_bit)) {
+        oled_display.fillRect(cur_posx - 1, cur_posy - 6, 9, 7, INVERT);
+      }
+      col_bit <<= 1;
+#endif
 
       // tomThumb is 4x6
       if (track_idx % 4 == 3 && w >= 8) {
@@ -807,6 +898,18 @@ void GridPage::display_grid() {
   if ((base_col + col_shift) % 4 == 0) {
     mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
   }
+#if MCL_GRID_IO_PANEL
+  // Arrows at the grid's edges mark selected slots in the hidden columns.
+  if (io_mode && (uint8_t)(io_row - base_row) < MAX_VISIBLE_ROWS) {
+    uint8_t ty = y_offset + (io_row - base_row) * 8;
+    if (io_mask & (first_bit - 1)) {
+      text_at_P(39, ty, PSTR("<"));
+    }
+    if (io_mask & ~((uint16_t)(first_bit << MAX_VISIBLE_COLS) - 1)) {
+      text_at_P(125, ty, PSTR(">"));
+    }
+  }
+#endif
   oled_text_color(WHITE, BLACK);
 }
 void GridPage::display_slot_menu() {
@@ -849,6 +952,11 @@ void GridPage::display() {
   oled_font_small();
   oled_text_color(WHITE, BLACK);
   if (!show_slot_menu) {
+#if MCL_GRID_IO_PANEL
+    if (io_mode) {
+      io_display_panel();
+    } else
+#endif
     display_grid_info();
   } else {
     if (param4.cur > 4) {
@@ -859,6 +967,14 @@ void GridPage::display() {
     }
   }
   display_grid();
+#if MCL_GRID_IO_PANEL
+  if (io_mode && GridIOPage::show_track_type) {
+    // Hold YES: the group select popup, as on the old Load/Save pages.
+    grid_io_draw_groups_title(io_mode == GRID_IO_LOAD ? mclstr_load_groups
+                                                      : mclstr_save_groups,
+                              0);
+  }
+#endif
   if (draw_encoders && clock_diff(draw_encoders_lastclock, read_clock_ms()) < 750) {
     oled_font_default();
     mixer_page.draw_encs();
@@ -1027,7 +1143,7 @@ COLD_SMALL() void GridPage::apply_slot_changes(bool ignore_undo, bool ignore_fun
       if (height > 1) {
         mcl_cfg.load_mode = LOAD_QUEUE;
       }
-      grid_load_page.display_load();
+      GridLoadPage::display_load();
     }
   run:
 
@@ -1113,6 +1229,11 @@ COLD_SMALL() void GridPage::apply_slot_changes(bool ignore_undo, bool ignore_fun
 }
 
 bool GridPage::handleEvent(gui_event_t *event) {
+#if MCL_GRID_IO_PANEL
+  if (io_mode && io_handleEvent(event)) {
+    return true;
+  }
+#endif
   if (EVENT_NOTE(event)) {
     uint8_t port = event->port;
 
@@ -1217,7 +1338,7 @@ bool GridPage::handleEvent(gui_event_t *event) {
           loadmode:
             mcl_cfg.load_mode = key - MDX_KEY_BANKA + 1;
             bool persistent = false;
-            grid_load_page.md_popup_title(mcl_cfg.load_mode, persistent);
+            GridLoadPage::md_popup_title(mcl_cfg.load_mode, persistent);
             return true;
           }
           case MDX_KEY_NO: {
@@ -1421,6 +1542,8 @@ bool GridPage::handleEvent(gui_event_t *event) {
       save:
 #ifdef PLATFORM_TBD
         grid_io_overlay.begin(GridIOOverlay::MODE_SAVE);
+#elif MCL_GRID_IO_PANEL
+        io_begin(GRID_IO_SAVE);
 #else
         mcl.setPage(GRID_SAVE_PAGE);
 #endif
@@ -1432,6 +1555,8 @@ bool GridPage::handleEvent(gui_event_t *event) {
       load:
 #ifdef PLATFORM_TBD
         grid_io_overlay.begin(GridIOOverlay::MODE_LOAD);
+#elif MCL_GRID_IO_PANEL
+        io_begin(GRID_IO_LOAD);
 #else
         mcl.setPage(GRID_LOAD_PAGE);
 #endif
@@ -1511,6 +1636,332 @@ bool GridPage::handleEvent(gui_event_t *event) {
   }
   return false;
 }
+
+
+#if MCL_GRID_IO_PANEL
+// ---------------------------------------------------------------------------
+// Load / Save armed on the Grid page (AVR). YES arms Load, FUNC+YES arms Save.
+// The left info column shows the settings, the grid shows the selection, and
+// releasing every trig loads or saves the selected slots, as the old Load and
+// Save pages did.
+// ---------------------------------------------------------------------------
+
+// Print a number right-aligned to x = right (TomThumb digits are 4 px);
+// 0 prints "-".
+static void print_right(uint8_t value, uint8_t right, uint8_t y) {
+  char str[4] = {'-', '\0'};
+  if (value) {
+    mcl_gui.put_value_at(value, str);
+  }
+  text_at(right - 4 * strlen(str), y, str);
+}
+
+// "LEN 8", "QUANT 16", "DEST 5": label on the left, value at the right edge.
+static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
+  text_at_P(0, y, label_P);
+  print_right(value, 37, y);
+}
+
+void GridPage::io_begin(uint8_t mode) {
+  io_mode = mode;
+  GridIOPage::show_track_type = false;
+  GridIOPage::show_offset = false;
+  GridIOPage::track_select = 0;
+  GridIOPage::offset = 255;
+  GridIOPage::old_grid = cur_grid;
+  io_saved_grid = cur_grid;
+  draw_encoders = false;
+
+  note_interface.init_notes();
+  key_interface.send_md_leds(TRIGLED_OVERLAY);
+  key_interface.on();
+
+  if (mode == GRID_IO_LOAD) {
+    // E1 mode, E2 queue length, E3/E4 quantise: the old Load page's knobs.
+    encoders[0] = &gridload_param1;
+    encoders[1] = &gridio_param2;
+    encoders[2] = &gridio_param4;
+    encoders[3] = &gridio_param4;
+    gridload_param1.cur = gridload_param1.old = mcl_cfg.load_mode;
+    gridio_param2.cur = gridio_param2.old = mcl_cfg.chain_queue_length;
+    gridio_param4.cur = gridio_param4.old = mcl_cfg.chain_load_quant;
+    GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+  } else {
+    MD.getCurrentPattern(CALLBACK_TIMEOUT);
+    reload_slot_models = false;
+    MD.popup_text_P(mclstr_save_slots, true);
+  }
+}
+
+void GridPage::io_end(bool reinit) {
+  io_mode = GRID_IO_OFF;
+  GridIOPage::show_track_type = false;
+  GridIOPage::show_offset = false;
+  GridIOPage::offset = 255;
+  key_interface.send_md_leds();
+  MD.popup_text(127, 2);
+  note_interface.init_notes();
+  if (cur_grid != io_saved_grid) {
+    cur_grid = io_saved_grid;
+    reload_slot_models = false;
+  }
+  if (reinit) {
+    init();
+  }
+}
+
+void GridPage::io_loop() {
+  if (gridload_param1.hasChanged()) {
+    mcl_cfg.load_mode = gridload_param1.cur;
+    GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+  }
+  if (gridio_param2.hasChanged()) {
+    if (gridload_param1.cur == LOAD_QUEUE) {
+      mcl_cfg.chain_queue_length = gridio_param2.cur;
+    } else {
+      gridio_param2.cur = gridio_param2.old;
+    }
+  }
+  if (gridio_param4.hasChanged()) {
+    mcl_cfg.chain_load_quant = gridio_param4.cur;
+  }
+}
+
+void GridPage::io_action(bool groups) {
+  uint8_t track_select_array[NUM_SLOTS];
+  if (groups) {
+    key_interface.off();
+    GridIOPage::track_select_array_from_type_select(track_select_array);
+  } else {
+    GridIOPage::populate_track_select_from_notes(track_select_array);
+  }
+  if (io_mode == GRID_IO_LOAD) {
+    if (groups) {
+      mcl_actions.write_original = 1;
+    }
+    grid_task.load_queue.put(mcl_cfg.load_mode, getRow(), track_select_array,
+                             GridIOPage::offset);
+  } else {
+    oled_display.textbox_P(mclstr_save, groups ? mclstr_groups : mclstr_tracks);
+    oled_display.display();
+    mcl_actions.save_tracks(getRow(), track_select_array, SAVE_SEQ);
+  }
+  io_end();
+}
+
+void GridPage::io_group_select() {
+  if (!GridIOPage::show_track_type) {
+    // The popup draws the device icons; they fit beside the grid's resources.
+    RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
+    R.use_icons_logo();
+  }
+  GridIOPage::show_track_type = true;
+  MD.popup_text_P(io_mode == GRID_IO_LOAD ? mclstr_load_groups
+                                          : mclstr_save_groups,
+                  true);
+  mcl_gui.set_trigleds(mcl_cfg.track_type_select, TRIGLED_EXCLUSIVE);
+}
+
+void GridPage::io_toggle_grid() {
+  GridIOPage::toggle_grid();
+  cur_grid = GridIOPage::old_grid;
+  reload_slot_models = false;
+  GridIOPage::paint_track_select_leds();
+}
+
+// Show columns base .. base + 7, keeping the cursor's place in the view.
+void GridPage::io_set_view(GridColumn base) {
+  param1.cur = param1.old = base + cur_col;
+}
+
+// Selected slots of the shown grid: latched by SCALE, or held on the trigs.
+uint16_t GridPage::io_visible_mask() {
+  static_assert(GRID_WIDTH == 16 && NUM_SLOTS == 32,
+                "track_select halves are one grid each");
+  if (GridIOPage::show_offset) {
+    // Choosing a destination: only the chosen slot inverts.
+    GridSlot offset = GridIOPage::offset;
+    return offset / GRID_WIDTH == cur_grid ? 1u << (offset % GRID_WIDTH) : 0;
+  }
+  uint16_t mask = cur_grid ? (uint16_t)(GridIOPage::track_select >> 16)
+                           : (uint16_t)GridIOPage::track_select;
+  uint16_t bit = 1;
+  for (uint8_t n = 0; n < GRID_WIDTH; n++, bit <<= 1) {
+    // Trigs map to the shown grid; notes 16-31 address grid Y directly.
+    if (note_interface.is_note(n) ||
+        (cur_grid && note_interface.is_note(n + GRID_WIDTH))) {
+      mask |= bit;
+    }
+  }
+  return mask;
+}
+
+void GridPage::io_display_panel() {
+  oled_font_small();
+  const bool load = io_mode == GRID_IO_LOAD;
+
+  // Line 1: the action in an inverted chip, the load mode beside it.
+  oled_display.fillRect(0, 2, 17, 7, WHITE);
+  oled_text_color(BLACK, WHITE);
+  text_at_P(1, 8, load ? mclstr_load : mclstr_save);
+  oled_text_color(WHITE, BLACK);
+
+  if (load) {
+    char str[7];
+    GridLoadPage::get_modestr(str);
+    text_at(25, 8, str);
+    // LEN and QUANT of 1 mean "the slot's own length" and show "-".
+    if (GridIOPage::show_offset) {
+      panel_row(16, mclstr_dest,
+                GridIOPage::offset < NUM_SLOTS
+                    ? GridIOPage::offset % GRID_WIDTH + 1
+                    : 0);
+    } else if (mcl_cfg.load_mode == LOAD_QUEUE) {
+      uint8_t len = mcl_cfg.chain_queue_length;
+      panel_row(16, mclstr_len, len == 1 ? 0 : len);
+    }
+    uint8_t quant = mcl_cfg.chain_load_quant;
+    panel_row(24, mclstr_quant, quant == 1 ? 0 : quant);
+    // Line 4: the 16th-step count replaces the device name, for timing
+    // the trig release against the quantise boundary.
+    uint8_t step_count =
+        (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
+    mcl_gui.put_value_at(step_count, str);
+    text_at(step_count < 10 ? 4 : 0, 32, str);
+  } else {
+    // SND + SEQ -> GRID, as on the old Save page.
+    text_at_P(0, 16, mclstr_name_snd);
+    text_at_P(0, 24, mclstr_seq);
+    oled_display.drawFastHLine(12, 13, 2, WHITE);
+    oled_display.drawFastHLine(12, 21, 2, WHITE);
+    oled_display.drawFastVLine(14, 13, 9, WHITE);
+    mcl_gui.draw_horizontal_arrow(15, 17, 5);
+    text_at_P(21, 20, mclstr_grid);
+    draw_grid_device_label(0, 32, device_manager.secondary_device());
+  }
+  display_position();
+}
+
+bool GridPage::io_handleEvent(gui_event_t *event) {
+  const bool load = io_mode == GRID_IO_LOAD;
+  if (EVENT_NOTE(event)) {
+    uint8_t track = event->source;
+    if (track >= NUM_SLOTS) {
+      return true;
+    }
+    if (event->mask == EVENT_BUTTON_PRESSED) {
+      if (GridIOPage::show_track_type) {
+        if (track < 5) {
+          TOGGLE_BIT16(mcl_cfg.track_type_select, track);
+          mcl_gui.set_trigleds(mcl_cfg.track_type_select, TRIGLED_EXCLUSIVE);
+        }
+        return true;
+      }
+      if (track < GRID_WIDTH) {
+        // A trig outside the view pages the grid to it.
+        GridColumn base = param1.cur - cur_col;
+        if (track < base || track >= base + MAX_VISIBLE_COLS) {
+          io_set_view(track < MAX_VISIBLE_COLS ? 0
+                                               : GRID_WIDTH - MAX_VISIBLE_COLS);
+        }
+      }
+      if (GridIOPage::show_offset) {
+        GridIOPage::offset = GridIOPage::slot_for_note(track);
+      }
+      GridIOPage::paint_track_select_leds();
+    } else if (!GridIOPage::show_track_type) {
+      GridIOPage::paint_track_select_leds();
+      if (note_interface.notes_all_off()) {
+        if (GridIOPage::show_offset) {
+          GridIOPage::show_offset = false;
+          note_interface.init_notes();
+          GridIOPage::paint_track_select_leds();
+        } else if (!BUTTON_DOWN(Buttons.BUTTON2)) {
+          io_action(false);
+        }
+      }
+    }
+    return true;
+  }
+
+  if (EVENT_CMD(event)) {
+    uint8_t key = event->source;
+    if (event->mask == EVENT_BUTTON_PRESSED) {
+      switch (key) {
+      case MDX_KEY_YES:
+        io_group_select();
+        return true;
+      case MDX_KEY_NO:
+        io_end();
+        return true;
+      case MDX_KEY_SCALE:
+        io_toggle_grid();
+        return true;
+      case MDX_KEY_BANKD:
+        return true;
+      case MDX_KEY_UP:
+      case MDX_KEY_DOWN:
+        // Move the armed row, as on the grid.
+        return false;
+      case MDX_KEY_LEFT:
+        io_set_view(0);
+        return true;
+      case MDX_KEY_RIGHT:
+        io_set_view(GRID_WIDTH - MAX_VISIBLE_COLS);
+        return true;
+      case MDX_KEY_FUNC:
+        if (load && mcl_cfg.load_mode == LOAD_MANUAL) {
+          GridIOPage::show_offset = !GridIOPage::show_offset;
+          note_interface.init_notes();
+          if (GridIOPage::show_offset) {
+            GridIOPage::offset = 255;
+          }
+        }
+        return true;
+      case MDX_KEY_BANKA:
+      case MDX_KEY_BANKB:
+      case MDX_KEY_BANKC:
+        if (load && !key_interface.is_key_down(MDX_KEY_FUNC)) {
+          gridload_param1.cur = key - MDX_KEY_BANKA + 1;
+        }
+        return true;
+      default:
+        // Any other key disarms and does its usual job.
+        io_end();
+        return false;
+      }
+    }
+    if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_YES) {
+      if (GridIOPage::show_track_type) {
+        io_action(true);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  if (EVENT_BUTTON(event)) {
+    if (EVENT_PRESSED(event, Buttons.BUTTON2)) {
+      io_toggle_grid();
+      return true;
+    }
+    if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
+      io_group_select();
+      return true;
+    }
+    if (EVENT_RELEASED(event, Buttons.BUTTON3)) {
+      io_action(true);
+      return true;
+    }
+    if (EVENT_RELEASED(event, Buttons.BUTTON1) ||
+        EVENT_RELEASED(event, Buttons.BUTTON4)) {
+      io_end();
+      return true;
+    }
+  }
+  return false;
+}
+#endif // MCL_GRID_IO_PANEL
 
 #if defined(MCL_HAS_DESKTOP_MOUSE)
 bool GridPage::handleMouseEvent(mcl_mouse_event_t *event) {
