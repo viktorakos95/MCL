@@ -969,10 +969,9 @@ void GridPage::display() {
   display_grid();
 #if MCL_GRID_IO_PANEL
   if (io_mode && GridIOPage::show_track_type) {
-    // Hold YES: the group select popup, as on the old Load/Save pages.
-    grid_io_draw_groups_title(io_mode == GRID_IO_LOAD ? mclstr_load_groups
-                                                      : mclstr_save_groups,
-                              0);
+    // Hold YES: the group boxes from the old Load/Save pages, without their
+    // title bar; the panel's LOAD/SAVE chip stays visible above them.
+    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, 0);
   }
 #endif
   if (draw_encoders && clock_diff(draw_encoders_lastclock, read_clock_ms()) < 750) {
@@ -1797,19 +1796,18 @@ uint16_t GridPage::io_visible_mask() {
 }
 
 void GridPage::io_display_panel() {
-  oled_font_small();
   const bool load = io_mode == GRID_IO_LOAD;
 
-  // Line 1: the action in an inverted chip, the load mode beside it.
-  oled_display.fillRect(0, 2, 17, 7, WHITE);
-  oled_text_color(BLACK, WHITE);
-  text_at_P(1, 8, load ? mclstr_load : mclstr_save);
+  // Line 1: the action in the 5x7 font, in an inverted chip.
+  oled_display.fillRect(0, 0, 25, 9, WHITE);
+  oled_font_default();
+  oled_text_color(BLACK);
+  oled_display.setCursor(1, 1);
+  mcl_print_P(load ? mclstr_load : mclstr_save);
+  oled_font_small();
   oled_text_color(WHITE, BLACK);
 
   if (load) {
-    char str[7];
-    GridLoadPage::get_modestr(str);
-    text_at(25, 8, str);
     // LEN and QUANT of 1 mean "the slot's own length" and show "-".
     if (GridIOPage::show_offset) {
       panel_row(16, mclstr_dest,
@@ -1822,24 +1820,30 @@ void GridPage::io_display_panel() {
     }
     uint8_t quant = mcl_cfg.chain_load_quant;
     panel_row(24, mclstr_quant, quant == 1 ? 0 : quant);
-    // Line 4: the 16th-step count replaces the device name, for timing
-    // the trig release against the quantise boundary.
+
+    // Bottom line: load mode, the 16th-step count (for timing the trig
+    // release against the quantise boundary) centred between, the row.
+    char str[7];
+    GridLoadPage::get_modestr(str);
+    text_at(0, 32, str);
     uint8_t step_count =
         (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
     mcl_gui.put_value_at(step_count, str);
-    text_at(step_count < 10 ? 4 : 0, 32, str);
+    text_at(19 - 2 * strlen(str), 32, str);
+    oled_display.setCursor(26, 32);
+    draw_bank_row_label(param2.cur, str);
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
-    text_at_P(0, 16, mclstr_name_snd);
-    text_at_P(0, 24, mclstr_seq);
-    oled_display.drawFastHLine(12, 13, 2, WHITE);
-    oled_display.drawFastHLine(12, 21, 2, WHITE);
-    oled_display.drawFastVLine(14, 13, 9, WHITE);
-    mcl_gui.draw_horizontal_arrow(15, 17, 5);
-    text_at_P(21, 20, mclstr_grid);
+    text_at_P(0, 17, mclstr_name_snd);
+    text_at_P(0, 25, mclstr_seq);
+    oled_display.drawFastHLine(12, 14, 2, WHITE);
+    oled_display.drawFastHLine(12, 22, 2, WHITE);
+    oled_display.drawFastVLine(14, 14, 9, WHITE);
+    mcl_gui.draw_horizontal_arrow(15, 18, 5);
+    text_at_P(21, 21, mclstr_grid);
     draw_grid_device_label(0, 32, device_manager.secondary_device());
+    display_position();
   }
-  display_position();
 }
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
