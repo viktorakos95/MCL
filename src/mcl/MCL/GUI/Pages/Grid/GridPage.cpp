@@ -841,10 +841,10 @@ void GridPage::display_grid() {
       bool a = in_area(x, y + row_shift, cur_col, cur_row, param3.cur - 1,
                        param4.cur - 1);
 #if MCL_GRID_IO_PANEL
-      if (io_mode && row_idx == io_row && (io_mask & col_bit)) {
-        // Armed: the selected slots on the armed row invert; the cursor
-        // stays, so the row shows before any trig is held.
-        a = true;
+      if (io_mode) {
+        // Armed: the selected slots on the armed row invert; the arrow
+        // drawn after the grid marks the row in place of the cursor.
+        a = row_idx == io_row && (io_mask & col_bit);
       }
 #endif
       bool b = is_slot_queue(track_idx, row_idx);
@@ -900,11 +900,16 @@ void GridPage::display_grid() {
     mcl_gui.draw_vertical_dashline(x_offset - 3, 3);
   }
 #if MCL_GRID_IO_PANEL
-  // Arrows at the grid's edges mark selected slots in the hidden columns.
+  // The armed row's arrow, and < / > at the grid's edges for selected slots
+  // in the hidden columns.
   if (io_mode && (uint8_t)(io_row - base_row) < MAX_VISIBLE_ROWS) {
     uint8_t ty = y_offset + (io_row - base_row) * 8;
+    // Arrow left of the armed row; the separator dots beside it are cleared
+    // so its tip reads as a point.
+    oled_display.drawFastVLine(x_offset - 3, ty - 6, 7, BLACK);
+    oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
     if (io_mask & (first_bit - 1)) {
-      text_at_P(39, ty, PSTR("<"));
+      text_at_P(41, ty, PSTR("<"));
     }
     if (io_mask & ~((uint16_t)(first_bit << MAX_VISIBLE_COLS) - 1)) {
       text_at_P(125, ty, PSTR(">"));
