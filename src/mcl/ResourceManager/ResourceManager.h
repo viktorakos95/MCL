@@ -7,6 +7,11 @@
 // names, knob icons, menu options, menu layouts and one option row for each
 // device, 5,585 bytes.
 #define RM_BUFSIZE 5600
+#elif defined(PLATFORM_TBD)
+// Every rp2040 resource set loaded at once, plus one menu option row for each
+// device, is 14,344 + NUM_DEVS * sizeof(menu_option_t) bytes (checked in
+// ResourceManager.cpp).
+#define RM_BUFSIZE 16384
 #else
 #define RM_BUFSIZE 32768
 #endif

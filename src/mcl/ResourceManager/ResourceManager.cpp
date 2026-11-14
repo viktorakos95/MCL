@@ -2,6 +2,14 @@
 #include "GUI/MCLMenus.h"
 #include <stddef.h>
 
+#if defined(PLATFORM_TBD)
+// The TBD buffer holds every resource at once, so no load order overflows it.
+RM_REQUIRE(sizeof(menu_option_t) * NUM_DEVS, __T_icons_boot, __T_icons_device,
+           __T_icons_knob, __T_icons_logo, __T_icons_page,
+           __T_machine_names_long, __T_machine_names_short,
+           __T_machine_param_names, __T_menu_layouts, __T_menu_options);
+#endif
+
 #if defined(__AVR__)
 struct MenuLayoutBinding {
   MenuBase *menu;
