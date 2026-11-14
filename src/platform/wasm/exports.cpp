@@ -32,9 +32,6 @@
 #include "MD.h"
 #include "MDSysex.h"
 #include "platform.h"
-#ifdef PLATFORM_TBD
-#include "GUI/Pages/Grid/GridIOOverlay.h"
-#endif
 
 #include <stdint.h>
 #include <stdio.h>
@@ -633,7 +630,8 @@ extern "C" uint32_t mcl_debug_state(void) {
     if (GridIOPage::show_offset) state |= (1u << 27);
     if (GridIOPage::show_track_type) state |= (1u << 28);
 #ifdef PLATFORM_TBD
-    if (grid_io_overlay.is_active()) state |= (1u << 29);
+    // Bit 29: Load/Save armed on the Grid page (was the TBD Load/Save overlay).
+    if (grid_page.io_armed()) state |= (1u << 29);
     if (device_manager.is_ui_active()) state |= (1u << 30);
     if (device_manager.is_ui_collapsed()) state |= (1u << 31);
 #endif

@@ -11,10 +11,10 @@
 #define MAX_VISIBLE_ROWS 4
 #define MAX_VISIBLE_COLS 8
 
-// AVR (128x32): Load and Save arm on the Grid page itself. The left info
-// column becomes the Load/Save panel and the grid stays visible. TBD and the
-// hosted builds keep GridLoadPage / GridSavePage / GridIOOverlay.
-#if defined(__AVR__)
+// AVR and TBD: Load and Save arm on the Grid page itself. The left info
+// column becomes the Load/Save panel and the grid stays visible. The hosted
+// builds keep the GridLoadPage / GridSavePage pages.
+#if defined(__AVR__) || defined(PLATFORM_TBD)
 #define MCL_GRID_IO_PANEL 1
 #else
 #define MCL_GRID_IO_PANEL 0

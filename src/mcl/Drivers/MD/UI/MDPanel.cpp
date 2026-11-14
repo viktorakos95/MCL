@@ -5,7 +5,6 @@
 #include "../MD.h"
 #include "GUI/Pages/CommonPages.h"
 #include "GUI_hardware.h"
-#include "GUI/Pages/Grid/GridIOOverlay.h"
 #include "GUI/Pages/Grid/GridPages.h"
 #include "KeyInterface.h"
 #include "MCL.h"
@@ -64,7 +63,7 @@ void MDPanel::handle_grid_trig_preview(gui_event_t *event, uint8_t trig_idx) {
   if (event->mask != EVENT_BUTTON_PRESSED) return;
   if (trig_idx >= NUM_MD_TRACKS) return;
   if (mcl.currentPage() != GRID_PAGE) return;
-  if (grid_page.bank_popup || grid_io_overlay.is_active()) return;
+  if (grid_page.bank_popup || grid_page.io_armed()) return;
 
   md_.triggerTrack(trig_idx, 127);
   mixer_page.trig(trig_idx);

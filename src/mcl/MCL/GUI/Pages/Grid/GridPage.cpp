@@ -15,9 +15,6 @@
 #include "../../../../Drivers/Generic/GenericMidiDevice.h"
 #include "../../../../Drivers/MD/MD.h"
 #include "../../../../Drivers/MNM/MNMParams.h"
-#ifdef PLATFORM_TBD
-#include "GUI/Pages/Grid/GridIOOverlay.h"
-#endif
 #include "Grid/MCLActions.h"
 #include "MCLClipBoard.h"
 #include "MCLStrings.h"
@@ -786,9 +783,6 @@ void GridPage::display_grid() {
   GridColumn base_col = getCol() - cur_col;
   GridRow base_row = getRow() - cur_row;
   GridSpan grid_width = getWidth();
-#ifdef PLATFORM_TBD
-  GridRow selected_row = getRow();
-#endif
   bool blink_hint = MidiClock.getBlinkHint(false);
 
 //  encoders[1]->handler = NULL;
@@ -852,13 +846,7 @@ void GridPage::display_grid() {
       }
 #endif
       bool b = is_slot_queue(track_idx, row_idx);
-      bool io_selected = false;
-#ifdef PLATFORM_TBD
-      io_selected = (row_idx == selected_row) &&
-                    grid_io_overlay.is_slot_selected(track_idx);
-#endif
-
-      if ((a ^ b) || io_selected) {
+      if (a ^ b) {
         oled_display.fillRect(cur_posx - 1, cur_posy - 6, 9, 7, WHITE);
         oled_text_color(BLACK, WHITE);
         active_cue_color = BLACK;
@@ -980,8 +968,13 @@ void GridPage::display() {
     // Hold YES: the group boxes from the old Load/Save pages, without their
     // title bar, 2 px lower so they reach the bottom edge. The LOAD/SAVE
     // chip and the top grid row stay visible above them; when that row is
-    // the armed one, its slots in the selected groups invert there.
+    // the armed one, its slots in the selected groups invert there. TBD
+    // draws them in the bottom half of its 64-row screen, under the grid.
+#ifdef PLATFORM_TBD
+    mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, 34);
+#else
     mcl_gui.draw_track_type_select(mcl_cfg.track_type_select, 2);
+#endif
   }
 #endif
   if (draw_encoders && clock_diff(draw_encoders_lastclock, read_clock_ms()) < 750) {
@@ -1549,9 +1542,7 @@ bool GridPage::handleEvent(gui_event_t *event) {
     if (!show_slot_menu) {
       if (EVENT_RELEASED(event, Buttons.BUTTON1)) {
       save:
-#ifdef PLATFORM_TBD
-        grid_io_overlay.begin(GridIOOverlay::MODE_SAVE);
-#elif MCL_GRID_IO_PANEL
+#if MCL_GRID_IO_PANEL
         io_begin(GRID_IO_SAVE);
 #else
         mcl.setPage(GRID_SAVE_PAGE);
@@ -1562,9 +1553,7 @@ bool GridPage::handleEvent(gui_event_t *event) {
 
       if (EVENT_RELEASED(event, Buttons.BUTTON4)) {
       load:
-#ifdef PLATFORM_TBD
-        grid_io_overlay.begin(GridIOOverlay::MODE_LOAD);
-#elif MCL_GRID_IO_PANEL
+#if MCL_GRID_IO_PANEL
         io_begin(GRID_IO_LOAD);
 #else
         mcl.setPage(GRID_LOAD_PAGE);
@@ -1681,16 +1670,29 @@ void GridPage::io_begin(uint8_t mode) {
   io_saved_grid = cur_grid;
   draw_encoders = false;
 
+#ifdef PLATFORM_TBD
+  // A parameter strip in the bottom half would take the knobs; Load/Save
+  // replaces it, as TBD's Load/Save overlay did.
+  GUI.clearOverlay();
+#endif
   note_interface.init_notes();
-  key_interface.send_md_leds(TRIGLED_OVERLAY);
+  GridIOPage::paint_track_select_leds();
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
+#ifdef PLATFORM_TBD
+    // E2 mode, E3 queue length, E4 quantise: TBD's Load knobs.
+    encoders[0] = &gridio_param3;
+    encoders[1] = &gridload_param1;
+    encoders[2] = &gridio_param2;
+    encoders[3] = &gridio_param4;
+#else
     // E1 mode, E2 queue length, E3/E4 quantise: the old Load page's knobs.
     encoders[0] = &gridload_param1;
     encoders[1] = &gridio_param2;
     encoders[2] = &gridio_param4;
     encoders[3] = &gridio_param4;
+#endif
     gridload_param1.cur = gridload_param1.old = mcl_cfg.load_mode;
     gridio_param2.cur = gridio_param2.old = mcl_cfg.chain_queue_length;
     gridio_param4.cur = gridio_param4.old = mcl_cfg.chain_load_quant;
@@ -1758,11 +1760,14 @@ void GridPage::io_action(bool groups) {
 }
 
 void GridPage::io_group_select() {
+#ifndef PLATFORM_TBD
   if (!GridIOPage::show_track_type) {
-    // The popup draws the device icons; they fit beside the grid's resources.
+    // The popup draws the device icons; they fit beside the grid's resources
+    // (TBD's Grid page loads them already).
     RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
     R.use_icons_logo();
   }
+#endif
   GridIOPage::show_track_type = true;
   MD.popup_text_P(io_mode == GRID_IO_LOAD ? mclstr_load_groups
                                           : mclstr_save_groups,
@@ -1816,30 +1821,29 @@ void GridPage::io_display_panel() {
   oled_text_color(WHITE, BLACK);
 
   if (load) {
-    // LEN and QUANT of 1 mean "the slot's own length" and show "-".
+    // Line 1, beside the chip: the 16th-step count, for timing the trig
+    // release against the quantise boundary.
+    char str[7];
+    uint8_t step_count =
+        (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
+    mcl_gui.put_value_at(step_count, str);
+    text_at(37 - 4 * strlen(str), 8, str);
+    // Line 2: the load mode.
+    GridLoadPage::get_modestr(str);
+    text_at(0, 16, str);
+    // Line 3: LEN (Queue) or DEST; line 4: QUANT. A LEN or QUANT of 1 means
+    // "the slot's own length" and shows "-".
     if (GridIOPage::show_offset) {
-      panel_row(16, mclstr_dest,
+      panel_row(24, mclstr_dest,
                 GridIOPage::offset < NUM_SLOTS
                     ? GridIOPage::offset % GRID_WIDTH + 1
                     : 0);
     } else if (mcl_cfg.load_mode == LOAD_QUEUE) {
       uint8_t len = mcl_cfg.chain_queue_length;
-      panel_row(16, mclstr_len, len == 1 ? 0 : len);
+      panel_row(24, mclstr_len, len == 1 ? 0 : len);
     }
     uint8_t quant = mcl_cfg.chain_load_quant;
-    panel_row(24, mclstr_quant, quant == 1 ? 0 : quant);
-
-    // Bottom line: load mode, the 16th-step count (for timing the trig
-    // release against the quantise boundary) centred between, the row.
-    char str[7];
-    GridLoadPage::get_modestr(str);
-    text_at(0, 32, str);
-    uint8_t step_count =
-        (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
-    mcl_gui.put_value_at(step_count, str);
-    text_at(19 - 2 * strlen(str), 32, str);
-    oled_display.setCursor(26, 32);
-    draw_bank_row_label(param2.cur, str);
+    panel_row(32, mclstr_quant, quant == 1 ? 0 : quant);
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
     text_at_P(0, 17, mclstr_name_snd);
@@ -2052,8 +2056,8 @@ bool GridPage::handleMouseEvent(mcl_mouse_event_t *event) {
   }
 
   if (event->type == MCL_MOUSE_DOUBLE_CLICK && !show_slot_menu) {
-#ifdef PLATFORM_TBD
-    grid_io_overlay.begin(GridIOOverlay::MODE_LOAD);
+#if MCL_GRID_IO_PANEL
+    io_begin(GRID_IO_LOAD);
 #else
     mcl.setPage(GRID_LOAD_PAGE);
 #endif
