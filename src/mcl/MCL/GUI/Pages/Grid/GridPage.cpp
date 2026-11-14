@@ -1638,7 +1638,8 @@ bool GridPage::handleEvent(gui_event_t *event) {
 
 #if MCL_GRID_IO_PANEL
 // ---------------------------------------------------------------------------
-// Load / Save armed on the Grid page (AVR). YES arms Load, FUNC+YES arms Save.
+// Load / Save armed on the Grid page (AVR and TBD). YES or BUTTON4 arms Load,
+// FUNC+YES or BUTTON1 arms Save.
 // The left info column shows the settings, the grid shows the selection, and
 // releasing every trig loads or saves the selected slots, as the old Load and
 // Save pages did.
@@ -1680,25 +1681,23 @@ void GridPage::io_begin(uint8_t mode) {
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
-#ifdef PLATFORM_TBD
-    // E2 mode, E3 queue length, E4 quantise: TBD's Load knobs.
-    encoders[0] = &gridio_param3;
-    encoders[1] = &gridload_param1;
-    encoders[2] = &gridio_param2;
-    encoders[3] = &gridio_param4;
-#else
     // E1 mode, E2 queue length, E3/E4 quantise: the old Load page's knobs.
     encoders[0] = &gridload_param1;
     encoders[1] = &gridio_param2;
     encoders[2] = &gridio_param4;
     encoders[3] = &gridio_param4;
-#endif
     gridload_param1.cur = gridload_param1.old = mcl_cfg.load_mode;
     gridio_param2.cur = gridio_param2.old = mcl_cfg.chain_queue_length;
     gridio_param4.cur = gridio_param4.old = mcl_cfg.chain_load_quant;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
-    MD.getCurrentPattern(CALLBACK_TIMEOUT);
+#ifdef PLATFORM_TBD
+    // A TBD may run without an MD: ask only one that is connected and
+    // assigned to the grid, as TBD's Save page did.
+    if (MD.connected && (device_manager.primary_device() == &MD ||
+                         device_manager.secondary_device() == &MD))
+#endif
+      MD.getCurrentPattern(CALLBACK_TIMEOUT);
     reload_slot_models = false;
     MD.popup_text_P(mclstr_save_slots, true);
   }

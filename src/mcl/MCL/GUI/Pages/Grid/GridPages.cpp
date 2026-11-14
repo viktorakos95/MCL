@@ -12,26 +12,14 @@ MCLEncoder gridload_param1(1, 3, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param2(64, 1, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param4(64, 1, ENCODER_RES_PAT);
 
-#if MCL_GRID_IO_PANEL
-// Load and Save run on the Grid page (GridPage::io_*); no page objects.
-#ifdef PLATFORM_TBD
-// TBD's first knob does nothing while Load is armed.
-MCLEncoder gridio_param3(0, 0, ENCODER_RES_PAT);
-#endif
-#else
+#if !MCL_GRID_IO_PANEL
+// AVR and TBD run Load and Save on the Grid page (GridPage::io_*).
 MCLEncoder gridsave_param1(0, 2, ENCODER_RES_PAT);
 MCLEncoder gridio_param3(0, 64, ENCODER_RES_PAT);
-#ifdef PLATFORM_TBD
-GridSavePage grid_save_page(&gridio_param3, &gridsave_param1, &gridio_param2,
-                            &gridio_param4);
-GridLoadPage grid_load_page(&gridio_param3, &gridload_param1, &gridio_param2,
-                            &gridio_param4);
-#else
 GridSavePage grid_save_page(&gridsave_param1, &gridio_param2, &gridio_param3,
                             &gridio_param4);
 GridLoadPage grid_load_page(&gridload_param1, &gridio_param2, &gridio_param4,
                              &gridio_param4);
 #endif
-#endif // MCL_GRID_IO_PANEL
 
 GridTrack slot;
