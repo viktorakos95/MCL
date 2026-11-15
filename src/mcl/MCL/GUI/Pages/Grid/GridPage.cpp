@@ -720,15 +720,25 @@ void GridPage::display_grid_info() {
   oled_text_color(WHITE, BLACK);
 }
 // Bottom line of the info column: grid, column and row, e.g. "X:01 A01".
-void GridPage::display_position() {
+// "X:05" in the bottom line's grid:column place; column 0 prints "X:--".
+static void print_grid_column(uint8_t grid, uint8_t column, char *val)
+    NOINLINE();
+static void print_grid_column(uint8_t grid, uint8_t column, char *val) {
   oled_display.setCursor(10, 32);
-  oled_display.print((char)('X' + cur_grid));
+  oled_display.print((char)('X' + grid));
   oled_display.print(':');
-
-  char val[4];
-  mcl_gui.put_value_at2(param1.cur + 1, val);
+  if (column) {
+    mcl_gui.put_value_at2(column, val);
+  } else {
+    val[0] = val[1] = '-';
+  }
   val[2] = '\0';
   oled_display.print(val);
+}
+
+void GridPage::display_position() {
+  char val[4];
+  print_grid_column(cur_grid, param1.cur + 1, val);
   mcl_print_P(mclstr_space);
   draw_bank_row_label(param2.cur, val);
 }
@@ -1720,6 +1730,13 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
+  if (GridIOPage::show_offset) {
+    // Picking a destination: the knobs leave the settings alone.
+    gridload_param1.cur = gridload_param1.old;
+    gridio_param2.cur = gridio_param2.old;
+    gridio_param4.cur = gridio_param4.old;
+    return;
+  }
   if (gridload_param1.hasChanged()) {
     mcl_cfg.load_mode = gridload_param1.cur;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
@@ -1827,22 +1844,23 @@ void GridPage::io_display_panel() {
         (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
     mcl_gui.put_value_at(step_count, str);
     text_at(37 - 4 * strlen(str), 8, str);
-    // Line 2: the load mode.
-    GridLoadPage::get_modestr(str);
-    text_at(0, 16, str);
-    // Line 3: LEN (Queue) or DEST; line 4: QUANT. A LEN or QUANT of 1 means
-    // "the slot's own length" and shows "-".
+    // Line 2: the load mode with its own setting, LEN in Queue ("QUE LEN 8").
+    // Line 3: QUANT. A LEN or QUANT of 1 means "the slot's own length" and
+    // shows "-". While a destination is picked, DEST alone replaces them; the
+    // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
-      panel_row(24, mclstr_dest,
-                GridIOPage::offset < NUM_SLOTS
-                    ? GridIOPage::offset % GRID_WIDTH + 1
-                    : 0);
-    } else if (mcl_cfg.load_mode == LOAD_QUEUE) {
-      uint8_t len = mcl_cfg.chain_queue_length;
-      panel_row(24, mclstr_len, len == 1 ? 0 : len);
+      text_at_P(0, 16, mclstr_dest);
+    } else {
+      GridLoadPage::get_modestr(str);
+      text_at(0, 16, str);
+      if (mcl_cfg.load_mode == LOAD_QUEUE) {
+        uint8_t len = mcl_cfg.chain_queue_length;
+        text_at_P(16, 16, mclstr_len);
+        print_right(len == 1 ? 0 : len, 37, 16);
+      }
+      uint8_t quant = mcl_cfg.chain_load_quant;
+      panel_row(24, mclstr_quant, quant == 1 ? 0 : quant);
     }
-    uint8_t quant = mcl_cfg.chain_load_quant;
-    panel_row(32, mclstr_quant, quant == 1 ? 0 : quant);
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
     text_at_P(0, 17, mclstr_name_snd);
@@ -1852,9 +1870,20 @@ void GridPage::io_display_panel() {
     oled_display.drawFastVLine(14, 14, 9, WHITE);
     mcl_gui.draw_horizontal_arrow(15, 18, 5);
     text_at_P(21, 21, mclstr_grid);
-    draw_grid_device_label(0, 32, device_manager.secondary_device());
-    display_position();
   }
+  // Line 4, Load and Save alike: the armed row alone, where the Grid page
+  // prints it (after "X:01 "). While DEST is open, the destination slot as
+  // grid:column ("Y:05") stands before it, where the Grid page prints the
+  // cursor's; "--" until a trig picks one.
+  char val[4];
+  if (load && GridIOPage::show_offset) {
+    GridSlot offset = GridIOPage::offset;
+    bool picked = offset < NUM_SLOTS;
+    print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
+                      picked ? offset % GRID_WIDTH + 1 : 0, val);
+  }
+  oled_display.setCursor(26, 32);
+  draw_bank_row_label(param2.cur, val);
 }
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
@@ -1926,7 +1955,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       case MDX_KEY_BANKA:
       case MDX_KEY_BANKB:
       case MDX_KEY_BANKC:
-        if (load && !key_interface.is_key_down(MDX_KEY_FUNC)) {
+        // The mode keys, like the knobs, do nothing while DEST is open.
+        if (load && !GridIOPage::show_offset &&
+            !key_interface.is_key_down(MDX_KEY_FUNC)) {
           gridload_param1.cur = key - MDX_KEY_BANKA + 1;
         }
         return true;
