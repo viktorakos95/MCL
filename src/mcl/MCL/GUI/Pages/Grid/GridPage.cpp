@@ -761,22 +761,21 @@ bool GridPage::is_slot_queue(uint8_t x, uint8_t y) {
 #if MCL_GRID_IO_PANEL
 // Dotted ring in the 1-pixel gap around a grid cell, marching every 140 ms:
 // the same walk and 2-on/2-off pattern as the SPS-X grid's dotted orbit.
-// 11x9 ring: top left to right, down, back along the bottom, up.
-static void draw_pending_orbit(uint8_t x, uint8_t y, uint8_t idx) {
+// 11x9 ring: top left to right, down, back along the bottom, up. steps 29
+// leaves out the left side (the last 7 steps), for a ring whose left
+// neighbour's right side already stands on that column.
+static void draw_pending_orbit(uint8_t x, uint8_t y, uint8_t idx,
+                               uint8_t steps) {
   int8_t dx = 1, dy = 0;
-  for (uint8_t i = 0; i < 36; i++, idx++) {
+  for (uint8_t i = 0; i < steps; i++, idx++) {
     if ((idx & 3) < 2) {
       oled_display.drawPixel(x, y, WHITE);
     }
-    if (i == 10) {
-      dx = 0;
-      dy = 1;
-    } else if (i == 18) {
-      dx = -1;
-      dy = 0;
-    } else if (i == 28) {
-      dx = 0;
-      dy = -1;
+    if (i == 10 || i == 18 || i == 28) {
+      // Corner: turn clockwise.
+      int8_t t = dx;
+      dx = -dy;
+      dy = t;
     }
     x += dx;
     y += dy;
@@ -878,15 +877,13 @@ void GridPage::display_grid() {
 #if MCL_GRID_IO_PANEL
       if (active_slot == SLOT_PENDING &&
           mcl_actions.links[track_grid_idx].row == row_idx) {
-        // Neighbouring pending slots share one ring around the run: each
-        // starts its dots where the one to its left reached (10 px on, 2 mod
-        // 4), and the column the two rings share is cleared but for its
-        // corners, which both draw alike.
+        // Neighbouring pending rings share a column (11 px rings, 10 px
+        // pitch): only the left ring's side is drawn there. Each ring starts
+        // its dots where the one to its left reached (10 px on, 2 mod 4), so
+        // the top and bottom edges march on evenly and the shared corners
+        // match.
         draw_pending_orbit(cur_posx - 2, cur_posy - 7,
-                           orbit_phase + 2 * orbit_run);
-        if (orbit_run) {
-          oled_display.drawFastVLine(cur_posx - 2, cur_posy - 6, 7, BLACK);
-        }
+                           orbit_phase + 2 * orbit_run, orbit_run ? 29 : 36);
         orbit_run++;
       } else {
         orbit_run = 0;
