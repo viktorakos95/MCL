@@ -1844,19 +1844,19 @@ void GridPage::io_display_panel() {
         (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
     mcl_gui.put_value_at(step_count, str);
     text_at(37 - 4 * strlen(str), 8, str);
-    // Line 2: LEN, in Queue. Line 3: QUANT. A LEN or QUANT of 1 means "the
+    // Line 2: QUANT. Line 3: LEN, in Queue. A QUANT or LEN of 1 means "the
     // slot's own length" and shows "-". Line 4: the load mode, before the
     // row. While a destination is picked, DEST alone replaces them; the
     // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
     } else {
+      uint8_t quant = mcl_cfg.chain_load_quant;
+      panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
       if (mcl_cfg.load_mode == LOAD_QUEUE) {
         uint8_t len = mcl_cfg.chain_queue_length;
-        panel_row(16, mclstr_len, len == 1 ? 0 : len);
+        panel_row(24, mclstr_len, len == 1 ? 0 : len);
       }
-      uint8_t quant = mcl_cfg.chain_load_quant;
-      panel_row(24, mclstr_quant, quant == 1 ? 0 : quant);
       GridLoadPage::get_modestr(str);
       text_at(0, 32, str);
     }
