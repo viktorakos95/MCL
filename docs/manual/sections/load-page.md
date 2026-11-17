@@ -10,7 +10,7 @@ Open it from the Grid Page with:
 
 ![load from a](../assets/images/load_from_a.png)
 
-On TBD, Load keeps the Grid Page visible. On MegaCommand and MegaCMD, it opens as a page.
+On MegaCommand, MegaCMD and TBD, Load keeps the Grid Page visible: the left column shows the Load settings and the grid shows the selected slots.
 
 ## Load Behavior
 
@@ -27,10 +27,10 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 | Control | Assignment |
 | --- | --- |
-| Encoder 1 | Load mode on MegaCommand and MegaCMD: `MAN`, `AUT`, `QUE`. |
-| Encoder 2 | Queue length on MegaCommand and MegaCMD; load mode on TBD. Queue length is active only in Queue mode. |
-| Encoder 3 | Load quantization on MegaCommand and MegaCMD; queue length on TBD. |
-| Encoder 4 | Load quantization. |
+| Encoder 1 | Load quantization (`QUANT`). |
+| Encoder 2 | Queue length (`LEN`). Active only in Queue mode. |
+| Encoder 3 | Load mode: `MAN`, `AUT`, `QUE`. |
+| Encoder 4 | Load mode. |
 | **[Trig]** keys | Select slots to load. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
 | **[Function]** | In Manual mode, select a destination offset. |
@@ -76,7 +76,7 @@ Each slot/column has its own chain state. This allows one track to follow an aut
 
 ## Queue Length Override
 
-In Queue mode, the queue-length encoder sets a length override. Use Encoder 2 on MegaCommand/MegaCMD, or Encoder 3 on TBD.
+In Queue mode, Encoder 2 sets a length override.
 
 | Value | Behavior |
 | --- | --- |

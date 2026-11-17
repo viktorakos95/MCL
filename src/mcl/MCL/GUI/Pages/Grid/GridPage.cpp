@@ -1691,11 +1691,13 @@ void GridPage::io_begin(uint8_t mode) {
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
-    // E1 mode, E2 queue length, E3/E4 quantise: the old Load page's knobs.
-    encoders[0] = &gridload_param1;
+    // The knobs follow the panel from the top, as the old Load page's
+    // followed its boxes: E1 QUANT (line 2), E2 LEN (line 3), E3/E4 mode
+    // (line 4).
+    encoders[0] = &gridio_param4;
     encoders[1] = &gridio_param2;
-    encoders[2] = &gridio_param4;
-    encoders[3] = &gridio_param4;
+    encoders[2] = &gridload_param1;
+    encoders[3] = &gridload_param1;
     gridload_param1.cur = gridload_param1.old = mcl_cfg.load_mode;
     gridio_param2.cur = gridio_param2.old = mcl_cfg.chain_queue_length;
     gridio_param4.cur = gridio_param4.old = mcl_cfg.chain_load_quant;
