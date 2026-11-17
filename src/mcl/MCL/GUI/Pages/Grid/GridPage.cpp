@@ -1844,22 +1844,21 @@ void GridPage::io_display_panel() {
         (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
     mcl_gui.put_value_at(step_count, str);
     text_at(37 - 4 * strlen(str), 8, str);
-    // Line 2: the load mode with its own setting, LEN in Queue ("QUE LEN 8").
-    // Line 3: QUANT. A LEN or QUANT of 1 means "the slot's own length" and
-    // shows "-". While a destination is picked, DEST alone replaces them; the
+    // Line 2: LEN, in Queue. Line 3: QUANT. A LEN or QUANT of 1 means "the
+    // slot's own length" and shows "-". Line 4: the load mode, before the
+    // row. While a destination is picked, DEST alone replaces them; the
     // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
     } else {
-      GridLoadPage::get_modestr(str);
-      text_at(0, 16, str);
       if (mcl_cfg.load_mode == LOAD_QUEUE) {
         uint8_t len = mcl_cfg.chain_queue_length;
-        text_at_P(16, 16, mclstr_len);
-        print_right(len == 1 ? 0 : len, 37, 16);
+        panel_row(16, mclstr_len, len == 1 ? 0 : len);
       }
       uint8_t quant = mcl_cfg.chain_load_quant;
       panel_row(24, mclstr_quant, quant == 1 ? 0 : quant);
+      GridLoadPage::get_modestr(str);
+      text_at(0, 32, str);
     }
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
@@ -1871,10 +1870,10 @@ void GridPage::io_display_panel() {
     mcl_gui.draw_horizontal_arrow(15, 18, 5);
     text_at_P(21, 21, mclstr_grid);
   }
-  // Line 4, Load and Save alike: the armed row alone, where the Grid page
-  // prints it (after "X:01 "). While DEST is open, the destination slot as
-  // grid:column ("Y:05") stands before it, where the Grid page prints the
-  // cursor's; "--" until a trig picks one.
+  // Line 4, Load and Save alike: the armed row, where the Grid page prints
+  // it (after "X:01 "); on Load the mode stands before it. While DEST is
+  // open, the destination slot as grid:column ("Y:05") stands there instead,
+  // where the Grid page prints the cursor's; "--" until a trig picks one.
   char val[4];
   if (load && GridIOPage::show_offset) {
     GridSlot offset = GridIOPage::offset;
