@@ -1656,9 +1656,10 @@ bool GridPage::handleEvent(gui_event_t *event) {
 // ---------------------------------------------------------------------------
 
 // Print a number right-aligned to x = right (TomThumb digits are 4 px);
-// 0 prints "-".
+// 0 prints " -": TomThumb's space is 2 px, so the dash sits centred
+// between the two digit columns.
 static void print_right(uint8_t value, uint8_t right, uint8_t y) {
-  char str[4] = {'-', '\0'};
+  char str[4] = {' ', '-', '\0'};
   if (value) {
     mcl_gui.put_value_at(value, str);
   }
