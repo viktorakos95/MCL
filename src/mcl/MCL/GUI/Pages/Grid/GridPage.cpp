@@ -829,6 +829,7 @@ void GridPage::display_grid() {
     GridSpan w = grid_width;
 #if MCL_GRID_IO_PANEL
     uint16_t col_bit = first_bit << col_shift;
+    uint8_t orbit_run = 0; // pending slots just left of this one, same group
 #endif
     for (uint8_t x = col_shift; x < MAX_VISIBLE_COLS + col_shift && x < w;
          x++) {
@@ -877,9 +878,21 @@ void GridPage::display_grid() {
 #if MCL_GRID_IO_PANEL
       if (active_slot == SLOT_PENDING &&
           mcl_actions.links[track_grid_idx].row == row_idx) {
-        draw_pending_orbit(cur_posx - 2, cur_posy - 7, orbit_phase);
-      } else if (active && (settle16 & col_bit)) {
-        oled_display.fillRect(cur_posx - 1, cur_posy - 6, 9, 7, INVERT);
+        // Neighbouring pending slots share one ring around the run: each
+        // starts its dots where the one to its left reached (10 px on, 2 mod
+        // 4), and the column the two rings share is cleared but for its
+        // corners, which both draw alike.
+        draw_pending_orbit(cur_posx - 2, cur_posy - 7,
+                           orbit_phase + 2 * orbit_run);
+        if (orbit_run) {
+          oled_display.drawFastVLine(cur_posx - 2, cur_posy - 6, 7, BLACK);
+        }
+        orbit_run++;
+      } else {
+        orbit_run = 0;
+        if (active && (settle16 & col_bit)) {
+          oled_display.fillRect(cur_posx - 1, cur_posy - 6, 9, 7, INVERT);
+        }
       }
       col_bit <<= 1;
 #endif
@@ -891,6 +904,9 @@ void GridPage::display_grid() {
           mcl_gui.draw_vertical_dashline(cur_posx + 9, 3);
         }
         cur_posx += 12;
+#if MCL_GRID_IO_PANEL
+        orbit_run = 0; // rings across the group gap don't touch
+#endif
       } else {
         cur_posx += 10;
       }
