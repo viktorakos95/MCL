@@ -1880,20 +1880,24 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
-        // FADE in the other modes: "FADE -" when off, "FADE IN" or
-        // "FADE OUT" when it follows QUANT, else IN or OUT and the length
-        // in steps.
+        // FADE in the other modes: "FADE -" when off; "FADE IN",
+        // "FADE OUT" or "OUTIN" when it follows QUANT; else the same word
+        // and the length in steps.
         int8_t fade = mcl_cfg.load_fade;
         uint8_t len = mcl_cfg.load_fade_len;
         if (fade == 0) {
           panel_row(24, mclstr_fade, 0);
         } else {
-          const char *word = fade > 0 ? mclstr_fade_in : mclstr_fade_out;
-          if (len == 0) {
+          const char *word = fade == LOAD_FADE_OUTIN ? mclstr_fade_outin
+                             : fade > 0              ? mclstr_fade_in
+                                                     : mclstr_fade_out;
+          if (len == 0 && fade != LOAD_FADE_OUTIN) {
             text_at_P(0, 24, mclstr_fade);
             text_at_P(fade > 0 ? 29 : 25, 24, word);
           } else {
             text_at_P(0, 24, word);
+          }
+          if (len != 0) {
             uint8_t n = len - 1;
             // 2^n steps: one digit up to 8, two to 64, three to 512, then
             // 1024.
@@ -1988,11 +1992,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_BANKD:
         // The Machinedrum's SLIDE key arrives as bank D: outside Queue it
-        // steps FADE from off to IN to OUT and back to off.
+        // steps FADE through off, IN, OUT, OUTIN and back to off.
         if (load && !GridIOPage::show_offset &&
             mcl_cfg.load_mode != LOAD_QUEUE) {
-          gridload_fade.cur =
-              gridload_fade.cur == 0 ? 1 : (gridload_fade.cur > 0 ? -1 : 0);
+          static const int8_t next[] = {LOAD_FADE_OUTIN, 1, -1, 0};
+          gridload_fade.cur = next[gridload_fade.cur + 1];
         }
         return true;
       case MDX_KEY_FUNC:

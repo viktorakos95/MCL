@@ -159,13 +159,20 @@ public:
   void calc_next_transition();
   void calc_latency();
   void clear_load_fades(bool preserve_armed_prestart = false);
+  // panel: the LOAD panel's FADE replaces the slot's own (see panel_fade).
   void start_load_fade_at(GridSlot slot, const TrackLoadFadeData *fade,
                           uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
                           ,
                           bool allow_prestart = false
 #endif
-                          );
+                          ,
+                          bool panel = true);
+  // The LOAD panel's FADE for a MANUAL or AUTO load of this slot: false when
+  // it is off. OUTIN gives its IN, or its OUT with fade_out_first. Defined
+  // where the panel exists (MCL_GRID_IO_PANEL).
+  bool panel_fade(GridSlot slot, GridDeviceTrack *gdt, bool fade_out_first,
+                  TrackLoadFadeData *fade);
 
 private:
   static uint16_t clear_runtime_fade_elapsed(DeviceTrack *track);

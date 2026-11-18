@@ -31,14 +31,14 @@ extern MCLExpEncoder gridio_param2;
 extern MCLEncoder gridio_param3;
 extern MCLExpEncoder gridio_param4;
 #if MCL_GRID_IO_PANEL
-// FADE on the LOAD panel. Turning steps OUT, off, IN (-1, 0, 1); turning
-// with the knob held down sets the length (0 follows QUANT).
+// FADE on the LOAD panel. Turning steps OUT, off, IN, OUTIN (-1 .. 2);
+// turning with the knob held down sets the length (0 follows QUANT).
 class MCLFadeEncoder : public MCLEncoder {
 public:
   uint8_t length = 0;
   constexpr MCLFadeEncoder() : MCLEncoder(0, 0, ENCODER_RES_PAT) {
     min = -1;
-    max = 1;
+    max = LOAD_FADE_OUTIN;
   }
   int update(encoder_t *enc) override;
 };

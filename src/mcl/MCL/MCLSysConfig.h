@@ -101,10 +101,12 @@ static_assert(sizeof(MCLSysConfigData) == 185,
 // The Grid page LOAD panel's FADE length: 0 follows QUANT, n is 2^(n-1)
 // steps (n = 1 .. LOAD_FADE_MAX).
 #define LOAD_FADE_MAX 11
+#define LOAD_FADE_OUTIN 2
 
 class MCLSysConfig : public MCLSysConfigData {
 public:
-  // The LOAD panel's FADE: 0 is off, 1 fades loaded MD tracks in, -1 out.
+  // The LOAD panel's FADE: 0 is off, 1 fades loaded MD tracks in, -1 out,
+  // LOAD_FADE_OUTIN fades the playing slot out and then the new one in.
   int8_t load_fade;
   uint8_t load_fade_len;
   // Both follow the persisted block in config.mcls, then their complements,
