@@ -1712,9 +1712,10 @@ void GridPage::io_begin(uint8_t mode) {
     encoders[1] = &gridio_param2;
     encoders[2] = &gridload_param1;
     encoders[3] = &gridload_param1;
-    gridload_param1.cur = gridload_param1.old = mcl_cfg.load_mode;
-    gridio_param2.cur = gridio_param2.old = mcl_cfg.chain_queue_length;
-    gridio_param4.cur = gridio_param4.old = mcl_cfg.chain_load_quant;
+    // io_loop compares the knobs with mcl_cfg, not with their old values.
+    gridload_param1.cur = mcl_cfg.load_mode;
+    gridio_param2.cur = mcl_cfg.chain_queue_length;
+    gridio_param4.cur = mcl_cfg.chain_load_quant;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
 #ifdef PLATFORM_TBD
@@ -1748,25 +1749,23 @@ void GridPage::io_end(bool reinit) {
 void GridPage::io_loop() {
   if (GridIOPage::show_offset) {
     // Picking a destination: the knobs leave the settings alone.
-    gridload_param1.cur = gridload_param1.old;
-    gridio_param2.cur = gridio_param2.old;
-    gridio_param4.cur = gridio_param4.old;
+    gridload_param1.cur = mcl_cfg.load_mode;
+    gridio_param2.cur = mcl_cfg.chain_queue_length;
+    gridio_param4.cur = mcl_cfg.chain_load_quant;
     return;
   }
-  if (gridload_param1.hasChanged()) {
+  // The settings follow their knobs (io_begin set them equal): the mode with
+  // its MD popup, LEN only in Queue (elsewhere its knob stays put), QUANT.
+  if ((uint8_t)gridload_param1.cur != mcl_cfg.load_mode) {
     mcl_cfg.load_mode = gridload_param1.cur;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   }
-  if (gridio_param2.hasChanged()) {
-    if (gridload_param1.cur == LOAD_QUEUE) {
-      mcl_cfg.chain_queue_length = gridio_param2.cur;
-    } else {
-      gridio_param2.cur = gridio_param2.old;
-    }
+  if (mcl_cfg.load_mode == LOAD_QUEUE) {
+    mcl_cfg.chain_queue_length = gridio_param2.cur;
+  } else {
+    gridio_param2.cur = mcl_cfg.chain_queue_length;
   }
-  if (gridio_param4.hasChanged()) {
-    mcl_cfg.chain_load_quant = gridio_param4.cur;
-  }
+  mcl_cfg.chain_load_quant = gridio_param4.cur;
 }
 
 void GridPage::io_action(bool groups) {
