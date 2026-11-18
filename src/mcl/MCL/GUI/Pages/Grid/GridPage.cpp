@@ -1988,10 +1988,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_BANKD:
         // The Machinedrum's SLIDE key arrives as bank D: outside Queue it
-        // turns FADE to IN, or between IN and OUT. The knob turns it off.
+        // steps FADE from off to IN to OUT and back to off.
         if (load && !GridIOPage::show_offset &&
             mcl_cfg.load_mode != LOAD_QUEUE) {
-          gridload_fade.cur = gridload_fade.cur > 0 ? -1 : 1;
+          gridload_fade.cur =
+              gridload_fade.cur == 0 ? 1 : (gridload_fade.cur > 0 ? -1 : 0);
         }
         return true;
       case MDX_KEY_FUNC:
