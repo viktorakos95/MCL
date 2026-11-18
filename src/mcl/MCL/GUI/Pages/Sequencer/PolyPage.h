@@ -13,10 +13,9 @@ public:
   uint8_t first_held_track = 255;
   uint16_t selected_tracks;
 
-  PolyPage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL,
-            Encoder *e4 = NULL)
-      : LightPage(e1, e2, e3, e4) {
-      }
+  constexpr PolyPage(Encoder *e1 = NULL, Encoder *e2 = NULL,
+                     Encoder *e3 = NULL, Encoder *e4 = NULL)
+      : LightPage(e1, e2, e3, e4), selected_tracks(0) {}
 
   bool handleEvent(gui_event_t *event);
   void cycle_group(int8_t direction);
