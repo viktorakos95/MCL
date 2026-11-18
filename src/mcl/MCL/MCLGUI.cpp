@@ -665,32 +665,17 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
   oled_display.setFont(oldfont);
 }
 
-// Width of s in the current GFX font: the sum of its glyph advances.
-static uint8_t text_width(const char *s) {
-  const GFXfont *font = oled_display.getFont();
-  const GFXglyph *glyphs =
-      reinterpret_cast<const GFXglyph *>(pgm_read_ptr(&font->glyph));
-  const uint8_t first = pgm_read_byte(&font->first);
-  uint8_t w = 0;
-  for (; *s; ++s) {
-    w += pgm_read_byte(&glyphs[(uint8_t)*s - first].xAdvance);
-  }
-  return w;
-}
-
-// The microtiming popup's label, "uTIM: +3   COND: FIL", centred.
+// The microtiming popup's label: "uTIM:" and "COND:" stay where they are,
+// each value follows its label. The offset field fits "+127" (SPS-X).
 static const char kUtimLabel[] PROGMEM = "uTIM: ";
-static const char kCondLabel[] PROGMEM = "   COND: ";
+static const char kCondLabel[] PROGMEM = "COND: ";
 static void print_timing_label(const char *offset, const char *condition) {
-  char line[sizeof(kUtimLabel) + 4 + sizeof(kCondLabel) + 4 - 1];
-  strcpy_P(line, kUtimLabel);
-  char *p = line + sizeof(kUtimLabel) - 1;
-  strcpy(p, offset);
-  p += strlen(offset);
-  strcpy_P(p, kCondLabel);
-  strcpy(p + sizeof(kCondLabel) - 1, condition);
-  oled_display.setCursor(64 - (text_width(line) >> 1), 10);
-  oled_display.print(line);
+  oled_display.setCursor(26, 10);
+  mcl_print_P(kUtimLabel);
+  oled_display.print(offset);
+  oled_display.setCursor(66, 10);
+  mcl_print_P(kCondLabel);
+  oled_display.print(condition);
 }
 
 void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
