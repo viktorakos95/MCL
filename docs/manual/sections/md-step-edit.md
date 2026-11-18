@@ -97,7 +97,7 @@ On a Machinedrum running MDX X.20 or later, the condition also shows in the Mach
 
 ## Microtiming
 
-Hold a step and use Encoder 2 or **[Left]** / **[Right]** to move it earlier or later. The popup shows the offset and, beside it, the step's condition as the COND knob prints it (`---` for none).
+Hold a step and use Encoder 2 or **[Left]** / **[Right]** to move it earlier or later. The popup shows the offset (uTIM) and the step's condition (COND), as the COND knob prints it (`---` for none).
 
 ![utiming1](../assets/images/utiming1.png)
 

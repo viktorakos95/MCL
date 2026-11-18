@@ -678,19 +678,19 @@ static uint8_t text_width(const char *s) {
   return w;
 }
 
-// The microtiming popup's label: the offset (at most 4 characters, in a
-// 12-byte buffer) and the condition, three spaces apart, centred.
-static void print_timing_label(char *offset, const char *condition) {
-  char *p = offset;
-  while (*p) {
-    ++p;
-  }
-  *p++ = ' ';
-  *p++ = ' ';
-  *p++ = ' ';
-  strcpy(p, condition);
-  oled_display.setCursor(64 - (text_width(offset) >> 1), 10);
-  oled_display.print(offset);
+// The microtiming popup's label, "uTIM: +3   COND: FIL", centred.
+static const char kUtimLabel[] PROGMEM = "uTIM: ";
+static const char kCondLabel[] PROGMEM = "   COND: ";
+static void print_timing_label(const char *offset, const char *condition) {
+  char line[sizeof(kUtimLabel) + 4 + sizeof(kCondLabel) + 4 - 1];
+  strcpy_P(line, kUtimLabel);
+  char *p = line + sizeof(kUtimLabel) - 1;
+  strcpy(p, offset);
+  p += strlen(offset);
+  strcpy_P(p, kCondLabel);
+  strcpy(p + sizeof(kCondLabel) - 1, condition);
+  oled_display.setCursor(64 - (text_width(line) >> 1), 10);
+  oled_display.print(line);
 }
 
 void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
@@ -731,7 +731,7 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
   uint8_t x_w = degree_scalar ? 1 : w / degrees;
 
   uint8_t x = x_pos;
-  char K[12];
+  char K[5];
   K[0] = '-';
   K[1] = '-';
   K[2] = '\0';
@@ -829,7 +829,7 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
   oled_display.fillRect(popup_x, popup_y, popup_w, popup_h, BLACK);
   oled_display.drawRect(popup_x + 1, popup_y + 1, popup_w - 2, popup_h - 2, WHITE);
 
-  char K[12];
+  char K[5];
   if (timing_offset == 0) {
     strcpy(K, "---");
   } else if (timing_offset < 0) {
