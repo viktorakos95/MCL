@@ -178,11 +178,8 @@ void MCLActionsCallbacks::onMidiStartCallback(uint32_t clock_count) {
   (void)clock_count;
   DEBUG_PRINTLN(F("BEGIN on midi start"));
   //StackMonitor::print_stack_info();
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  // Fades loaded while stopped start now.
   mcl_actions.clear_load_fades(true);
-#else
-  mcl_actions.clear_load_fades();
-#endif
   mcl_actions.start_clock32th = 0;
   mcl_actions.start_clock16th = 0;
   mcl_actions.next_transition = -1;

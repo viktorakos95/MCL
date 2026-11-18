@@ -296,13 +296,8 @@ void MCLActions::init_chains() {
   }
 }
 
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
 void MCLActions::clear_load_fades(bool preserve_armed_prestart) {
   TrackLoadFadeRunner::clear(preserve_armed_prestart);
-#else
-void MCLActions::clear_load_fades() {
-  TrackLoadFadeRunner::clear();
-#endif
 }
 
 #if !defined(__AVR__)
@@ -403,7 +398,8 @@ void MCLActions::start_load_fade_at(GridSlot slot,
                              allow_prestart, mcl_seq.primary_output,
                              mcl_seq.secondary_output);
 #else
-  TrackLoadFadeRunner::start(slot, target, ok ? fade : nullptr, start_clock);
+  TrackLoadFadeRunner::start(slot, target, ok ? fade : nullptr, start_clock,
+                             mcl_seq.primary_output, mcl_seq.secondary_output);
 #endif
 }
 
@@ -1260,6 +1256,9 @@ void MCLActions::send_tracks_to_devices(uint8_t *slot_select_array,
     start_load_fade_at(n, &load_fades[n], load_fade_start_clock,
                        allow_prestart_fades);
   }
+#else
+  // The kit has gone out: fades armed by this load set their starting levels.
+  TrackLoadFadeRunner::prime(mcl_seq.primary_output, mcl_seq.secondary_output);
 #endif
 
   swap_mute_states(mute_states);

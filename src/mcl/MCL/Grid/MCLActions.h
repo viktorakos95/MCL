@@ -158,11 +158,7 @@ public:
                                  bool ignore_overflow = false);
   void calc_next_transition();
   void calc_latency();
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   void clear_load_fades(bool preserve_armed_prestart = false);
-#else
-  void clear_load_fades();
-#endif
   void start_load_fade_at(GridSlot slot, const TrackLoadFadeData *fade,
                           uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK

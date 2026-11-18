@@ -13,13 +13,20 @@ static_assert(NUM_SLOTS <= sizeof(LoadFadeMask) * 8,
 namespace {
 
 constexpr uint8_t LOAD_FADE_RUNTIME_STARTED = 0x80;
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+// Loaded while stopped: the fade waits for PLAY.
 constexpr uint8_t LOAD_FADE_RUNTIME_WAIT_START = 0x40;
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+// Loaded while stopped: its starting level goes out once the kit has (prime).
+constexpr uint8_t LOAD_FADE_RUNTIME_PRIME = 0x20;
 #endif
 
 class ATTR_PACKED() LoadFadeState {
 public:
   TrackLoadFadeTarget target;
+  // A fade left this slot's track away from its level: an OUT, or a fade cut
+  // short by STOP. The target and this stay when the slot is cleared, and
+  // the slot's next load puts the level back.
+  uint8_t touched;
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   uint16_t count_down;
   uint16_t elapsed_ticks;
@@ -186,7 +193,11 @@ LoadFadeMask clear_slot(GridSlot slot) {
   }
   LoadFadeMask bit = (LoadFadeMask)1 << slot;
   active_mask &= ~bit;
-  memset(&fade_states[slot], 0, sizeof(fade_states[slot]));
+  // Everything but the target and the touched mark, which a level restore
+  // still needs.
+  constexpr size_t kept = sizeof(TrackLoadFadeTarget) + 1;
+  memset((uint8_t *)&fade_states[slot] + kept, 0,
+         sizeof(LoadFadeState) - kept);
   return bit;
 }
 
@@ -207,6 +218,7 @@ bool begin_slot(GridSlot slot, LoadFadeState &state) {
   }
   state.last_value = 255;
   state.flags |= LOAD_FADE_RUNTIME_STARTED;
+  state.touched = 1;
   return true;
 }
 
@@ -248,6 +260,9 @@ bool write_slot_value(GridSlot slot,
   }
 
   if (complete) {
+    if ((state.flags & TRACK_LOAD_FADE_FLAG_OUT) == 0) {
+      state.touched = 0;
+    }
     clear_slot(slot);
     return false;
   }
@@ -270,25 +285,26 @@ bool write_slot_value(GridSlot slot,
 
 void tick_slot(GridSlot slot, MidiUartClass *uart, MidiUartClass *uart2) {
   LoadFadeState &state = fade_states[slot];
+  // A level restore runs as a fade with no amount: one write of the level.
   if ((state.flags & TRACK_LOAD_FADE_FLAG_ENABLED) == 0 ||
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-      state.duration_ticks == 0 || state.amount == 0) {
+      state.duration_ticks == 0) {
 #else
-      state.duration_q12 == 0 || state.amount == 0) {
+      state.duration_q12 == 0) {
 #endif
     clear_slot(slot);
     return;
   }
 
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  // Loaded while stopped: the fade starts with the first tick after PLAY.
   if ((state.flags & LOAD_FADE_RUNTIME_WAIT_START) != 0) {
-    if (MidiClock.state != MidiClockClass::STARTED) {
-      return;
-    }
     state.flags &= (uint8_t)~LOAD_FADE_RUNTIME_WAIT_START;
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
     state.count_down = 0;
-  }
+#else
+    state.elapsed_q12 = 0;
 #endif
+  }
 
   if ((state.flags & LOAD_FADE_RUNTIME_STARTED) == 0) {
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
@@ -313,33 +329,16 @@ void tick_slot(GridSlot slot, MidiUartClass *uart, MidiUartClass *uart2) {
 
 } // namespace
 
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
 void TrackLoadFadeRunner::clear(bool preserve_armed_prestart) {
-#else
-void TrackLoadFadeRunner::clear() {
-#endif
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-  if (!preserve_armed_prestart) {
-    active_mask = 0;
-    for (uint8_t n = 0; n < NUM_SLOTS; n++) {
-      fade_states[n].clear();
-    }
-    return;
-  }
-
+  // A slot keeps its target, so a track a fade left away from its level
+  // gets it back on its next load.
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
-    LoadFadeMask bit = (LoadFadeMask)1 << n;
-    if ((active_mask & bit) != 0 &&
+    if (preserve_armed_prestart &&
         (fade_states[n].flags & LOAD_FADE_RUNTIME_WAIT_START) != 0) {
       continue;
     }
-    active_mask &= ~bit;
-    fade_states[n].clear();
+    clear_slot(n);
   }
-#else
-  active_mask = 0;
-  memset(fade_states, 0, sizeof(fade_states));
-#endif
 }
 
 void TrackLoadFadeRunner::start(GridSlot slot,
@@ -348,78 +347,114 @@ void TrackLoadFadeRunner::start(GridSlot slot,
                                 uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
                                 ,
-                                bool allow_prestart,
-                                MidiUartClass *uart,
-                                MidiUartClass *uart2
+                                bool allow_prestart
 #endif
-                                ) {
+                                ,
+                                MidiUartClass *uart,
+                                MidiUartClass *uart2) {
   if (slot >= NUM_SLOTS) {
     return;
   }
 
   LoadFadeMask bit = clear_slot(slot);
-
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-  const bool transport_started = MidiClock.state == MidiClockClass::STARTED;
-  if ((!transport_started && !allow_prestart) || fade == nullptr ||
-      !fade->enabled()) {
-    return;
-  }
-#else
-  if (MidiClock.state != MidiClockClass::STARTED || fade == nullptr ||
-      !fade->enabled()) {
-    return;
-  }
-#endif
-
   LoadFadeState &state = fade_states[slot];
-  state.target = target;
+  const bool transport_started = MidiClock.state == MidiClockClass::STARTED;
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  // A load while stopped arms its fade; it starts on PLAY.
+  const bool allow_prestart = true;
+#endif
+  const bool fading = fade != nullptr && fade->enabled() &&
+                      (transport_started || allow_prestart);
+
+  if (fading) {
+    state.target = target;
+    state.flags = fade->flags & (TRACK_LOAD_FADE_FLAG_ENABLED |
+                                 TRACK_LOAD_FADE_FLAG_OUT);
+    state.amount = fade->amount > 127 ? 127 : fade->amount;
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+    state.curve = fade->curve;
+    state.duration_ticks = load_fade_duration_ticks(fade->duration_q12);
+    uint32_t elapsed_ticks = load_fade_elapsed_ticks(fade->elapsed_q12());
+    if (transport_started) {
+      elapsed_ticks += load_fade_elapsed_since_start(start_clock);
+    }
+    state.elapsed_ticks = clamp_u16(elapsed_ticks);
+    if (state.elapsed_ticks > state.duration_ticks) {
+      state.elapsed_ticks = state.duration_ticks;
+    }
+#else
+    state.duration_q12 = fade->duration_q12;
+#endif
+  } else if (state.touched) {
+    // An earlier fade left this track away from its level (an OUT, or a fade
+    // cut short by STOP), and this load gives it back: a fade with no amount,
+    // one write of the level at the load point.
+    state.flags = TRACK_LOAD_FADE_FLAG_ENABLED;
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+    state.duration_ticks = 1;
+#else
+    state.duration_q12 = 1;
+#endif
+  } else {
+    return;
+  }
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   state.count_down = transport_started ? load_fade_count_down(start_clock) : 0;
-  state.duration_ticks = load_fade_duration_ticks(fade->duration_q12);
-  uint32_t elapsed_ticks = load_fade_elapsed_ticks(fade->elapsed_q12());
-  if (transport_started) {
-    elapsed_ticks += load_fade_elapsed_since_start(start_clock);
-  }
-  state.elapsed_ticks = clamp_u16(elapsed_ticks);
-  if (state.elapsed_ticks > state.duration_ticks) {
-    state.elapsed_ticks = state.duration_ticks;
-  }
-  state.flags = fade->flags & (TRACK_LOAD_FADE_FLAG_ENABLED |
-                               TRACK_LOAD_FADE_FLAG_OUT);
-  if (!transport_started) {
-    state.flags |= LOAD_FADE_RUNTIME_WAIT_START;
-  }
 #else
-  state.elapsed_q12 = load_fade_delay_q12(start_clock);
-  state.duration_q12 = fade->duration_q12;
-  state.flags = fade->flags & (TRACK_LOAD_FADE_FLAG_ENABLED |
-                               TRACK_LOAD_FADE_FLAG_OUT);
+  if (transport_started) {
+    state.elapsed_q12 = load_fade_delay_q12(start_clock);
+  }
 #endif
-  state.amount = fade->amount > 127 ? 127 : fade->amount;
+  if (!transport_started) {
+    // Stopped: the fade waits for PLAY.
+    state.flags |= LOAD_FADE_RUNTIME_WAIT_START;
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-  state.curve = fade->curve;
-#endif
-  active_mask |= bit;
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-  if (!transport_started && allow_prestart && state.count_down == 0) {
-    if (begin_slot(slot, state)) {
+    if (state.count_down == 0 && begin_slot(slot, state)) {
       write_slot_value(slot, state, uart, uart2, false);
     }
-  }
+#else
+    // The load sends the kit after this; prime() then sets the level.
+    (void)uart;
+    (void)uart2;
+    state.flags |= LOAD_FADE_RUNTIME_PRIME;
 #endif
+  }
+  active_mask |= bit;
 }
+
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+void TrackLoadFadeRunner::prime(MidiUartClass *uart, MidiUartClass *uart2) {
+  for (uint8_t slot = 0; slot < NUM_SLOTS; slot++) {
+    LoadFadeState &state = fade_states[slot];
+    if ((state.flags & LOAD_FADE_RUNTIME_PRIME) == 0) {
+      continue;
+    }
+    state.flags &= (uint8_t)~LOAD_FADE_RUNTIME_PRIME;
+    uint8_t level;
+    if (!read_track_load_fade_value(state.target, &level)) {
+      continue;
+    }
+    // Silent for an IN; its own level for an OUT, which falls from it on
+    // PLAY, and for a level restore (no amount), which is then done.
+    if (state.amount == 0) {
+      state.touched = 0;
+      clear_slot(slot);
+    } else if ((state.flags & TRACK_LOAD_FADE_FLAG_OUT) == 0) {
+      level = level > state.amount ? level - state.amount : 0;
+      state.touched = 1;
+    }
+    write_track_load_fade_value(state.target, level, uart, uart2);
+  }
+}
+#endif
 
 void TrackLoadFadeRunner::tick(MidiUartClass *uart, MidiUartClass *uart2) {
   if (active_mask == 0) {
     return;
   }
   if (MidiClock.state != MidiClockClass::STARTED) {
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+    // Stopped: running fades end; those loaded while stopped wait for PLAY.
     clear(true);
-#else
-    clear();
-#endif
     return;
   }
   LoadFadeMask bit = 1;
