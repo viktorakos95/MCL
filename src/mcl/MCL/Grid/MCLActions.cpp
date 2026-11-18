@@ -366,25 +366,34 @@ void MCLActions::start_load_fade_at(GridSlot slot,
     return;
   }
 
+  GridDeviceTrack *gdt = get_grid_dev_track(slot);
 #if MCL_GRID_IO_PANEL
   // The LOAD panel's FADE replaces the slot's own fade for a MANUAL or AUTO
-  // load; Queue and arranger loads keep the slot's.
+  // load; Queue and arranger loads keep the slot's. Its length is the one
+  // set with the knob held, else QUANT, else (QUANT "-") the slot's length.
   TrackLoadFadeData panel_fade;
-  int8_t setting = mcl_cfg.load_fade;
   uint8_t mode = chains[slot].mode;
-  if (setting != 0 && (mode == LOAD_MANUAL || mode == LOAD_AUTO)) {
+  if (mcl_cfg.load_fade != 0 && gdt != nullptr &&
+      (mode == LOAD_MANUAL || mode == LOAD_AUTO)) {
     panel_fade.init();
-    panel_fade.flags = TRACK_LOAD_FADE_FLAG_ENABLED;
-    if (setting < 0) {
-      panel_fade.flags |= TRACK_LOAD_FADE_FLAG_OUT;
-      setting = -setting;
+    panel_fade.flags = mcl_cfg.load_fade > 0
+                           ? TRACK_LOAD_FADE_FLAG_ENABLED
+                           : TRACK_LOAD_FADE_FLAG_ENABLED |
+                                 TRACK_LOAD_FADE_FLAG_OUT;
+    uint8_t len = mcl_cfg.load_fade_len;
+    uint8_t quant = mcl_cfg.chain_load_quant;
+    if (len != 0) {
+      panel_fade.duration_q12 = (uint16_t)12 << (len - 1);
+    } else if (quant != 1) {
+      panel_fade.duration_q12 = (uint16_t)quant * 12;
+    } else {
+      panel_fade.duration_q12 =
+          (uint16_t)gdt->seq_track->length *
+          gdt->seq_track->get_speed_multiplier_int();
     }
-    panel_fade.duration_q12 = (uint16_t)12 << (setting - 1);
     fade = &panel_fade;
   }
 #endif
-
-  GridDeviceTrack *gdt = get_grid_dev_track(slot);
   TrackLoadFadeTarget target;
   const bool ok = resolve_track_load_fade_target(slot, gdt, fade, &target);
   // The runner always clears the slot on entry, so an unresolved target still

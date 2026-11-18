@@ -1716,7 +1716,8 @@ void GridPage::io_begin(uint8_t mode) {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = mcl_cfg.load_fade + LOAD_FADE_MAX;
+    gridload_fade.cur = mcl_cfg.load_fade;
+    gridload_fade.length = mcl_cfg.load_fade_len;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
 #ifdef PLATFORM_TBD
@@ -1753,7 +1754,8 @@ void GridPage::io_loop() {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = mcl_cfg.load_fade + LOAD_FADE_MAX;
+    gridload_fade.cur = mcl_cfg.load_fade;
+    gridload_fade.length = mcl_cfg.load_fade_len;
     return;
   }
   // The settings follow their knobs (io_begin set them equal): the mode with
@@ -1768,7 +1770,8 @@ void GridPage::io_loop() {
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
     encoders[1] = &gridload_fade;
-    mcl_cfg.load_fade = gridload_fade.cur - LOAD_FADE_MAX;
+    mcl_cfg.load_fade = gridload_fade.cur;
+    mcl_cfg.load_fade_len = gridload_fade.length;
   }
   mcl_cfg.chain_load_quant = gridio_param4.cur;
 }
@@ -1877,18 +1880,27 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
-        // FADE in the other modes: "FADE -" when off, else IN or OUT and
-        // the length in steps.
+        // FADE in the other modes: "FADE -" when off, "FADE IN" or
+        // "FADE OUT" when it follows QUANT, else IN or OUT and the length
+        // in steps.
         int8_t fade = mcl_cfg.load_fade;
+        uint8_t len = mcl_cfg.load_fade_len;
         if (fade == 0) {
           panel_row(24, mclstr_fade, 0);
         } else {
-          text_at_P(0, 24, fade > 0 ? mclstr_fade_in : mclstr_fade_out);
-          uint8_t n = fade > 0 ? fade - 1 : -fade - 1;
-          // 2^n steps: one digit up to 8, two to 64, three to 512, then 1024.
-          uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
-          oled_display.setCursor(37 - 4 * digits, 24);
-          oled_display.print(1u << n);
+          const char *word = fade > 0 ? mclstr_fade_in : mclstr_fade_out;
+          if (len == 0) {
+            text_at_P(0, 24, mclstr_fade);
+            text_at_P(fade > 0 ? 29 : 25, 24, word);
+          } else {
+            text_at_P(0, 24, word);
+            uint8_t n = len - 1;
+            // 2^n steps: one digit up to 8, two to 64, three to 512, then
+            // 1024.
+            uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
+            oled_display.setCursor(37 - 4 * digits, 24);
+            oled_display.print(1u << n);
+          }
         }
       }
       GridLoadPage::get_modestr(str);

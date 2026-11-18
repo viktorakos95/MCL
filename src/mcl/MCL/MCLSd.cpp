@@ -339,13 +339,16 @@ bool MCLSd::load_init() {
           mcl_cfg.md_sample_bank_capture = 0;
         }
         {
-          // FADE follows the persisted block with its complement.
-          uint8_t fade[2] = {0, 0};
-          mcl_cfg.cfgfile.read(fade, sizeof(fade));
-          const bool valid = (uint8_t)~fade[0] == fade[1] &&
-                             (uint8_t)(fade[0] + LOAD_FADE_MAX) <=
-                                 2 * LOAD_FADE_MAX;
-          mcl_cfg.load_fade = valid ? (int8_t)fade[0] : 0;
+          // FADE and its length follow the persisted block, then their
+          // complements.
+          uint8_t *fade = (uint8_t *)&mcl_cfg.load_fade;
+          memset(fade, 0, 4);
+          mcl_cfg.cfgfile.read(fade, 4);
+          if ((uint8_t)~fade[0] != fade[2] || (uint8_t)~fade[1] != fade[3] ||
+              (uint8_t)(fade[0] + 1) > 2 || fade[1] > LOAD_FADE_MAX) {
+            fade[0] = 0;
+            fade[1] = 0;
+          }
         }
         ptc_groups.load(mcl_cfg.ptc_group);
 

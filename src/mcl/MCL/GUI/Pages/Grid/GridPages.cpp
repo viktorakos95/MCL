@@ -13,8 +13,17 @@ MCLExpEncoder gridio_param2(64, 1, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param4(64, 1, ENCODER_RES_PAT);
 
 #if MCL_GRID_IO_PANEL
-// FADE on the LOAD panel: OUT to the left of centre, IN to the right.
-MCLEncoder gridload_fade(2 * LOAD_FADE_MAX, 0, ENCODER_RES_PAT);
+MCLFadeEncoder gridload_fade;
+
+int MCLFadeEncoder::update(encoder_t *enc) {
+  int inc = update_rotations(enc);
+  if (enc->button) {
+    length = limit_value(length, inc, 0, LOAD_FADE_MAX);
+  } else {
+    cur = limit_value(cur, inc, min, max);
+  }
+  return cur;
+}
 #endif
 
 #if !MCL_GRID_IO_PANEL

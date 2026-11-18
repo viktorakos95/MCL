@@ -98,16 +98,19 @@ public:
 static_assert(sizeof(MCLSysConfigData) == 185,
               "persisted system config layout changed");
 
-// The Grid page LOAD panel's FADE: 0 is off; +n fades loaded MD tracks in and
-// -n fades them out, over 2^(n-1) steps (n = 1 .. LOAD_FADE_MAX).
+// The Grid page LOAD panel's FADE length: 0 follows QUANT, n is 2^(n-1)
+// steps (n = 1 .. LOAD_FADE_MAX).
 #define LOAD_FADE_MAX 11
 
 class MCLSysConfig : public MCLSysConfigData {
 public:
-  // Kept in config.mcls after the persisted block, followed by its
-  // complement, so a file written before FADE existed reads as off. Older
-  // MCL reads and writes only the persisted block and leaves it alone.
+  // The LOAD panel's FADE: 0 is off, 1 fades loaded MD tracks in, -1 out.
   int8_t load_fade;
+  uint8_t load_fade_len;
+  // Both follow the persisted block in config.mcls, then their complements,
+  // so a file written before FADE existed reads as off. Older MCL reads and
+  // writes only the persisted block and leaves these bytes alone.
+  uint8_t load_fade_check[2];
   uint16_t cfg_save_lastclock;
   File cfgfile;
   bool write_cfg();
