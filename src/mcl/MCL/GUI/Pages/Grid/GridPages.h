@@ -30,6 +30,9 @@ extern MCLEncoder gridload_param1;
 extern MCLExpEncoder gridio_param2;
 extern MCLEncoder gridio_param3;
 extern MCLExpEncoder gridio_param4;
+#if MCL_GRID_IO_PANEL
+extern MCLEncoder gridload_fade;
+#endif
 
 extern GridSavePage grid_save_page;
 extern GridLoadPage grid_load_page;

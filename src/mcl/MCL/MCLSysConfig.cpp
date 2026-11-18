@@ -179,6 +179,10 @@ bool MCLSysConfig::write_cfg() {
   }
 
   ret = mcl_sd.write_data((uint8_t *)this, sizeof(MCLSysConfigData), &cfgfile);
+  if (ret) {
+    uint8_t fade[2] = {(uint8_t)load_fade, (uint8_t)~load_fade};
+    ret = mcl_sd.write_data(fade, sizeof(fade), &cfgfile);
+  }
   if (!ret) {
     DEBUG_PRINTLN(F("Write cfg failed"));
   }
@@ -216,6 +220,7 @@ bool MCLSysConfig::cfg_init() {
     return false;
   }
   memset((uint8_t *)&version, 0, sizeof(MCLSysConfigData)); //<---- flush zero to config
+  load_fade = 0;
   ptc_groups.clear();
 
   version = CONFIG_VERSION;

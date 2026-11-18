@@ -1706,8 +1706,8 @@ void GridPage::io_begin(uint8_t mode) {
 
   if (mode == GRID_IO_LOAD) {
     // The knobs follow the panel from the top, as the old Load page's
-    // followed its boxes: E1 QUANT (line 2), E2 LEN (line 3), E3/E4 mode
-    // (line 4).
+    // followed its boxes: E1 QUANT (line 2), E2 LEN in Queue and FADE
+    // otherwise (line 3; io_loop picks), E3/E4 mode (line 4).
     encoders[0] = &gridio_param4;
     encoders[1] = &gridio_param2;
     encoders[2] = &gridload_param1;
@@ -1716,6 +1716,7 @@ void GridPage::io_begin(uint8_t mode) {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
+    gridload_fade.cur = mcl_cfg.load_fade + LOAD_FADE_MAX;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
 #ifdef PLATFORM_TBD
@@ -1752,18 +1753,22 @@ void GridPage::io_loop() {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
+    gridload_fade.cur = mcl_cfg.load_fade + LOAD_FADE_MAX;
     return;
   }
   // The settings follow their knobs (io_begin set them equal): the mode with
-  // its MD popup, LEN only in Queue (elsewhere its knob stays put), QUANT.
+  // its MD popup, then knob 2: LEN in Queue, FADE in the other modes (the
+  // mode can also change from the bank keys), then QUANT.
   if ((uint8_t)gridload_param1.cur != mcl_cfg.load_mode) {
     mcl_cfg.load_mode = gridload_param1.cur;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   }
   if (mcl_cfg.load_mode == LOAD_QUEUE) {
+    encoders[1] = &gridio_param2;
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
-    gridio_param2.cur = mcl_cfg.chain_queue_length;
+    encoders[1] = &gridload_fade;
+    mcl_cfg.load_fade = gridload_fade.cur - LOAD_FADE_MAX;
   }
   mcl_cfg.chain_load_quant = gridio_param4.cur;
 }
@@ -1871,6 +1876,20 @@ void GridPage::io_display_panel() {
       if (mcl_cfg.load_mode == LOAD_QUEUE) {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
+      } else {
+        // FADE in the other modes: "FADE -" when off, else IN or OUT and
+        // the length in steps.
+        int8_t fade = mcl_cfg.load_fade;
+        if (fade == 0) {
+          panel_row(24, mclstr_fade, 0);
+        } else {
+          text_at_P(0, 24, fade > 0 ? mclstr_fade_in : mclstr_fade_out);
+          uint8_t n = fade > 0 ? fade - 1 : -fade - 1;
+          // 2^n steps: one digit up to 8, two to 64, three to 512, then 1024.
+          uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
+          oled_display.setCursor(37 - 4 * digits, 24);
+          oled_display.print(1u << n);
+        }
       }
       GridLoadPage::get_modestr(str);
       text_at(0, 32, str);

@@ -366,6 +366,24 @@ void MCLActions::start_load_fade_at(GridSlot slot,
     return;
   }
 
+#if MCL_GRID_IO_PANEL
+  // The LOAD panel's FADE replaces the slot's own fade for a MANUAL or AUTO
+  // load; Queue and arranger loads keep the slot's.
+  TrackLoadFadeData panel_fade;
+  int8_t setting = mcl_cfg.load_fade;
+  uint8_t mode = chains[slot].mode;
+  if (setting != 0 && (mode == LOAD_MANUAL || mode == LOAD_AUTO)) {
+    panel_fade.init();
+    panel_fade.flags = TRACK_LOAD_FADE_FLAG_ENABLED;
+    if (setting < 0) {
+      panel_fade.flags |= TRACK_LOAD_FADE_FLAG_OUT;
+      setting = -setting;
+    }
+    panel_fade.duration_q12 = (uint16_t)12 << (setting - 1);
+    fade = &panel_fade;
+  }
+#endif
+
   GridDeviceTrack *gdt = get_grid_dev_track(slot);
   TrackLoadFadeTarget target;
   const bool ok = resolve_track_load_fade_target(slot, gdt, fade, &target);
