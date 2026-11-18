@@ -275,7 +275,7 @@ namespace {
 
 class MDMixerCapability final : public DeviceMixerCapability {
 public:
-  explicit MDMixerCapability(MDClass &device)
+  constexpr explicit MDMixerCapability(MDClass &device)
       : DeviceMixerCapability(device, MODEL_LEVEL, MODEL_MUTE) {}
   virtual uint8_t track_count(const DeviceContext &ctx) const override;
   virtual SeqTrack *seq_track(const DeviceContext &ctx,
