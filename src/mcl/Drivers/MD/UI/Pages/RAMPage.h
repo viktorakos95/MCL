@@ -11,11 +11,11 @@
 
 class RAMPage : public LightPage {
 public:
-  RAMPage(uint8_t _page_id, Encoder *e1 = NULL, Encoder *e2 = NULL,
-          Encoder *e3 = NULL, Encoder *e4 = NULL)
-      : LightPage(e1, e2, e3, e4) {
-    page_id = _page_id;
-  }
+  constexpr RAMPage(uint8_t _page_id, Encoder *e1 = NULL, Encoder *e2 = NULL,
+                    Encoder *e3 = NULL, Encoder *e4 = NULL)
+      : LightPage(e1, e2, e3, e4), midi_state(false), page_id(_page_id),
+        transition_step(0), record_len(0), wheel_spin(0),
+        wheel_spin_last_clock(0) {}
 
   bool handleEvent(gui_event_t *event);
   bool midi_state;

@@ -7,9 +7,7 @@
 
 class RoutePage : public LightPage {
  public:
- RoutePage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL, Encoder *e4 = NULL) : LightPage( e1, e2, e3 ,e4) {
-
- }
+ constexpr RoutePage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL, Encoder *e4 = NULL) : LightPage( e1, e2, e3 ,e4), info_line2{} {}
 
  char info_line2[9];
 
