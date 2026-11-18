@@ -17,7 +17,14 @@ class DeviceManager {
 public:
   static constexpr uint8_t LOGICAL_SLOT_NONE = 255;
 
-  DeviceManager();
+  // constexpr: device_manager is initialised statically, not by the global
+  // constructor.
+  constexpr DeviceManager()
+      : physical_{}, logical_idx_{}, primary_(nullptr), secondary_(nullptr) {
+    for (uint8_t i = 0; i < MIDI_PORT_COUNT; ++i) {
+      logical_idx_[i] = LOGICAL_SLOT_NONE;
+    }
+  }
 
   MidiDevice *device_for_port(uint8_t port) const;
   uint8_t logical_idx_for_port(uint8_t port) const;

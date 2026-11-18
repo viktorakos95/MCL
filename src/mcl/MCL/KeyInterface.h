@@ -81,7 +81,10 @@ public:
   uint16_t last_clock;
   bool throttle;
 
-  KeyInterface() : MidiSysexListenerClass(NULL, 0x7F, 0x0D) {}
+  constexpr KeyInterface()
+      : MidiSysexListenerClass(NULL, 0x7F, 0x0D), state(false),
+        cmd_key_state(0), ignore_next_mask(0), last_clock(0),
+        throttle(false) {}
   void setup(MidiClass *_midi);
   void ignoreNextEvent(uint8_t i) {
     SET_BIT64(ignore_next_mask, i);
