@@ -14,6 +14,28 @@
 #endif
 #include "Sequencer/MCLSeq.h"
 
+// The Machinedrum's microtiming popup walks the conditions in the
+// Octatrack's order, as MDX does: no condition, FILL !FILL PRE !PRE NEI !NEI
+// 1ST !1ST 1SHOT, the probabilities rising from 10%, then 1:2 to 8:8. Most
+// steps are to the next or previous id; these are the joins between runs,
+// each {from, to} going forward.
+static const uint8_t kCondJoins[][2] = {
+    {SEQ_COND_100PCT, SEQ_COND_FILL},     {SEQ_COND_NOT_NEI, SEQ_COND_FIRST},
+    {SEQ_COND_NOT_FIRST, SEQ_COND_ONESHOT}, {SEQ_COND_ONESHOT, SEQ_COND_10PCT},
+    {SEQ_COND_90PCT, SEQ_COND_ITER_BASE}};
+
+static uint8_t cond_order_step(uint8_t c, bool forward) {
+  for (uint8_t n = 0; n < 5; n++) {
+    if (kCondJoins[n][!forward] == c) {
+      return kCondJoins[n][forward];
+    }
+  }
+  if (forward) {
+    return c < SEQ_COND_ITER_MAX ? (uint8_t)(c + 1) : c;
+  }
+  return c > SEQ_COND_100PCT ? (uint8_t)(c - 1) : c;
+}
+
 namespace {
 
 constexpr uint8_t kStepPageVisibleSteps = 16;
@@ -837,7 +859,7 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           uint8_t num_cond = active_track.condition_count();
           if (MD.microtimingCondition()) {
             // On the Machinedrum's popup the arrows pick the condition only,
-            // with no wrap; PAGE owns the mode. The knob keeps its side, also
+            // stopping at both ends; PAGE owns the mode. The knob keeps its side, also
             // across "no condition".
             bool plock;
             uint8_t cond =
@@ -846,13 +868,15 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
               cond = 0;
               plock = popup_cond_plock;
             }
-            if (key == MDX_KEY_UP) {
-              if (cond < num_cond) {
-                cond++;
-              }
-            } else if (cond > 0) {
-              cond--;
-            }
+            // UP steps forward through the Octatrack's order, as on an X.20
+            // Machinedrum's own popup; FUNC steps on to the next category:
+            // the event conditions, the probabilities, the iterations.
+            const bool forward = key == MDX_KEY_UP;
+            do {
+              cond = cond_order_step(cond, forward);
+            } while (func_down && cond != SEQ_COND_100PCT &&
+                     cond != SEQ_COND_FILL && cond != SEQ_COND_10PCT &&
+                     cond != SEQ_COND_ITER_BASE && cond != SEQ_COND_ITER_MAX);
             popup_cond_plock = plock;
             seq_param1.cur =
                 cond ? seq_cond_step_to_knob(cond, plock, num_cond) : num_cond;
