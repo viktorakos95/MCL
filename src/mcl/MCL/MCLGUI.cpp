@@ -666,14 +666,16 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
 }
 
 // The microtiming popup's label: "uTIM:" and "COND:" stay where they are,
-// each value follows its label. The offset field fits "+127" (SPS-X).
-static const char kUtimLabel[] PROGMEM = "uTIM: ";
+// around the ruler's centre tick (x 64). The offset sits in a field of
+// offset_chars characters ending at x 61; "COND:" starts at x 68.
+static const char kUtimLabel[] PROGMEM = "uTIM: ";  // 20 px in TomThumb
 static const char kCondLabel[] PROGMEM = "COND: ";
-static void print_timing_label(const char *offset, const char *condition) {
-  oled_display.setCursor(26, 10);
+static void print_timing_label(const char *offset, const char *condition,
+                               uint8_t offset_chars) {
+  oled_display.setCursor(61 - 20 - 4 * offset_chars, 10);
   mcl_print_P(kUtimLabel);
   oled_display.print(offset);
-  oled_display.setCursor(66, 10);
+  oled_display.setCursor(68, 10);
   mcl_print_P(kCondLabel);
   oled_display.print(condition);
 }
@@ -733,7 +735,7 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
   oled_display.fillRect(8, 1, 128 - 16, 32 - 2, BLACK);
   oled_display.drawRect(8 + 1, 1 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
 
-  print_timing_label(K, condition);
+  print_timing_label(K, condition, 3);
   constexpr uint8_t base_h = 11;
   oled_display.drawFastHLine(x, y_pos + base_h, w + 1, WHITE);
   for (uint8_t n = 0; n <= degrees; n++) {
@@ -826,7 +828,7 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
   }
   K[4] = '\0';
 
-  print_timing_label(K, condition);
+  print_timing_label(K, condition, 4);
 
   oled_display.drawFastHLine(ruler_x, baseline_y, ruler_w + 1, WHITE);
   for (uint16_t n = 0; n <= degrees; n++) {
