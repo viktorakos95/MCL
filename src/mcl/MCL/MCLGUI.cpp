@@ -665,7 +665,36 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
   oled_display.setFont(oldfont);
 }
 
-void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
+// Width of s in the current GFX font: the sum of its glyph advances.
+static uint8_t text_width(const char *s) {
+  const GFXfont *font = oled_display.getFont();
+  const GFXglyph *glyphs =
+      reinterpret_cast<const GFXglyph *>(pgm_read_ptr(&font->glyph));
+  const uint8_t first = pgm_read_byte(&font->first);
+  uint8_t w = 0;
+  for (; *s; ++s) {
+    w += pgm_read_byte(&glyphs[(uint8_t)*s - first].xAdvance);
+  }
+  return w;
+}
+
+// The microtiming popup's label: the offset (at most 4 characters, in a
+// 12-byte buffer) and the condition, three spaces apart, centred.
+static void print_timing_label(char *offset, const char *condition) {
+  char *p = offset;
+  while (*p) {
+    ++p;
+  }
+  *p++ = ' ';
+  *p++ = ' ';
+  *p++ = ' ';
+  strcpy(p, condition);
+  oled_display.setCursor(64 - (text_width(offset) >> 1), 10);
+  oled_display.print(offset);
+}
+
+void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
+                              const char *condition) {
   auto oldfont = oled_display.getFont();
   oled_font_small();
 
@@ -702,8 +731,10 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
   uint8_t x_w = degree_scalar ? 1 : w / degrees;
 
   uint8_t x = x_pos;
-  char K[4];
-  mclstr_copy_progmem(K, mclstr_dash, sizeof(K));
+  char K[12];
+  K[0] = '-';
+  K[1] = '-';
+  K[2] = '\0';
 
   if (timing != 0) {
     if (timing < timing_center) {
@@ -717,9 +748,7 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
   oled_display.fillRect(8, 1, 128 - 16, 32 - 2, BLACK);
   oled_display.drawRect(8 + 1, 1 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
 
-  oled_display.setCursor(x_pos + 34, 10);
-  mcl_print_P(mclstr_utiming_label);
-  oled_display.print(K);
+  print_timing_label(K, condition);
   constexpr uint8_t base_h = 11;
   oled_display.drawFastHLine(x, y_pos + base_h, w + 1, WHITE);
   for (uint8_t n = 0; n <= degrees; n++) {
@@ -743,7 +772,8 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
 }
 
 #if !defined(__AVR__)
-void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming) {
+void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
+                                   const char *condition) {
   auto oldfont = oled_display.getFont();
   oled_font_small();
   oled_text_color(WHITE);
@@ -799,7 +829,7 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming) {
   oled_display.fillRect(popup_x, popup_y, popup_w, popup_h, BLACK);
   oled_display.drawRect(popup_x + 1, popup_y + 1, popup_w - 2, popup_h - 2, WHITE);
 
-  char K[5];
+  char K[12];
   if (timing_offset == 0) {
     strcpy(K, "---");
   } else if (timing_offset < 0) {
@@ -811,9 +841,7 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming) {
   }
   K[4] = '\0';
 
-  oled_display.setCursor(ruler_x + 34, 10);
-  mcl_print_P(mclstr_utiming_label);
-  oled_display.print(K);
+  print_timing_label(K, condition);
 
   oled_display.drawFastHLine(ruler_x, baseline_y, ruler_w + 1, WHITE);
   for (uint16_t n = 0; n <= degrees; n++) {

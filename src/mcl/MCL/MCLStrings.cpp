@@ -107,7 +107,6 @@ MCLSTR_DEFINE(osc_mixer, "OSC MIXER");
 MCLSTR_DEFINE(ply_label, "PLY");
 
 // Common labels
-MCLSTR_DEFINE(utiming_label, "uTIMING: ");
 
 // Common labels
 MCLSTR_DEFINE(v_label, "V");

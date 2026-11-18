@@ -171,18 +171,21 @@ void draw_active_microtiming(SeqStepTrackRef active_track, uint8_t encoder_value
                              bool notify_remote, uint8_t step = 255) NOINLINE();
 void draw_active_microtiming(SeqStepTrackRef active_track, uint8_t encoder_value,
                              bool notify_remote, uint8_t step) {
+  // The popup shows the condition as the COND knob prints it.
+  char condition[5];
+  seq_step_page.conditional_str(condition, seq_param1.getValue());
 #if !defined(__AVR__)
   if (active_track.uses_signed_microtiming()) {
     mcl_gui.draw_microtiming_spsx(
         active_track.speed(),
-        active_track.microtiming_from_encoder(encoder_value));
+        active_track.microtiming_from_encoder(encoder_value), condition);
     if (notify_remote) {
       notify_remote_microtiming(active_track, encoder_value, step);
     }
     return;
   }
 #endif
-  mcl_gui.draw_microtiming(active_track.speed(), encoder_value);
+  mcl_gui.draw_microtiming(active_track.speed(), encoder_value, condition);
   if (notify_remote) {
     notify_remote_microtiming(active_track, encoder_value, step);
   }

@@ -72,9 +72,13 @@ public:
 
   void delay_progress(uint16_t clock_);
 
-  void draw_microtiming(uint8_t resolution, uint8_t timing);
+  // The popup's label is the timing offset and the step's condition, as
+  // the COND knob prints it.
+  void draw_microtiming(uint8_t resolution, uint8_t timing,
+                        const char *condition);
 #if !defined(__AVR__)
-  void draw_microtiming_spsx(uint8_t speed, int8_t microtiming);
+  void draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
+                             const char *condition);
 #endif
   void clear_leftpane();
   void clear_rightpane();

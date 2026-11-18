@@ -79,7 +79,6 @@ MCLSTR_DECLARE(wav_label);
 MCLSTR_DECLARE(sd_card_error);
 MCLSTR_DECLARE(osc_mixer);
 MCLSTR_DECLARE(ply_label);
-MCLSTR_DECLARE(utiming_label);
 MCLSTR_DECLARE(v_label);
 MCLSTR_DECLARE(select_label);
 MCLSTR_DECLARE(par);
