@@ -404,8 +404,12 @@ void SeqStepPage::display() {
     MidiUartParent::handle_midi_lock = _midi_lock_tmp;
 
     SeqPage::display();
+    // An X.20 Machinedrum keeps its popup open while the trig is held, also
+    // when UP/DOWN/LEV only change the condition; MCL's ruler stays with it.
+    // Older firmware: the ruler shows while the timing knob counts as used.
     if (microtiming_overlay_active() &&
-        mcl_gui.show_encoder_value(&seq_param2) &&
+        ((MD.microtimingCondition() && active_track.uses_kit_sound()) ||
+         mcl_gui.show_encoder_value(&seq_param2)) &&
         (note_interface.notes_count_on() > 0) && (!show_seq_menu) &&
         (!recording)) {
       draw_active_microtiming(active_track, seq_param2.cur, false);
