@@ -45,6 +45,10 @@ public:
       ;
 #endif
 
+  // A later load took over a slot OUTIN was holding: its fade-out runs to
+  // the end and no longer turns into a fade-in.
+  static void release(GridSlot slot);
+
 #if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
   // After a load made while stopped has sent its kit: each fade it armed
   // sets its track's starting level (silent for an IN), and a track an

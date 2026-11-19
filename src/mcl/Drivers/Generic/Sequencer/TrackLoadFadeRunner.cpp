@@ -266,8 +266,24 @@ bool write_slot_value(GridSlot slot,
   }
 
   if (complete) {
+    if ((state.flags & TRACK_LOAD_FADE_FLAG_THEN_IN) != 0) {
+      // OUTIN: the held slot switches now; it fades in over the same length
+      // from where the fade-out ended.
+      state.flags = TRACK_LOAD_FADE_FLAG_ENABLED;
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+      state.count_down = 0;
+      state.elapsed_ticks = 0;
+#else
+      state.elapsed_q12 = 0;
+#endif
+      return true;
+    }
     if ((state.flags & TRACK_LOAD_FADE_FLAG_OUT) == 0) {
       state.touched = 0;
+    } else {
+      // Down at the floor, not part-way: the next fade starts from the
+      // track's own level.
+      state.last_value = 255;
     }
     clear_slot(slot);
     return false;
@@ -384,8 +400,14 @@ void TrackLoadFadeRunner::start_unlocked(GridSlot slot,
     return;
   }
 
-  LoadFadeMask bit = clear_slot(slot);
   LoadFadeState &state = fade_states[slot];
+  if ((state.flags & TRACK_LOAD_FADE_FLAG_THEN_IN) != 0 &&
+      (fade == nullptr || (fade->flags & TRACK_LOAD_FADE_FLAG_THEN_IN) == 0)) {
+    // OUTIN holds this slot: its switch arrives a little early, and the
+    // fade-out goes on and becomes the fade-in. Only a new OUTIN replaces it.
+    return;
+  }
+  LoadFadeMask bit = clear_slot(slot);
   const bool transport_started = MidiClock.state == MidiClockClass::STARTED;
 #if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
   // A load while stopped arms its fade; it starts on PLAY.
@@ -397,7 +419,8 @@ void TrackLoadFadeRunner::start_unlocked(GridSlot slot,
   if (fading) {
     state.target = target;
     state.flags = fade->flags & (TRACK_LOAD_FADE_FLAG_ENABLED |
-                                 TRACK_LOAD_FADE_FLAG_OUT);
+                                 TRACK_LOAD_FADE_FLAG_OUT |
+                                 TRACK_LOAD_FADE_FLAG_THEN_IN);
     state.amount = fade->amount > 127 ? 127 : fade->amount;
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
     state.curve = fade->curve;
@@ -448,6 +471,16 @@ void TrackLoadFadeRunner::start_unlocked(GridSlot slot,
 #endif
   }
   active_mask |= bit;
+}
+
+void TrackLoadFadeRunner::release(GridSlot slot) {
+  if (slot >= NUM_SLOTS) {
+    return;
+  }
+  USE_LOCK();
+  SET_LOCK();
+  fade_states[slot].flags &= (uint8_t)~TRACK_LOAD_FADE_FLAG_THEN_IN;
+  CLEAR_LOCK();
 }
 
 #if !MCL_FEATURE_HOST_LOAD_FADE_SEEK

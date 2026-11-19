@@ -123,7 +123,9 @@ void MCLActionsMidiEvents::onControlChangeCallback_Midi(uint8_t *msg) {}
 
 void MCLActionsCallbacks::StopHardCallback() {
   DEBUG_PRINTLN(F("BEGIN stop hard"));
-  mcl_actions.clear_load_fades();
+  // Every STOP press lands here: running fades end, ones armed by a load
+  // made while stopped still start on PLAY.
+  mcl_actions.clear_load_fades(true);
   GridRow row_array[NUM_SLOTS];
   uint8_t slot_select_array[NUM_SLOTS] = {};
   bool proceed = false;

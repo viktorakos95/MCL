@@ -877,6 +877,10 @@ void MCLActions::manual_transition(uint8_t *slot_select_array,
   // DEBUG_CHECK_STACK();
 
   collect_tracks(slot_select_array, row_array, load_offset);
+#if MCL_GRID_IO_PANEL
+  // The slots this load reaches, for OUTIN once their load points are set.
+  uint8_t loaded[NUM_SLOTS] = {0};
+#endif
 
   uint16_t next_step = q == 255 ? (uint16_t) -1 : (MidiClock.div16th_counter / q) * q + q;
 
@@ -957,27 +961,7 @@ again:
         // }
       }
 #if MCL_GRID_IO_PANEL
-      // OUTIN: the playing slot fades out from the load point, and the new
-      // one switches in when that ends (and then fades in).
-      // Only slots the fade acts on (MD tracks) are held back.
-      if (mcl_cfg.load_fade == LOAD_FADE_OUTIN) {
-        TrackLoadFadeData fade_out;
-        TrackLoadFadeTarget fade_target;
-        GridDeviceTrack *gdt_out = get_grid_dev_track(dst);
-        if (panel_fade(dst, gdt_out, true, &fade_out) &&
-            resolve_track_load_fade_target(dst, gdt_out, &fade_out,
-                                           &fade_target)) {
-          uint16_t at = next_transitions[dst];
-          start_load_fade_at(dst, &fade_out, MidiClock.div16th_to_div192(at, 0)
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-                             ,
-                             false
-#endif
-                             ,
-                             false);
-          next_transitions[dst] = at + fade_out.duration_q12 / 12;
-        }
-      }
+      loaded[dst] = 1;
 #endif
       grid_page.active_slots[dst] = load_offset == 255 ? SLOT_PENDING : SLOT_OFFSET_LOAD;
   }
@@ -1035,6 +1019,45 @@ again:
       goto again;
     }
   }
+
+#if MCL_GRID_IO_PANEL
+  // OUTIN, now the load points are settled (holding slots back inside the
+  // retry above kept it from ever finding a later load point): each MD
+  // slot fades out from its load point and switches when that ends, then
+  // fades in. A slot a later non-OUTIN load takes over is let go.
+  bool held = false;
+  for (uint8_t dst = 0; dst < NUM_SLOTS; dst++) {
+    if (!loaded[dst]) {
+      continue;
+    }
+    TrackLoadFadeData fade_out;
+    TrackLoadFadeTarget fade_target;
+    GridDeviceTrack *gdt_out = get_grid_dev_track(dst);
+    if (mcl_cfg.load_fade != LOAD_FADE_OUTIN ||
+        !panel_fade(dst, gdt_out, true, &fade_out) ||
+        !resolve_track_load_fade_target(dst, gdt_out, &fade_out,
+                                        &fade_target)) {
+      TrackLoadFadeRunner::release(dst);
+      continue;
+    }
+    fade_out.flags |= TRACK_LOAD_FADE_FLAG_THEN_IN;
+    uint16_t at = next_transitions[dst];
+    start_load_fade_at(dst, &fade_out,
+                       MidiClock.div16th_to_div192(at, transition_offsets[dst])
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+                           ,
+                       false
+#endif
+                       ,
+                       false);
+    next_transitions[dst] = at + fade_out.duration_q12 / 12;
+    held = true;
+  }
+  if (held) {
+    calc_next_transition();
+    calc_latency();
+  }
+#endif
 }
 
 bool MCLActions::load_track_immediate(GridRow row, GridSlot i, GridSlot dst,
