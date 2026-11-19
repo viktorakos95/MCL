@@ -467,7 +467,13 @@ void GridTask::transition_handler() {
     //float div32th_per_second = MidiClock.get_tempo() * 0.133333333333f;
     //float div32th_time = 1.0f / div32th_per_second;
 
+    // A load handled here can move the next transition (OUTIN holds its
+    // slots back a whole fade): look again rather than wait for it here.
+    const uint16_t due_transition = mcl_actions.next_transition;
     load_queue_handler();
+    if (mcl_actions.next_transition != due_transition) {
+      continue;
+    }
 
     DEBUG_PRINTLN(F("Preparing for next transition:"));
     DEBUG_PRINTLN(MidiClock.div16th_counter);

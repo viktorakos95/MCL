@@ -959,9 +959,14 @@ again:
 #if MCL_GRID_IO_PANEL
       // OUTIN: the playing slot fades out from the load point, and the new
       // one switches in when that ends (and then fades in).
+      // Only slots the fade acts on (MD tracks) are held back.
       if (mcl_cfg.load_fade == LOAD_FADE_OUTIN) {
         TrackLoadFadeData fade_out;
-        if (panel_fade(dst, get_grid_dev_track(dst), true, &fade_out)) {
+        TrackLoadFadeTarget fade_target;
+        GridDeviceTrack *gdt_out = get_grid_dev_track(dst);
+        if (panel_fade(dst, gdt_out, true, &fade_out) &&
+            resolve_track_load_fade_target(dst, gdt_out, &fade_out,
+                                           &fade_target)) {
           uint16_t at = next_transitions[dst];
           start_load_fade_at(dst, &fade_out, MidiClock.div16th_to_div192(at, 0)
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK

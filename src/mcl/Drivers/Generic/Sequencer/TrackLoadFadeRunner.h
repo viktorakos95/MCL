@@ -35,7 +35,15 @@ public:
 #endif
                     ,
                     MidiUartClass *uart = nullptr,
-                    MidiUartClass *uart2 = nullptr);
+                    MidiUartClass *uart2 = nullptr)
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  {
+    start_unlocked(slot, target, fade, start_clock, allow_prestart, uart,
+                   uart2);
+  }
+#else
+      ;
+#endif
 
 #if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
   // After a load made while stopped has sent its kit: each fade it armed
@@ -43,6 +51,17 @@ public:
   // earlier fade left away from its level gets it back.
   static void prime(MidiUartClass *uart, MidiUartClass *uart2);
 #endif
+
+  // start() without the interrupt lock the AVR build takes around it.
+  static void start_unlocked(GridSlot slot, const TrackLoadFadeTarget &target,
+                             const TrackLoadFadeData *fade,
+                             uint32_t start_clock
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+                             ,
+                             bool allow_prestart
+#endif
+                             ,
+                             MidiUartClass *uart, MidiUartClass *uart2);
 
   // Advances every active fade by one tick. Output is written through the
   // TrackLoadFadeTarget bridge.

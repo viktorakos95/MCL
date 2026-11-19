@@ -24,9 +24,11 @@ class ATTR_PACKED() LoadFadeState {
 public:
   TrackLoadFadeTarget target;
   // A fade left this slot's track away from its level: an OUT, or a fade cut
-  // short by STOP. The target and this stay when the slot is cleared, and
-  // the slot's next load puts the level back.
+  // short by STOP. The target, this and last_value (the level the track was
+  // left at) stay when the slot is cleared; the slot's next load puts the
+  // level back, and a fade it starts begins from where the track is.
   uint8_t touched;
+  uint8_t last_value;
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   uint16_t count_down;
   uint16_t elapsed_ticks;
@@ -39,7 +41,6 @@ public:
   uint8_t amount;
   uint8_t start_value;
   uint8_t end_value;
-  uint8_t last_value;
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   int8_t curve;
 #endif
@@ -193,9 +194,9 @@ LoadFadeMask clear_slot(GridSlot slot) {
   }
   LoadFadeMask bit = (LoadFadeMask)1 << slot;
   active_mask &= ~bit;
-  // Everything but the target and the touched mark, which a level restore
-  // still needs.
-  constexpr size_t kept = sizeof(TrackLoadFadeTarget) + 1;
+  // Everything but the target, the touched mark and the last level, which
+  // the slot's next load still needs.
+  constexpr size_t kept = sizeof(TrackLoadFadeTarget) + 2;
   memset((uint8_t *)&fade_states[slot] + kept, 0,
          sizeof(LoadFadeState) - kept);
   return bit;
@@ -216,7 +217,12 @@ bool begin_slot(GridSlot slot, LoadFadeState &state) {
     state.start_value = floor;
     state.end_value = current;
   }
-  state.last_value = 255;
+  if (state.touched && state.last_value <= 127) {
+    // An earlier fade left the track part-way: go on from there.
+    state.start_value = state.last_value;
+  } else {
+    state.last_value = 255;
+  }
   state.flags |= LOAD_FADE_RUNTIME_STARTED;
   state.touched = 1;
   return true;
@@ -332,6 +338,10 @@ void tick_slot(GridSlot slot, MidiUartClass *uart, MidiUartClass *uart2) {
 void TrackLoadFadeRunner::clear(bool preserve_armed_prestart) {
   // A slot keeps its target, so a track a fade left away from its level
   // gets it back on its next load.
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  USE_LOCK();
+  SET_LOCK();
+#endif
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
     if (preserve_armed_prestart &&
         (fade_states[n].flags & LOAD_FADE_RUNTIME_WAIT_START) != 0) {
@@ -339,9 +349,27 @@ void TrackLoadFadeRunner::clear(bool preserve_armed_prestart) {
     }
     clear_slot(n);
   }
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  CLEAR_LOCK();
+#endif
 }
 
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+// The sequencer interrupt ticks these slots while the main loop starts a
+// fade; it must not see one half set up.
 void TrackLoadFadeRunner::start(GridSlot slot,
+                                const TrackLoadFadeTarget &target,
+                                const TrackLoadFadeData *fade,
+                                uint32_t start_clock, MidiUartClass *uart,
+                                MidiUartClass *uart2) {
+  USE_LOCK();
+  SET_LOCK();
+  start_unlocked(slot, target, fade, start_clock, uart, uart2);
+  CLEAR_LOCK();
+}
+#endif
+
+void TrackLoadFadeRunner::start_unlocked(GridSlot slot,
                                 const TrackLoadFadeTarget &target,
                                 const TrackLoadFadeData *fade,
                                 uint32_t start_clock
@@ -443,6 +471,7 @@ void TrackLoadFadeRunner::prime(MidiUartClass *uart, MidiUartClass *uart2) {
       level = level > state.amount ? level - state.amount : 0;
       state.touched = 1;
     }
+    state.last_value = level;
     write_track_load_fade_value(state.target, level, uart, uart2);
   }
 }
