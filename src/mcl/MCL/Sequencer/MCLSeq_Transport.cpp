@@ -158,7 +158,12 @@ void MCLSeq::onMidiContinueCallback(uint32_t clock_count) {
   (void)clock_count;
   update_params();
   seq_rec_play();
-  SET_BIT16(MDSeqTrack::gui_update, last_primary_track); //force cursor resync
+  // X.20 keeps its cursor at the paused step. The resync sends the last
+  // step, which is right only after a track reset, so it would put X.20
+  // out of step with the track.
+  if (!MD.x20()) {
+    SET_BIT16(MDSeqTrack::gui_update, last_primary_track); //force cursor resync
+  }
 }
 
 void MCLSeq::onMidiStartImmediateCallback(uint32_t clock_count) {
