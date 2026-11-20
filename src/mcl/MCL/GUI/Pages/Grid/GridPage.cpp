@@ -2010,9 +2010,19 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           gridload_param1.cur = key - MDX_KEY_BANKA + 1;
         }
         return true;
+      case MDX_KEY_UP:
+      case MDX_KEY_DOWN:
+      case MDX_KEY_LEFT:
+      case MDX_KEY_RIGHT:
+        // On Load the arrows move the grid (the armed row and the columns
+        // shown) and Load stays armed. On Save they disarm, as below.
+        if (load) {
+          return false;
+        }
+        io_end();
+        return false;
       default:
-        // Any other key, the arrows included, disarms and does its usual
-        // job.
+        // Any other key disarms and does its usual job.
         io_end();
         return false;
       }
