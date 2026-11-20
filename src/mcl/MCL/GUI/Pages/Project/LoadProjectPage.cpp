@@ -8,8 +8,8 @@
 #include "KeyInterface.h"
 #include "GUI/MCLMenus.h"
 
-// The name of the last project loaded or tried, so the page reopens on it
-// (a failed load goes back to the current project and the Grid page).
+// The name of the last project loaded or tried, so the page opens on it
+// again, including straight after a failed load.
 static char last_project[PRJ_NAME_LEN + 1];
 
 void LoadProjectPage::init() {
@@ -79,6 +79,12 @@ void LoadProjectPage::on_select(const char *entry) {
   uint8_t count = 2;
   while (count--) {
     if (proj.load_project(proj_filename)) {
+      if (count == 0) {
+        // The current project is back after a failed load: stay here, on
+        // the project that failed, ready for the next one.
+        init();
+        return;
+      }
       DEBUG_PRINTLN(F("loaded, setting grid"));
       mcl.setPage(GRID_PAGE);
       return;
