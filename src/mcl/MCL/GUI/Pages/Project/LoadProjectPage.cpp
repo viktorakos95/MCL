@@ -81,10 +81,8 @@ void LoadProjectPage::on_select(const char *entry) {
     if (proj.load_project(proj_filename)) {
       if (count == 0) {
         // The current project is back after a failed load: stay here, on
-        // the project that failed, ready for the next one. A message box
-        // finishes on a clear screen first; over the list, its highlighted
-        // row showed around the box.
-        oled_display.clearDisplay();
+        // the project that failed, ready for the next one, once a message
+        // box has had its time (the list would redraw its highlight).
         while (oled_display.textbox_enabled) {
           oled_display.display();
         }
@@ -97,8 +95,10 @@ void LoadProjectPage::on_select(const char *entry) {
     } else {
 #ifndef MCL_HAS_PROJECT_CONVERSION
       if (proj.version == PROJ_MIN_READABLE_VERSION) {
-        // A project from before MCL 5: this firmware cannot convert it.
-        oled_display.clearDisplay();
+        // A project from before MCL 5: this firmware cannot convert it. The
+        // list's highlighted row (draw_filebrowser) is blanked first; its
+        // white bar showed around the box.
+        oled_display.fillRect(40, 2 + 8 * cur_row, MENU_WIDTH, 7, BLACK);
         oled_display.textbox_P(mclstr_upgrade, mclstr_project);
         oled_display.display();
       } else
