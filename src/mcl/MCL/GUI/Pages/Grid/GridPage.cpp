@@ -495,6 +495,15 @@ void GridPage::loop() {
 
     write_cfg = true;
   }
+#if MCL_GRID_IO_PANEL
+  if (io_mode) {
+    // Load and Save hold the knobs, so the GUI does not mark the cursor's
+    // moves (the arrow keys) as seen; do it here, or each frame would move
+    // it again.
+    param1.old = param1.cur;
+    param2.old = param2.cur;
+  }
+#endif
   param3.cur = 1;
   param4.cur = 1;
   param4.max = GRID_LENGTH - getRow();
