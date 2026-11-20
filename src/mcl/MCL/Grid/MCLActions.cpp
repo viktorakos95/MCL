@@ -755,13 +755,16 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
     GridSlot dst = load_offset == 255 ? n : n - first_slot + load_offset;
     if (dst < NUM_SLOTS) {
       uint8_t dir = LOAD_FADE_DIR_NONE;
-      if (mcl_cfg.load_fade &&
+      if ((mcl_cfg.load_fade & 1) &&
           (load_mode == LOAD_MANUAL || load_mode == LOAD_AUTO)) {
+        const uint8_t force = mcl_cfg.load_fade >> 1;
         const bool same = grid_page.active_slots[dst] == row_array[n];
         const bool silent = grid_page.active_slots[dst] == SLOT_DISABLED ||
                             TrackLoadFadeRunner::silenced(dst);
-        dir = silent ? LOAD_FADE_DIR_IN
-                     : (same ? LOAD_FADE_DIR_OUT : LOAD_FADE_DIR_OUTIN);
+        dir = force == LOAD_FADE_FORCE_IN    ? LOAD_FADE_DIR_IN
+              : force == LOAD_FADE_FORCE_OUT ? LOAD_FADE_DIR_OUT
+              : silent                       ? LOAD_FADE_DIR_IN
+              : same ? LOAD_FADE_DIR_OUT : LOAD_FADE_DIR_OUTIN;
       }
       load_fade_dir[dst] = dir;
     }

@@ -1725,7 +1725,7 @@ void GridPage::io_begin(uint8_t mode) {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = mcl_cfg.load_fade ? mcl_cfg.load_fade_len + 1 : 0;
+    gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
 #ifdef PLATFORM_TBD
@@ -1762,7 +1762,7 @@ void GridPage::io_loop() {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = mcl_cfg.load_fade ? mcl_cfg.load_fade_len + 1 : 0;
+    gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     return;
   }
   // The settings follow their knobs (io_begin set them equal): the mode with
@@ -1778,7 +1778,7 @@ void GridPage::io_loop() {
   } else {
     // FADE: off, then on; past ON the knob sets the length (SLIDE keeps it).
     encoders[1] = &gridload_fade;
-    mcl_cfg.load_fade = gridload_fade.cur != 0;
+    mcl_cfg.load_fade = (mcl_cfg.load_fade & ~1) | (gridload_fade.cur != 0);
     if (gridload_fade.cur != 0) {
       mcl_cfg.load_fade_len = gridload_fade.cur - 1;
     }
@@ -1905,16 +1905,22 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
-        // FADE in the other modes: "FADE -" when off, "FADE ON" when it
-        // follows QUANT, else "FADE" and the length in steps.
+        // FADE in the other modes: "FADE -" when off. With the QUANT length
+        // "FADE ON" (direction by column), "FADE IN" or "FADE OUT" (forced);
+        // with a set length "FADE", "IN" or "OUT" and the steps.
         uint8_t len = mcl_cfg.load_fade_len;
-        if (!mcl_cfg.load_fade) {
+        const uint8_t force = mcl_cfg.load_fade >> 1;
+        const char *word = force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
+                           : force == LOAD_FADE_FORCE_OUT ? mclstr_fade_out
+                                                          : mclstr_on;
+        if (!(mcl_cfg.load_fade & 1)) {
           panel_row(24, mclstr_fade, 0);
         } else {
-          text_at_P(0, 24, mclstr_fade);
           if (len == 0) {
-            text_at_P(29, 24, mclstr_on);
+            text_at_P(0, 24, mclstr_fade);
+            text_at_P(37 - 4 * strlen_P(word), 24, word);
           } else {
+            text_at_P(0, 24, force ? word : mclstr_fade);
             uint8_t n = len - 1;
             // 2^n steps: one digit up to 8, two to 64, three to 512, then
             // 1024.
@@ -1951,6 +1957,10 @@ void GridPage::io_display_panel() {
   oled_display.setCursor(26, 32);
   draw_bank_row_label(param2.cur, val);
 }
+
+// SCALE was held for SCALE+UP/DOWN on Load, so its release does not switch
+// grids.
+static bool scale_chord;
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
   const bool load = io_mode == GRID_IO_LOAD;
@@ -2005,6 +2015,12 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_end();
         return true;
       case MDX_KEY_SCALE:
+        // On Load SCALE switches grids when released, unless it was held
+        // for SCALE+UP/DOWN (below).
+        if (load) {
+          scale_chord = false;
+          return true;
+        }
         io_toggle_grid();
         return true;
       case MDX_KEY_BANKD:
@@ -2049,8 +2065,19 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
-        // On Load UP/DOWN move the armed row and Load stays armed. On Save
+        // On Load UP/DOWN move the armed row and Load stays armed. With
+        // SCALE held they force FADE IN (UP) or OUT (DOWN), turning it on;
+        // the same again goes back to each column's own direction. On Save
         // the arrows disarm, as below.
+        if (load && key_interface.is_key_down(MDX_KEY_SCALE)) {
+          const uint8_t force =
+              key == MDX_KEY_UP ? LOAD_FADE_FORCE_IN : LOAD_FADE_FORCE_OUT;
+          scale_chord = true;
+          mcl_cfg.load_fade =
+              ((mcl_cfg.load_fade >> 1) == force ? 0 : force << 1) | 1;
+          gridload_fade.cur = mcl_cfg.load_fade_len + 1;
+          return true;
+        }
         if (load) {
           return false;
         }
@@ -2065,6 +2092,13 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_YES) {
       if (GridIOPage::show_track_type) {
         io_action(true);
+      }
+      return true;
+    }
+    if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_SCALE &&
+        load) {
+      if (!scale_chord) {
+        io_toggle_grid();
       }
       return true;
     }
