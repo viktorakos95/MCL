@@ -1788,18 +1788,31 @@ void GridPage::io_loop() {
 
 void GridPage::io_action(bool groups) {
   uint8_t track_select_array[NUM_SLOTS];
+  const bool load = io_mode == GRID_IO_LOAD;
   if (groups) {
-    key_interface.off();
+    if (!load) {
+      key_interface.off();
+    }
     GridIOPage::track_select_array_from_type_select(track_select_array);
   } else {
     GridIOPage::populate_track_select_from_notes(track_select_array);
   }
-  if (io_mode == GRID_IO_LOAD) {
+  if (load) {
     if (groups) {
       mcl_actions.write_original = 1;
     }
     grid_task.load_queue.put(mcl_cfg.load_mode, getRow(), track_select_array,
                              GridIOPage::offset);
+    // Load stays armed for the next load (the arrows move the grid): the
+    // selection, DEST and the group popup clear, the mode popup returns.
+    GridIOPage::show_track_type = false;
+    GridIOPage::show_offset = false;
+    GridIOPage::track_select = 0;
+    GridIOPage::offset = 255;
+    note_interface.init_notes();
+    GridIOPage::paint_track_select_leds();
+    GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+    return;
   } else {
     oled_display.textbox_P(mclstr_save, groups ? mclstr_groups : mclstr_tracks);
     oled_display.display();
