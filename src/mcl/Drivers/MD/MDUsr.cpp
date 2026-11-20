@@ -220,8 +220,9 @@ void MDUsrCache::receive(const SysexView &view) {
     for (uint8_t n = 0; n < bytes; ++n) writeByte(offset + n, view.getByte(16 + n));
     valid_pages_ |= 1u << page;
     if (count == 16) valid_pages_ |= 6;
-    if (MD.currentTrack < 16 && uint8_t(MD.kit.get_model(MD.currentTrack) - MD_USR_FIRST) / 16 == page)
-      valid_pages_ |= 0x80;
+    // New names: the Grid page's slot labels and the current track's page
+    // read them again (MCL::loop).
+    valid_pages_ |= 0x80;
   }
 #if !defined(__AVR__)
   else if (page == MD_USR_KIT_PAGE) {
