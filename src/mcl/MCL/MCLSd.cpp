@@ -345,8 +345,7 @@ bool MCLSd::load_init() {
           memset(fade, 0, 4);
           mcl_cfg.cfgfile.read(fade, 4);
           if ((uint8_t)~fade[0] != fade[2] || (uint8_t)~fade[1] != fade[3] ||
-              (uint8_t)(fade[0] + 1) > LOAD_FADE_OUTIN + 1 ||
-              fade[1] > LOAD_FADE_MAX) {
+              fade[0] > 1 || fade[1] > LOAD_FADE_MAX) {
             fade[0] = 0;
             fade[1] = 0;
           }

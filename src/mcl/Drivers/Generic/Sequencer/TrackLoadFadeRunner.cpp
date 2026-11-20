@@ -23,10 +23,11 @@ constexpr uint8_t LOAD_FADE_RUNTIME_PRIME = 0x20;
 class ATTR_PACKED() LoadFadeState {
 public:
   TrackLoadFadeTarget target;
-  // A fade left this slot's track away from its level: an OUT, or a fade cut
-  // short by STOP. The target, this and last_value (the level the track was
-  // left at) stay when the slot is cleared; the slot's next load puts the
-  // level back, and a fade it starts begins from where the track is.
+  // A fade left this slot's track away from its level: 1 part-way (cut
+  // short by a new load or STOP, last_value is where), 2 faded out. The
+  // target, this and last_value stay when the slot is cleared; the slot's
+  // next load puts the level back, and a fade it starts goes on from a
+  // part-way level.
   uint8_t touched;
   uint8_t last_value;
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
@@ -217,7 +218,7 @@ bool begin_slot(GridSlot slot, LoadFadeState &state) {
     state.start_value = floor;
     state.end_value = current;
   }
-  if (state.touched && state.last_value <= 127) {
+  if (state.touched == 1 && state.last_value <= 127) {
     // An earlier fade left the track part-way: go on from there.
     state.start_value = state.last_value;
   } else {
@@ -278,13 +279,8 @@ bool write_slot_value(GridSlot slot,
 #endif
       return true;
     }
-    if ((state.flags & TRACK_LOAD_FADE_FLAG_OUT) == 0) {
-      state.touched = 0;
-    } else {
-      // Down at the floor, not part-way: the next fade starts from the
-      // track's own level.
-      state.last_value = 255;
-    }
+    // Back at its level after an IN; faded out after an OUT.
+    state.touched = (state.flags & TRACK_LOAD_FADE_FLAG_OUT) ? 2 : 0;
     clear_slot(slot);
     return false;
   }
@@ -471,6 +467,18 @@ void TrackLoadFadeRunner::start_unlocked(GridSlot slot,
 #endif
   }
   active_mask |= bit;
+}
+
+bool TrackLoadFadeRunner::silenced(GridSlot slot) {
+  if (slot >= NUM_SLOTS) {
+    return false;
+  }
+  // Faded out, or on its way there (OUTIN's fade-out comes back in).
+  const uint8_t flags = fade_states[slot].flags &
+                        (TRACK_LOAD_FADE_FLAG_ENABLED |
+                         TRACK_LOAD_FADE_FLAG_OUT | TRACK_LOAD_FADE_FLAG_THEN_IN);
+  return fade_states[slot].touched == 2 ||
+         flags == (TRACK_LOAD_FADE_FLAG_ENABLED | TRACK_LOAD_FADE_FLAG_OUT);
 }
 
 void TrackLoadFadeRunner::release(GridSlot slot) {

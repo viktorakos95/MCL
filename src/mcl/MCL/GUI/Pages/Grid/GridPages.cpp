@@ -13,17 +13,7 @@ MCLExpEncoder gridio_param2(64, 1, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param4(64, 1, ENCODER_RES_PAT);
 
 #if MCL_GRID_IO_PANEL
-MCLFadeEncoder gridload_fade;
-
-int MCLFadeEncoder::update(encoder_t *enc) {
-  int inc = update_rotations(enc);
-  if (enc->button) {
-    length = limit_value(length, inc, 0, LOAD_FADE_MAX);
-  } else {
-    cur = limit_value(cur, inc, min, max);
-  }
-  return cur;
-}
+MCLEncoder gridload_fade(LOAD_FADE_MAX + 1, 0, ENCODER_RES_PAT);
 #endif
 
 #if !MCL_GRID_IO_PANEL

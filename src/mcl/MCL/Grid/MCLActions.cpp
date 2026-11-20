@@ -352,17 +352,17 @@ void MCLActions::clear_tracks(uint8_t *slot_select_array) {
 #if MCL_GRID_IO_PANEL
 bool MCLActions::panel_fade(GridSlot slot, GridDeviceTrack *gdt,
                             bool fade_out_first, TrackLoadFadeData *fade) {
-  // Queue and arranger loads keep the slot's own fade. The length is the one
-  // set with the knob held, else QUANT, else (QUANT "-") the slot's length.
-  int8_t setting = mcl_cfg.load_fade;
-  uint8_t mode = chains[slot].mode;
-  if (setting == 0 || gdt == nullptr ||
-      (mode != LOAD_MANUAL && mode != LOAD_AUTO)) {
+  // Used once, so the AUTO chain steps that follow do not fade. The length
+  // is FADE's, else QUANT, else (QUANT "-") the slot's own length.
+  const uint8_t dir = load_fade_dir[slot];
+  if (dir == LOAD_FADE_DIR_NONE || gdt == nullptr) {
     return false;
   }
+  load_fade_dir[slot] = LOAD_FADE_DIR_NONE;
   fade->init();
   fade->flags = TRACK_LOAD_FADE_FLAG_ENABLED;
-  if (setting < 0 || fade_out_first) {
+  if (dir == LOAD_FADE_DIR_OUT ||
+      (dir == LOAD_FADE_DIR_OUTIN && fade_out_first)) {
     fade->flags |= TRACK_LOAD_FADE_FLAG_OUT;
   }
   uint8_t len = mcl_cfg.load_fade_len;
@@ -730,6 +730,9 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
   }
   bool recache = false;
   GridSlot last_slot = 255;
+#if MCL_GRID_IO_PANEL
+  GridSlot first_slot = 255;
+#endif
   for (uint8_t n = 0; n < NUM_SLOTS; ++n) {
     if (slot_select_array[n] == 0) { continue; }
 
@@ -742,6 +745,27 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
       slot_select_array[n] = 0;
       continue;
     }
+#if MCL_GRID_IO_PANEL
+    // FADE picks each column's direction now, while the column still shows
+    // what it plays. Reloading what plays fades it out; a new slot fades the
+    // old one out, switches and fades in; a silent column fades back in.
+    if (first_slot == 255) {
+      first_slot = n;
+    }
+    GridSlot dst = load_offset == 255 ? n : n - first_slot + load_offset;
+    if (dst < NUM_SLOTS) {
+      uint8_t dir = LOAD_FADE_DIR_NONE;
+      if (mcl_cfg.load_fade &&
+          (load_mode == LOAD_MANUAL || load_mode == LOAD_AUTO)) {
+        const bool same = grid_page.active_slots[dst] == row_array[n];
+        const bool silent = grid_page.active_slots[dst] == SLOT_DISABLED ||
+                            TrackLoadFadeRunner::silenced(dst);
+        dir = silent ? LOAD_FADE_DIR_IN
+                     : (same ? LOAD_FADE_DIR_OUT : LOAD_FADE_DIR_OUTIN);
+      }
+      load_fade_dir[dst] = dir;
+    }
+#endif
 
     if (load_mode == LOAD_QUEUE) {
       chains[n].add(row_array[n], get_chain_length());
@@ -1033,7 +1057,7 @@ again:
     TrackLoadFadeData fade_out;
     TrackLoadFadeTarget fade_target;
     GridDeviceTrack *gdt_out = get_grid_dev_track(dst);
-    if (mcl_cfg.load_fade != LOAD_FADE_OUTIN ||
+    if (load_fade_dir[dst] != LOAD_FADE_DIR_OUTIN ||
         !panel_fade(dst, gdt_out, true, &fade_out) ||
         !resolve_track_load_fade_target(dst, gdt_out, &fade_out,
                                         &fade_target)) {

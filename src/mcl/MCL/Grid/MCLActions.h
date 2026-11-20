@@ -67,6 +67,9 @@ public:
   uint16_t next_transitions[NUM_SLOTS];
   uint8_t transition_offsets[NUM_SLOTS];
   uint8_t send_machine[NUM_SLOTS];
+  // FADE's direction for each column's pending load, decided when it is
+  // asked for and used once, by that load's own fade.
+  uint8_t load_fade_dir[NUM_SLOTS];
   uint8_t transition_level[NUM_SLOTS];
 
   GridSlot dev_sync_slot[NUM_DEVS];
@@ -75,6 +78,12 @@ public:
 };
 
 #define QUANT_LEN 255
+
+// FADE's direction for a column's load (MCLActions::load_fade_dir).
+#define LOAD_FADE_DIR_NONE 0
+#define LOAD_FADE_DIR_IN 1
+#define LOAD_FADE_DIR_OUT 2
+#define LOAD_FADE_DIR_OUTIN 3
 
 class MCLActions : public LinkModeData {
 public:
@@ -168,9 +177,9 @@ public:
 #endif
                           ,
                           bool panel = true);
-  // The LOAD panel's FADE for a MANUAL or AUTO load of this slot: false when
-  // it is off. OUTIN gives its IN, or its OUT with fade_out_first. Defined
-  // where the panel exists (MCL_GRID_IO_PANEL).
+  // The fade FADE chose for this slot's pending load (load_fade_dir), used
+  // up here: false when there is none. OUTIN gives its IN, or its OUT with
+  // fade_out_first. Defined where the panel exists (MCL_GRID_IO_PANEL).
   bool panel_fade(GridSlot slot, GridDeviceTrack *gdt, bool fade_out_first,
                   TrackLoadFadeData *fade);
 

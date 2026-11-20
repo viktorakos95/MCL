@@ -45,6 +45,9 @@ public:
       ;
 #endif
 
+  // A fade has taken this slot's track to silence, or is taking it there.
+  static bool silenced(GridSlot slot);
+
   // A later load took over a slot OUTIN was holding: its fade-out runs to
   // the end and no longer turns into a fade-in.
   static void release(GridSlot slot);

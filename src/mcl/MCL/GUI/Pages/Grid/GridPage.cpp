@@ -1716,8 +1716,7 @@ void GridPage::io_begin(uint8_t mode) {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = mcl_cfg.load_fade;
-    gridload_fade.length = mcl_cfg.load_fade_len;
+    gridload_fade.cur = mcl_cfg.load_fade ? mcl_cfg.load_fade_len + 1 : 0;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
 #ifdef PLATFORM_TBD
@@ -1754,8 +1753,7 @@ void GridPage::io_loop() {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = mcl_cfg.load_fade;
-    gridload_fade.length = mcl_cfg.load_fade_len;
+    gridload_fade.cur = mcl_cfg.load_fade ? mcl_cfg.load_fade_len + 1 : 0;
     return;
   }
   // The settings follow their knobs (io_begin set them equal): the mode with
@@ -1769,9 +1767,12 @@ void GridPage::io_loop() {
     encoders[1] = &gridio_param2;
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
+    // FADE: off, then on; past ON the knob sets the length (SLIDE keeps it).
     encoders[1] = &gridload_fade;
-    mcl_cfg.load_fade = gridload_fade.cur;
-    mcl_cfg.load_fade_len = gridload_fade.length;
+    mcl_cfg.load_fade = gridload_fade.cur != 0;
+    if (gridload_fade.cur != 0) {
+      mcl_cfg.load_fade_len = gridload_fade.cur - 1;
+    }
   }
   mcl_cfg.chain_load_quant = gridio_param4.cur;
 }
@@ -1880,24 +1881,16 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
-        // FADE in the other modes: "FADE -" when off; "FADE IN",
-        // "FADE OUT" or "OUTIN" when it follows QUANT; else the same word
-        // and the length in steps.
-        int8_t fade = mcl_cfg.load_fade;
+        // FADE in the other modes: "FADE -" when off, "FADE ON" when it
+        // follows QUANT, else "FADE" and the length in steps.
         uint8_t len = mcl_cfg.load_fade_len;
-        if (fade == 0) {
+        if (!mcl_cfg.load_fade) {
           panel_row(24, mclstr_fade, 0);
         } else {
-          const char *word = fade == LOAD_FADE_OUTIN ? mclstr_fade_outin
-                             : fade > 0              ? mclstr_fade_in
-                                                     : mclstr_fade_out;
-          if (len == 0 && fade != LOAD_FADE_OUTIN) {
-            text_at_P(0, 24, mclstr_fade);
-            text_at_P(fade > 0 ? 29 : 25, 24, word);
+          text_at_P(0, 24, mclstr_fade);
+          if (len == 0) {
+            text_at_P(29, 24, mclstr_on);
           } else {
-            text_at_P(0, 24, word);
-          }
-          if (len != 0) {
             uint8_t n = len - 1;
             // 2^n steps: one digit up to 8, two to 64, three to 512, then
             // 1024.
@@ -1992,11 +1985,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_BANKD:
         // The Machinedrum's SLIDE key arrives as bank D: outside Queue it
-        // steps FADE through off, IN, OUT, OUTIN and back to off.
+        // turns FADE on (with its last length) or off.
         if (load && !GridIOPage::show_offset &&
             mcl_cfg.load_mode != LOAD_QUEUE) {
-          static const int8_t next[] = {LOAD_FADE_OUTIN, 1, -1, 0};
-          gridload_fade.cur = next[gridload_fade.cur + 1];
+          gridload_fade.cur =
+              gridload_fade.cur != 0 ? 0 : mcl_cfg.load_fade_len + 1;
         }
         return true;
       case MDX_KEY_FUNC:
