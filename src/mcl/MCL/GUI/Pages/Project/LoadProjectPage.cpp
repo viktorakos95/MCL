@@ -8,6 +8,10 @@
 #include "KeyInterface.h"
 #include "GUI/MCLMenus.h"
 
+// The name of the last project loaded or tried, so the page reopens on it
+// (a failed load goes back to the current project and the Grid page).
+static char last_project[PRJ_NAME_LEN + 1];
+
 void LoadProjectPage::init() {
 
   DEBUG_PRINTLN(F("load project page init"));
@@ -71,6 +75,7 @@ void LoadProjectPage::on_select(const char *entry) {
     gfx.alert_error("BAD PATH");
     return;
   }
+  strncpy(last_project, entry, PRJ_NAME_LEN);
   uint8_t count = 2;
   while (count--) {
     if (proj.load_project(proj_filename)) {
@@ -497,6 +502,10 @@ bool LoadProjectPage::build_project_path(const char *entry, char *out,
 }
 
 void LoadProjectPage::focus_current_project() {
+  if (last_project[0] != '\0') {
+    strcpy(focus_match, last_project);
+    return;
+  }
   focus_match[0] = '\0';
 
   const char *parent = nullptr;
