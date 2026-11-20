@@ -1823,9 +1823,11 @@ void GridPage::io_action(bool groups) {
 
 void GridPage::io_group_select() {
 #ifndef PLATFORM_TBD
-  if (!GridIOPage::show_track_type) {
-    // The popup draws the device icons; they fit beside the grid's resources
-    // (TBD's Grid page loads them already).
+  // The popup draws the device icons; they fit beside the grid's resources
+  // (TBD's Grid page loads them already). Load stays armed across loads, so
+  // load them only once: each copy took another 1,631 bytes, and the third
+  // ran past the end of the resource buffer.
+  if (!R.Holds(R.icons_logo)) {
     RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
     R.use_icons_logo();
   }

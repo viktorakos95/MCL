@@ -58,6 +58,12 @@ public:
 	void restore_menu_layout_deps();
 	void restore_page_entry_deps();
 	size_t Size();
+	// Whether p lies in a resource loaded since the last Clear(), so a page
+	// can load an extra resource once rather than on every use.
+	bool Holds(const void *p) const {
+	  return (const uint8_t *)p >= m_buffer &&
+	         (const uint8_t *)p < m_buffer + m_bufsize;
+	}
 
 #include "ResMan.h"
 };
