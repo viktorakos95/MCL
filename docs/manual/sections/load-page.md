@@ -30,7 +30,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | Control | Assignment |
 | --- | --- |
 | **[Global]**, **`Shift | Menu`** | Hold to open the Load settings. |
-| Encoder 1, Encoder 2 | Used in the Load settings only. |
+| Encoders | As on the Grid Page, until the Load settings are open. |
 | **[Trig]** keys | Select slots to load. |
 | **[Up/Down]** | Move to another row. |
 | **[Left/Right]** | Scroll the columns shown. |
@@ -44,7 +44,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 ## Load Settings
 
-Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to open the Load settings. While it is held, the left column becomes a menu and one line is highlighted.
+Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to open the Load settings. While it is held, the lines under `LOAD` become a menu and one line is highlighted. The menu shows three lines and scrolls.
 
 | Line | Values |
 | --- | --- |
@@ -57,7 +57,7 @@ Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to open 
 - Encoder 2 or **[Up/Down]** choose a line.
 - Encoder 1 or **[Left/Right]** change it.
 
-The encoders do nothing on Load while the settings are closed. The left column then shows the current settings.
+While the settings are closed, the left column shows the current settings and the encoders work as on the Grid Page.
 
 ## Fade
 
