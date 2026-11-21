@@ -1739,11 +1739,12 @@ static const char *fade_word() {
 
 // The edit is held with the Machinedrum's [Global] (io_handleEvent).
 static bool io_global;
-// When Load|Yes went down, and whether a row was changed since: released
-// within TRIG_HOLD_TIME with nothing changed, it was a tap, which closes
-// Load.
+// Load|Yes is down and the edit has not started yet: it starts once the
+// button has been held this long (io_loop). Released sooner, it was a tap,
+// which closes Load.
+constexpr uint16_t IO_EDIT_HOLD_MS = 800;
 static uint16_t io_tap_clock;
-static bool io_edited;
+static bool io_pending;
 
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
 // row and knob 2 picks it, or the knobs go back to the Grid page.
@@ -1763,7 +1764,6 @@ static void io_rows_edit(Encoder **encoders, bool on) {
 // One step of the chosen row. pressed: knob 1 is pressed while turned.
 static void io_setting_step(int8_t dir, bool pressed) {
   const uint8_t row = io_menu_line.cur;
-  io_edited = true;
   if (row != IO_ROW_LEN_FADE || mcl_cfg.load_mode == LOAD_QUEUE) {
     // QUANT, Queue's LEN or the mode: one click of the knob object that
     // holds it (io_loop stores the result). Pressed, QUANT and LEN move by
@@ -1842,6 +1842,7 @@ void GridPage::io_begin(uint8_t mode) {
 void GridPage::io_end(bool reinit) {
   io_mode = GRID_IO_OFF;
   io_editing = false;
+  io_pending = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::offset = 255;
@@ -1857,6 +1858,14 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
+  if (io_pending &&
+      clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS) {
+    // Load|Yes has been held long enough: the rows can be edited.
+    io_pending = false;
+    if (!GridIOPage::show_offset) {
+      io_rows_edit(encoders, true);
+    }
+  }
   if (io_editing) {
     const int8_t dir = io_menu_value.cur - 1;
     io_menu_value.cur = 1;
@@ -2217,20 +2226,22 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       }
     }
     // Load|Yes on Load: a tap closes; held, the panel's rows can be edited,
-    // as with [Global]. With Save|No held it is the config chord, which the
-    // Grid page takes once Load is disarmed.
+    // as at once with [Global]. With Save|No held it is the config chord,
+    // which the Grid page takes once Load is disarmed.
     if (global || (load && event->source == Buttons.BUTTON4)) {
       if (pressed && !global && BUTTON_DOWN(Buttons.BUTTON1)) {
         io_end();
         return false;
       }
       if (!global) {
-        // A tap of Load|Yes closes Load, as it always did; held, it edits.
+        // A tap of Load|Yes closes Load, as it always did. Held, the edit
+        // starts after IO_EDIT_HOLD_MS (io_loop), so a tap shows nothing.
         if (pressed) {
           io_tap_clock = read_clock_ms();
-          io_edited = false;
-        } else if (!io_edited &&
-                   clock_diff(io_tap_clock, read_clock_ms()) < TRIG_HOLD_TIME) {
+          io_pending = true;
+          return true;
+        }
+        if (io_pending) {
           io_end();
           return true;
         }
