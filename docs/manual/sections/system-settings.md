@@ -15,6 +15,7 @@ CONFIG > SYSTEM
 | `DISPLAY` | `INT`, `INT+EXT` | Enables the internal display only, or internal plus external display mirroring. |
 | `PROJ CFG` | `OFF`, `ON` | Chooses whether supported configuration stored in the project is applied when that project loads. |
 | `GRID ENCOD` | `--`, `PERF` | Reassigns the Grid Page encoders to performance-controller behavior when enabled. |
+| `LOAD/SAVE` | `CLOSE`, `STAY` | On MegaCommand, MegaCMD and TBD: `CLOSE` closes Load and Save after a load or save; `STAY` keeps them open for the next one. |
 
 ## Display
 

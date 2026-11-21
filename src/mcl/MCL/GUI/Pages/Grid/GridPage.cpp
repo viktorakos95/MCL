@@ -1798,6 +1798,21 @@ static void io_setting_step(int8_t dir, bool pressed) {
   gridload_fade.cur = (mcl_cfg.load_fade & 1) ? len + 1 : 0;
 }
 
+// Save reads the Machinedrum's current pattern before saving.
+static void io_read_md_pattern() {
+#ifdef PLATFORM_TBD
+  // A TBD may run without an MD: ask only one that is connected and
+  // assigned to the grid, as TBD's Save page did.
+  if (MD.connected && (device_manager.primary_device() == &MD ||
+                       device_manager.secondary_device() == &MD))
+#endif
+    MD.getCurrentPattern(CALLBACK_TIMEOUT);
+}
+
+// Save has saved since it was armed (SYSTEM > LOAD/SAVE: STAY): read the
+// pattern again before the next save, as the MD may have moved on.
+static bool io_saved;
+
 void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
   io_editing = false;
@@ -1829,13 +1844,8 @@ void GridPage::io_begin(uint8_t mode) {
     gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
-#ifdef PLATFORM_TBD
-    // A TBD may run without an MD: ask only one that is connected and
-    // assigned to the grid, as TBD's Save page did.
-    if (MD.connected && (device_manager.primary_device() == &MD ||
-                         device_manager.secondary_device() == &MD))
-#endif
-      MD.getCurrentPattern(CALLBACK_TIMEOUT);
+    io_saved = false;
+    io_read_md_pattern();
     reload_slot_models = false;
     MD.popup_text_P(mclstr_save_slots, true);
   }
@@ -1905,8 +1915,11 @@ void GridPage::io_loop() {
 void GridPage::io_action(bool groups) {
   uint8_t track_select_array[NUM_SLOTS];
   const bool load = io_mode == GRID_IO_LOAD;
+  // SYSTEM > LOAD/SAVE: STAY keeps Load and Save armed for the next one;
+  // CLOSE closes them, as MCL always did.
+  const bool stay = mcl_cfg.io_stay;
   if (groups) {
-    if (!load) {
+    if (!stay) {
       key_interface.off();
     }
     GridIOPage::track_select_array_from_type_select(track_select_array);
@@ -1919,22 +1932,34 @@ void GridPage::io_action(bool groups) {
     }
     grid_task.load_queue.put(mcl_cfg.load_mode, getRow(), track_select_array,
                              GridIOPage::offset);
-    // Load stays armed for the next load (the arrows move the grid): the
-    // selection, DEST and the group popup clear, the mode popup returns.
-    GridIOPage::show_track_type = false;
-    GridIOPage::show_offset = false;
-    GridIOPage::track_select = 0;
-    GridIOPage::offset = 255;
-    note_interface.init_notes();
-    GridIOPage::paint_track_select_leds();
-    GridLoadPage::md_popup_title(mcl_cfg.load_mode);
-    return;
   } else {
+    if (io_saved) {
+      io_read_md_pattern();
+    }
     oled_display.textbox_P(mclstr_save, groups ? mclstr_groups : mclstr_tracks);
     oled_display.display();
     mcl_actions.save_tracks(getRow(), track_select_array, SAVE_SEQ);
+    io_saved = true;
   }
-  io_end();
+  if (!stay) {
+    io_end();
+    return;
+  }
+  // Armed for the next one (the arrows move the grid): the selection, DEST
+  // and the group popup clear, and the Machinedrum's popup returns. After a
+  // save the grid reloads the slot labels.
+  GridIOPage::show_track_type = false;
+  GridIOPage::show_offset = false;
+  GridIOPage::track_select = 0;
+  GridIOPage::offset = 255;
+  note_interface.init_notes();
+  GridIOPage::paint_track_select_leds();
+  if (load) {
+    GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+  } else {
+    reload_slot_models = false;
+    MD.popup_text_P(mclstr_save_slots, true);
+  }
 }
 
 void GridPage::io_group_select() {
@@ -2178,9 +2203,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1, false);
           return true;
         }
-        // On Load the trigs pick the columns, so LEFT/RIGHT scroll the
-        // columns shown by one straight away and Load stays armed.
-        if (load) {
+        // On Load, and on Save when it stays armed (SYSTEM > LOAD/SAVE:
+        // STAY), the trigs pick the columns, so LEFT/RIGHT scroll the
+        // columns shown by one straight away and the panel stays armed.
+        if (load || mcl_cfg.io_stay) {
           int8_t base = param1.cur - cur_col + (key == MDX_KEY_RIGHT ? 1 : -1);
           if (base >= 0 && base <= (int8_t)getWidth() - MAX_VISIBLE_COLS) {
             io_set_view(base);
@@ -2198,9 +2224,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
               IO_ROW_LEN_FADE);
           return true;
         }
-        // On Load UP/DOWN move the armed row and Load stays armed. On Save
-        // the arrows disarm, as below.
-        if (load) {
+        // On Load, and on Save when it stays armed, UP/DOWN move the armed
+        // row and the panel stays armed. Otherwise Save's arrows disarm, as
+        // below.
+        if (load || mcl_cfg.io_stay) {
           return false;
         }
         io_end();

@@ -115,6 +115,11 @@ public:
   // so a file written before FADE existed reads as off. Older MCL reads and
   // writes only the persisted block and leaves these bytes alone.
   uint8_t load_fade_check[2];
+  // SYSTEM > LOAD/SAVE: 1 (STAY) keeps the Grid page's Load and Save armed
+  // after a load or save, 0 (CLOSE) closes them. It follows the fade bytes,
+  // then its complement, so a file written before it existed reads CLOSE.
+  uint8_t io_stay;
+  uint8_t io_stay_check;
   uint16_t cfg_save_lastclock;
   File cfgfile;
   bool write_cfg();

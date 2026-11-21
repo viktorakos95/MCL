@@ -10,7 +10,7 @@ Open it from the Grid Page with:
 
 ![save to a](../assets/images/save_to_a.png)
 
-On MegaCommand, MegaCMD and TBD, Save keeps the Grid Page visible.
+On MegaCommand, MegaCMD and TBD, Save keeps the Grid Page visible. Save closes after a save. With `CONFIG > SYSTEM > LOAD/SAVE` set to `STAY`, it stays open after a save, ready for the next one; **[Up/Down]** then move to another row and **[Left/Right]** scroll the columns shown, as on Load.
 
 ## Stored Data
 
