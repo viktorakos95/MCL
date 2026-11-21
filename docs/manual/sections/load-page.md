@@ -12,6 +12,8 @@ Open it from the Grid Page with:
 
 On MegaCommand, MegaCMD and TBD, Load keeps the Grid Page visible: the left column shows the Load settings and the grid shows the selected slots.
 
+Load stays open after a load, ready for the next one. Close it with **[No/Exit]**.
+
 ## Load Behavior
 
 Loading a slot can restore:
@@ -28,15 +30,57 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | Control | Assignment |
 | --- | --- |
 | Encoder 1 | Load quantization (`QUANT`). |
-| Encoder 2 | Queue length (`LEN`). Active only in Queue mode. |
+| Encoder 2 | In Queue mode, queue length (`LEN`). In Manual and Auto mode, `FADE`: off, on, then a fade length. |
 | Encoder 3 | Load mode: `MAN`, `AUT`, `QUE`. |
 | Encoder 4 | Load mode. |
 | **[Trig]** keys | Select slots to load. |
+| **[Up/Down]** | Move to another row. |
+| **[Left/Right]** | Scroll the columns shown. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
 | **[Function]** | In Manual mode, select a destination offset. |
-| **[Yes/Enter]** | Hold to open group selection; release to load selected groups. |
-| **[No/Exit]** | Cancel Load. |
+| **[Yes/Enter]**, **`Load | Yes`** | Hold to open group selection; release to load selected groups. |
+| **[No/Exit]**, **`Save | No`** | Close Load. |
 | **[Bank A/B/C]** | Shortcut to Manual, Auto or Queue mode. |
+| **[Bank D]** (the Slide key) | Turn `FADE` on or off. |
+| **[Global]**, **`Shift | Menu`** | Hold to show the Load settings. |
+| **[Play]**, **[Stop]** | Start and stop the sequencer. Load stays open. |
+
+## Load Settings
+
+Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to edit the Load settings. While it is held, the left column lists the settings and one line is highlighted.
+
+| Line | Values |
+| --- | --- |
+| `QUANT` | Load quantization. |
+| `FADE` | `-` off, `ON`, `IN` or `OUT`. See Fade below. |
+| `F.LEN` | Fade length: `-` uses the `QUANT` length, or 1 to 1024 steps. |
+
+In Queue mode the lines are `QUANT` and `LEN`.
+
+- **[Up/Down]** choose a line.
+- **[Left/Right]** change it.
+- The encoders work as usual.
+
+## Fade
+
+`FADE` fades the level of Machinedrum tracks when their slots load. It applies in Manual and Auto mode. Queue loads do not fade.
+
+Turn it on with **[Bank D]** (the Slide key), Encoder 2 or the Load settings. The left column shows `FADE -` when it is off and `FADE ON` when it is on.
+
+With `FADE ON`, each track fades by what it was playing:
+
+| The track was | You load | Result |
+| --- | --- | --- |
+| Playing | A different slot | The playing slot fades out, the new slot switches in, then fades in. |
+| Playing | The slot it is playing | The track fades out and stays silent. |
+| Silent after a fade out, or not loaded yet | Any slot | The slot switches in and fades in. |
+
+- The fade lasts the `QUANT` length, unless `F.LEN` is set. With `QUANT` at `-`, it lasts the slot's own length.
+- When the playing slot fades out first, the new slot switches in one fade length after the load point.
+- `FADE IN` and `FADE OUT`, set in the Load settings, make every loaded track fade in or fade out.
+- A load made while the sequencer is stopped fades when **[Play]** is pressed. A track that will fade in is silent until then.
+- A track that a fade left silent gets its level back the next time a slot is loaded on it.
+- A fade does not change the track's saved `LEV`.
 
 ## Loading Individual Slots
 
@@ -124,3 +168,5 @@ After the row selection is applied, MCL restores the load mode that was active b
 For Machinedrum tracks, MCL does not continuously transmit track `LEV` while the sequencer is running. This lets the performer use the Machinedrum level control for live fades during and after slot loads.
 
 Use `CONFIG > MACHINEDRUM > NORMALIZE` to keep saved track loudness predictable when loading between slots.
+
+`FADE` can fade the track levels for you when slots load. See Fade above.
