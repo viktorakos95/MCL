@@ -34,6 +34,7 @@ MCLSTR_DEFINE(quant, "QUANT");
 MCLSTR_DEFINE(fade, "FADE");
 MCLSTR_DEFINE(fade_in, "IN");
 MCLSTR_DEFINE(fade_out, "OUT");
+MCLSTR_DEFINE(fade_len, "F.LEN");
 MCLSTR_DEFINE(arp, "ARP");
 MCLSTR_DEFINE(rate, "RATE");
 MCLSTR_DEFINE(range, "RANGE");

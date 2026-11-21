@@ -1694,8 +1694,61 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
   print_right(value, 37, y);
 }
 
+// A fade length of 2^n steps, right-aligned like the panel's other values:
+// one digit up to 8, two to 64, three to 512, then 1024.
+static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
+static void print_fade_steps(uint8_t n, uint8_t y) {
+  uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
+  oled_display.setCursor(37 - 4 * digits, y);
+  oled_display.print(1u << n);
+}
+
+// The Load panel's settings layer: while Shift|Menu is held (the
+// Machinedrum's [Global] arrives as the same button), lines 2-4 list the
+// settings, UP/DOWN pick a line and LEFT/RIGHT change it.
+static bool io_shift;
+// The line the arrows edit: 0 QUANT, 1 LEN (Queue) or FADE, 2 fade length.
+static uint8_t io_setting;
+
+static uint8_t io_setting_line() NOINLINE();
+static uint8_t io_setting_line() {
+  const uint8_t last = mcl_cfg.load_mode == LOAD_QUEUE ? 1 : 2;
+  return io_setting < last ? io_setting : last;
+}
+
+// LEFT/RIGHT on the settings layer: one step of the chosen line.
+static void io_setting_step(int8_t dir) {
+  const uint8_t line = io_setting_line();
+  if (line == 0 || mcl_cfg.load_mode == LOAD_QUEUE) {
+    // QUANT, or Queue's LEN: one click of its knob (io_loop stores it).
+    Encoder *knob = &gridio_param4;
+    if (line != 0) {
+      knob = &gridio_param2;
+    }
+    encoder_t click = {};
+    click.normal = dir * (knob->rot_res * ENCODER_RES_MULTIPLIER + 1);
+    knob->update(&click);
+    return;
+  }
+  uint8_t len = mcl_cfg.load_fade_len;
+  if (line == 1) {
+    // FADE: off, ON (each column's own direction), IN, OUT.
+    uint8_t fade = mcl_cfg.load_fade;
+    uint8_t state = (fade & 1) ? 1 + (fade >> 1) : 0;
+    state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
+    mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
+  } else {
+    // Fade length: QUANT's ("-"), then 1 .. 1024 steps.
+    len = limit_value(len, dir, 0, LOAD_FADE_MAX);
+    mcl_cfg.load_fade_len = len;
+  }
+  // Knob 2 holds on/off and the length together; io_loop reads it back.
+  gridload_fade.cur = (mcl_cfg.load_fade & 1) ? len + 1 : 0;
+}
+
 void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
+  io_shift = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::track_select = 0;
@@ -1875,6 +1928,8 @@ uint16_t GridPage::io_visible_mask() {
 
 void GridPage::io_display_panel() {
   const bool load = io_mode == GRID_IO_LOAD;
+  // The settings layer's fade length has line 4, not the mode and the row.
+  bool settings_len = false;
 
   // Line 1: the action in the 5x7 font, in an inverted chip.
   oled_display.fillRect(0, 0, 25, 9, WHITE);
@@ -1907,7 +1962,9 @@ void GridPage::io_display_panel() {
       } else {
         // FADE in the other modes: "FADE -" when off. With the QUANT length
         // "FADE ON" (direction by column), "FADE IN" or "FADE OUT" (forced);
-        // with a set length "FADE", "IN" or "OUT" and the steps.
+        // with a set length "FADE", "IN" or "OUT" and the steps. The
+        // settings layer splits it: the word on line 3, the length ("-" for
+        // QUANT's) on line 4 in the mode and row's place.
         uint8_t len = mcl_cfg.load_fade_len;
         const uint8_t force = mcl_cfg.load_fade >> 1;
         const char *word = force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
@@ -1915,23 +1972,31 @@ void GridPage::io_display_panel() {
                                                           : mclstr_on;
         if (!(mcl_cfg.load_fade & 1)) {
           panel_row(24, mclstr_fade, 0);
+        } else if (len == 0 || io_shift) {
+          text_at_P(0, 24, mclstr_fade);
+          text_at_P(37 - 4 * strlen_P(word), 24, word);
         } else {
+          text_at_P(0, 24, force ? word : mclstr_fade);
+          print_fade_steps(len - 1, 24);
+        }
+        if (io_shift) {
+          settings_len = true;
           if (len == 0) {
-            text_at_P(0, 24, mclstr_fade);
-            text_at_P(37 - 4 * strlen_P(word), 24, word);
+            panel_row(32, mclstr_fade_len, 0);
           } else {
-            text_at_P(0, 24, force ? word : mclstr_fade);
-            uint8_t n = len - 1;
-            // 2^n steps: one digit up to 8, two to 64, three to 512, then
-            // 1024.
-            uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
-            oled_display.setCursor(37 - 4 * digits, 24);
-            oled_display.print(1u << n);
+            text_at_P(0, 32, mclstr_fade_len);
+            print_fade_steps(len - 1, 32);
           }
         }
       }
-      GridLoadPage::get_modestr(str);
-      text_at(0, 32, str);
+      if (io_shift) {
+        // The line the arrows edit, inverted.
+        oled_display.fillRect(0, 10 + 8 * io_setting_line(), 38, 7, INVERT);
+      }
+      if (!settings_len) {
+        GridLoadPage::get_modestr(str);
+        text_at(0, 32, str);
+      }
     }
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
@@ -1954,13 +2019,11 @@ void GridPage::io_display_panel() {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
-  oled_display.setCursor(26, 32);
-  draw_bank_row_label(param2.cur, val);
+  if (!settings_len) {
+    oled_display.setCursor(26, 32);
+    draw_bank_row_label(param2.cur, val);
+  }
 }
-
-// SCALE was held for SCALE+UP/DOWN on Load, so its release does not switch
-// grids.
-static bool scale_chord;
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
   const bool load = io_mode == GRID_IO_LOAD;
@@ -2015,14 +2078,17 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_end();
         return true;
       case MDX_KEY_SCALE:
-        // On Load SCALE switches grids when released, unless it was held
-        // for SCALE+UP/DOWN (below).
-        if (load) {
-          scale_chord = false;
-          return true;
-        }
         io_toggle_grid();
         return true;
+      case MDX_KEY_STOP:
+      case MDX_KEY_PLAY:
+        // The transport keys do their job and Load stays armed: a fade
+        // loaded while stopped starts on PLAY. Save disarms, as below.
+        if (load) {
+          return false;
+        }
+        io_end();
+        return false;
       case MDX_KEY_BANKD:
         // The Machinedrum's SLIDE key arrives as bank D: outside Queue it
         // turns FADE on (with its last length) or off.
@@ -2052,6 +2118,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_LEFT:
       case MDX_KEY_RIGHT:
+        // Settings layer: LEFT/RIGHT change the chosen line.
+        if (load && io_shift) {
+          io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1);
+          return true;
+        }
         // On Load the trigs pick the columns, so LEFT/RIGHT scroll the
         // columns shown by one straight away and Load stays armed.
         if (load) {
@@ -2065,19 +2136,14 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
-        // On Load UP/DOWN move the armed row and Load stays armed. With
-        // SCALE held they force FADE IN (UP) or OUT (DOWN), turning it on;
-        // the same again goes back to each column's own direction. On Save
-        // the arrows disarm, as below.
-        if (load && key_interface.is_key_down(MDX_KEY_SCALE)) {
-          const uint8_t force =
-              key == MDX_KEY_UP ? LOAD_FADE_FORCE_IN : LOAD_FADE_FORCE_OUT;
-          scale_chord = true;
-          mcl_cfg.load_fade =
-              ((mcl_cfg.load_fade >> 1) == force ? 0 : force << 1) | 1;
-          gridload_fade.cur = mcl_cfg.load_fade_len + 1;
+        // Settings layer: UP/DOWN pick the line.
+        if (load && io_shift) {
+          io_setting = limit_value(io_setting_line(),
+                                   key == MDX_KEY_DOWN ? 1 : -1, 0, 2);
           return true;
         }
+        // On Load UP/DOWN move the armed row and Load stays armed. On Save
+        // the arrows disarm, as below.
         if (load) {
           return false;
         }
@@ -2095,13 +2161,6 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       }
       return true;
     }
-    if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_SCALE &&
-        load) {
-      if (!scale_chord) {
-        io_toggle_grid();
-      }
-      return true;
-    }
     return false;
   }
 
@@ -2110,16 +2169,32 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       io_toggle_grid();
       return true;
     }
-    if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
+    // Shift|Menu, and the Machinedrum's [Global]: held, the Load panel
+    // lists its settings. It does nothing on Save or while DEST is open.
+    if (event->source == Buttons.BUTTON3) {
+      io_shift = load && (event->mask & EVENT_BUTTON_PRESSED) &&
+                 !GridIOPage::show_offset;
+      return true;
+    }
+    // Load|Yes is the Machinedrum's YES: hold for the groups, release to
+    // load or save the row. With Save|No held it is the config chord, which
+    // the Grid page takes once Load/Save is disarmed.
+    if (EVENT_PRESSED(event, Buttons.BUTTON4)) {
+      if (BUTTON_DOWN(Buttons.BUTTON1)) {
+        io_end();
+        return false;
+      }
       io_group_select();
       return true;
     }
-    if (EVENT_RELEASED(event, Buttons.BUTTON3)) {
-      io_action(true);
+    if (EVENT_RELEASED(event, Buttons.BUTTON4)) {
+      if (GridIOPage::show_track_type) {
+        io_action(true);
+      }
       return true;
     }
-    if (EVENT_RELEASED(event, Buttons.BUTTON1) ||
-        EVENT_RELEASED(event, Buttons.BUTTON4)) {
+    // Save|No is NO: close.
+    if (EVENT_RELEASED(event, Buttons.BUTTON1)) {
       io_end();
       return true;
     }
