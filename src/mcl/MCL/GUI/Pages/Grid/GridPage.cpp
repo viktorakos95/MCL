@@ -1702,9 +1702,10 @@ static void print_right(uint8_t value, uint8_t right, uint8_t y) {
   text_at(right - 4 * strlen(str), y, str);
 }
 
-// "LEN 8", "QUANT 16", "DEST 5": label on the left, value at the right edge.
+// "LEN 8", "QUANT 16": label on the left, value at the right edge. The label
+// starts at x 1 so the edit box (x 0 to 36) shows 1 px each side, as in menus.
 static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
-  text_at_P(0, y, label_P);
+  text_at_P(1, y, label_P);
   print_right(value, 37, y);
 }
 
@@ -2027,20 +2028,20 @@ void GridPage::io_display_panel() {
         if (!(mcl_cfg.load_fade & 1)) {
           panel_row(24, mclstr_fade, 0);
         } else if (len == 0) {
-          text_at_P(0, 24, mclstr_fade);
+          text_at_P(1, 24, mclstr_fade);
           text_at_P(37 - 4 * strlen_P(word), 24, word);
         } else {
-          text_at_P(0, 24, (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
+          text_at_P(1, 24, (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
           print_fade_steps(len - 1, 24);
         }
       }
       GridLoadPage::get_modestr(str);
-      text_at(0, 32, str);
+      text_at(1, 32, str);
       if (io_editing) {
         // Editing: the row the knobs edit is inverted (on line 4, the mode
-        // alone).
+        // alone), with 1 px of the box each side of the text, as in menus.
         const uint8_t row = io_menu_line.cur;
-        oled_display.fillRect(0, 10 + 8 * row, row == IO_ROW_MODE ? 13 : 38,
+        oled_display.fillRect(0, 10 + 8 * row, row == IO_ROW_MODE ? 13 : 37,
                               7, INVERT);
       }
     }
