@@ -936,10 +936,12 @@ void GridPage::display_grid() {
 #if MCL_GRID_IO_PANEL
   if (io_mode) {
     // Load/Save armed: an arrow left of the armed row in place of the
-    // separator, and < / > at the grid's edges for selected slots in the
-    // hidden columns.
+    // separator (not while Load's rows are edited), and < / > at the grid's
+    // edges for selected slots in the hidden columns.
     uint8_t ty = y_offset + cur_row * 8;
-    oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
+    if (!io_editing) {
+      oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
+    }
     if (io_mask & (first_bit - 1)) {
       text_at_P(41, ty, PSTR("<"));
     }
@@ -2104,8 +2106,11 @@ void GridPage::io_display_panel() {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
-  oled_display.setCursor(26, 32);
-  draw_bank_row_label(param2.cur, val);
+  // Not while Load's rows are edited.
+  if (!io_editing) {
+    oled_display.setCursor(26, 32);
+    draw_bank_row_label(param2.cur, val);
+  }
 }
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
