@@ -29,8 +29,8 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 | Control | Assignment |
 | --- | --- |
-| **[Global]**, **`Shift | Menu`** | Hold to open the Load settings. |
-| Encoders | As on the Grid Page, until the Load settings are open. |
+| **[Global]**, **`Shift | Menu`** | Hold to edit the Load settings. |
+| Encoders | As on the Grid Page. With **[Global]** or **`Shift | Menu`** held, they edit the Load settings. |
 | **[Trig]** keys | Select slots to load. |
 | **[Up/Down]** | Move to another row. |
 | **[Left/Right]** | Scroll the columns shown. |
@@ -44,20 +44,13 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 ## Load Settings
 
-Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to open the Load settings. While it is held, the lines under `LOAD` become a menu and one line is highlighted. The menu shows three lines and scrolls.
+Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to edit the Load settings. While it is held, one of the rows under `LOAD` is highlighted: `QUANT`, `LEN` or `FADE`, or the load mode.
 
-| Line | Values |
-| --- | --- |
-| `MODE` | Load mode: `MAN`, `AUT`, `QUE`. |
-| `QUANT` | Load quantization. |
-| `LEN` | Queue length. Queue mode only. |
-| `FADE` | `-` off, `ON`, `IN` or `OUT`. Manual and Auto mode. See Fade below. |
-| `F.LEN` | Fade length: `-` uses the `QUANT` length, or 1 to 1024 steps. Manual and Auto mode. |
-
-- Encoder 2 or **[Up/Down]** choose a line.
+- Encoder 2 or **[Up/Down]** choose a row.
 - Encoder 1 or **[Left/Right]** change it.
+- On `FADE`, turning steps through `-`, `ON`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
 
-While the settings are closed, the left column shows the current settings and the encoders work as on the Grid Page.
+While it is released, the encoders work as on the Grid Page.
 
 ## Fade
 
@@ -73,7 +66,7 @@ With `FADE ON`, each track fades by what it was playing:
 | Playing | The slot it is playing | The track fades out and stays silent. |
 | Silent after a fade out, or not loaded yet | Any slot | The slot switches in and fades in. |
 
-- The fade lasts the `QUANT` length, unless `F.LEN` is set. With `QUANT` at `-`, it lasts the slot's own length.
+- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps, shown in place of `ON`. With `QUANT` at `-`, it lasts the slot's own length.
 - When the playing slot fades out first, the new slot switches in one fade length after the load point.
 - `FADE IN` and `FADE OUT`, set in the Load settings, make every loaded track fade in or fade out.
 - A load made while the sequencer is stopped fades when **[Play]** is pressed. A track that will fade in is silent until then.
@@ -118,7 +111,7 @@ Each slot/column has its own chain state. This allows one track to follow an aut
 
 ## Queue Length Override
 
-In Queue mode, `LEN` in the Load settings sets a length override.
+In Queue mode, the `LEN` row sets a length override.
 
 | Value | Behavior |
 | --- | --- |
