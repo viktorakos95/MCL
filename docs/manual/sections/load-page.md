@@ -57,9 +57,9 @@ Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to edit 
 
 In Queue mode the lines are `QUANT` and `LEN`.
 
-- **[Up/Down]** choose a line.
-- **[Left/Right]** change it.
-- The encoders work as usual.
+- Encoder 2 or **[Up/Down]** choose a line.
+- Encoder 1 or **[Left/Right]** change it.
+- Encoders 3 and 4 still set the load mode.
 
 ## Fade
 

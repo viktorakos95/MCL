@@ -1705,15 +1705,20 @@ static void print_fade_steps(uint8_t n, uint8_t y) {
 
 // The Load panel's settings layer: while Shift|Menu is held (the
 // Machinedrum's [Global] arrives as the same button), lines 2-4 list the
-// settings, UP/DOWN pick a line and LEFT/RIGHT change it.
+// settings and the knobs work them like a menu: knob 2 or UP/DOWN pick a
+// line, knob 1 or LEFT/RIGHT change it.
 static bool io_shift;
-// The line the arrows edit: 0 QUANT, 1 LEN (Queue) or FADE, 2 fade length.
-static uint8_t io_setting;
+// Knob 2 in the layer; its value is the line: 0 QUANT, 1 LEN (Queue) or
+// FADE, 2 fade length.
+static MCLEncoder io_menu_line(2, 0, ENCODER_RES_PAT);
+// Knob 1 in the layer: rests at 1, and io_loop takes each click off it.
+static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
 static uint8_t io_setting_line() NOINLINE();
 static uint8_t io_setting_line() {
   const uint8_t last = mcl_cfg.load_mode == LOAD_QUEUE ? 1 : 2;
-  return io_setting < last ? io_setting : last;
+  const uint8_t line = io_menu_line.cur;
+  return line < last ? line : last;
 }
 
 // LEFT/RIGHT on the settings layer: one step of the chosen line.
@@ -1810,6 +1815,20 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
+  if (io_shift) {
+    // Settings layer: the menu's knobs in place of QUANT and LEN/FADE.
+    encoders[0] = &io_menu_value;
+    encoders[1] = &io_menu_line;
+    // Queue has two lines, the other modes three.
+    io_menu_line.max = mcl_cfg.load_mode == LOAD_QUEUE ? 1 : 2;
+    const int8_t dir = io_menu_value.cur - 1;
+    io_menu_value.cur = 1;
+    if (dir != 0 && !GridIOPage::show_offset) {
+      io_setting_step(dir);
+    }
+  } else {
+    encoders[0] = &gridio_param4;
+  }
   if (GridIOPage::show_offset) {
     // Picking a destination: the knobs leave the settings alone.
     gridload_param1.cur = mcl_cfg.load_mode;
@@ -1826,11 +1845,15 @@ void GridPage::io_loop() {
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   }
   if (mcl_cfg.load_mode == LOAD_QUEUE) {
-    encoders[1] = &gridio_param2;
+    if (!io_shift) {
+      encoders[1] = &gridio_param2;
+    }
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
     // FADE: off, then on; past ON the knob sets the length (SLIDE keeps it).
-    encoders[1] = &gridload_fade;
+    if (!io_shift) {
+      encoders[1] = &gridload_fade;
+    }
     mcl_cfg.load_fade = (mcl_cfg.load_fade & ~1) | (gridload_fade.cur != 0);
     if (gridload_fade.cur != 0) {
       mcl_cfg.load_fade_len = gridload_fade.cur - 1;
@@ -2138,8 +2161,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       case MDX_KEY_DOWN:
         // Settings layer: UP/DOWN pick the line.
         if (load && io_shift) {
-          io_setting = limit_value(io_setting_line(),
-                                   key == MDX_KEY_DOWN ? 1 : -1, 0, 2);
+          io_menu_line.cur = limit_value(io_setting_line(),
+                                         key == MDX_KEY_DOWN ? 1 : -1, 0, 2);
           return true;
         }
         // On Load UP/DOWN move the armed row and Load stays armed. On Save
@@ -2174,6 +2197,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     if (event->source == Buttons.BUTTON3) {
       io_shift = load && (event->mask & EVENT_BUTTON_PRESSED) &&
                  !GridIOPage::show_offset;
+      io_menu_value.cur = 1;
       return true;
     }
     // Load|Yes is the Machinedrum's YES: hold for the groups, release to

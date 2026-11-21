@@ -24,7 +24,7 @@ While Load or Save is open:
 
 **`Load | Yes`**: Hold to open group selection; release to load or save the selected groups.
 **`Save | No`**: Closes Load or Save.
-**`Shift | Menu`**: On Load, hold to show the Load settings.
+**`Shift | Menu`**: On Load, hold to show the Load settings. Encoder 2 chooses a setting and Encoder 1 changes it.
 
 
 ## Encoder Buttons
