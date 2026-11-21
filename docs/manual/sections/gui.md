@@ -22,9 +22,9 @@ Combined Button Presses:
 
 While Load or Save is open:
 
-**`Load | Yes`**: Hold to open group selection; release to load or save the selected groups.
+**`Shift | Menu`**: Hold to open group selection; release to load or save the selected groups.
 **`Save | No`**: Closes Load or Save.
-**`Shift | Menu`**: On Load, hold to edit the Load settings. Encoder 2 chooses a row and Encoder 1 changes it.
+**`Load | Yes`**: On Load, hold to edit the Load settings. Encoder 2 chooses a row and Encoder 1 changes it. On Save, closes Save.
 
 
 ## Encoder Buttons

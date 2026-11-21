@@ -29,14 +29,14 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 | Control | Assignment |
 | --- | --- |
-| **[Global]**, **`Shift | Menu`** | Hold to edit the Load settings. |
-| Encoders | As on the Grid Page. With **[Global]** or **`Shift | Menu`** held, they edit the Load settings. |
+| **[Global]**, **`Load | Yes`** | Hold to edit the Load settings. |
+| Encoders | As on the Grid Page. With **[Global]** or **`Load | Yes`** held, they edit the Load settings. |
 | **[Trig]** keys | Select slots to load. |
 | **[Up/Down]** | Move to another row. |
 | **[Left/Right]** | Scroll the columns shown. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
 | **[Function]** | In Manual mode, select a destination offset. |
-| **[Yes/Enter]**, **`Load | Yes`** | Hold to open group selection; release to load selected groups. |
+| **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to load selected groups. |
 | **[No/Exit]**, **`Save | No`** | Close Load. |
 | **[Bank A/B/C]** | Shortcut to Manual, Auto or Queue mode. |
 | **[Bank D]** (the Slide key) | Turn `FADE` on or off. |
@@ -44,7 +44,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 ## Load Settings
 
-Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to edit the Load settings. While it is held, one of the rows under `LOAD` is highlighted: `QUANT`, `LEN` or `FADE`, or the load mode.
+Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit the Load settings. While it is held, one of the rows under `LOAD` is highlighted: `QUANT`, `LEN` or `FADE`, or the load mode.
 
 - Encoder 2 or **[Up/Down]** choose a row.
 - Encoder 1 or **[Left/Right]** change it.
@@ -83,7 +83,7 @@ The visible grid determines which grid the trig keys target. Use **[Scale]** to 
 
 ## Group Load
 
-Hold **[Yes/Enter]** from Load to open `LOAD GROUPS`.
+Hold **[Yes/Enter]**, or the **`Shift | Menu`** button, from Load to open `LOAD GROUPS`.
 
 ![group select page](../assets/images/group_select_page.png)
 

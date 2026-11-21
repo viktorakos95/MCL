@@ -262,9 +262,10 @@ void close_slot_menu_from_mouse(GridPage &page) {
 } // namespace
 
 #if MCL_GRID_IO_PANEL
-// Load is armed and Shift|Menu is held: the knobs work the Load settings
-// menu (io_handleEvent, io_loop). Otherwise they are the Grid page's own.
-static bool io_shift;
+// Load is armed and its rows are being edited (Load|Yes or the
+// Machinedrum's [Global] is held): the knobs edit them (io_handleEvent,
+// io_loop). Otherwise they are the Grid page's own.
+static bool io_editing;
 #endif
 
 // The Grid page's own knobs: the performance encoders when they are enabled,
@@ -461,7 +462,7 @@ void GridPage::loop() {
   } else {
     if (mcl_cfg.grid_page_mode == PERF_ENC
 #if MCL_GRID_IO_PANEL
-        && !io_shift
+        && !io_editing
 #endif
     ) {
       if (encoders[0]->hasChanged() || encoders[1]->hasChanged() || encoders[2]->hasChanged() || encoders[3]->hasChanged()) {
@@ -1716,18 +1717,16 @@ static void print_fade_steps(uint8_t n, uint8_t y) {
   oled_display.print(1u << n);
 }
 
-// While Shift|Menu is held (the Machinedrum's [Global] arrives as the same
-// button), the Load panel's own rows can be edited: QUANT, LEN (Queue) or
-// FADE, and the mode. Knob 2 or UP/DOWN pick the row, which is inverted;
-// knob 1 or LEFT/RIGHT change it. Without Shift the knobs stay the Grid
-// page's own (grid_knobs).
+// While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
+// own rows can be edited: QUANT, LEN (Queue) or FADE, and the mode. Knob 2
+// or UP/DOWN pick the row, which is inverted; knob 1 or LEFT/RIGHT change
+// it. Otherwise the knobs stay the Grid page's own (grid_knobs).
 enum : uint8_t { IO_ROW_QUANT, IO_ROW_LEN_FADE, IO_ROW_MODE };
-// Knob 2 while Shift is held; its value is the row.
+// Knob 2 during the edit; its value is the row.
 static MCLEncoder io_menu_line(IO_ROW_MODE, 0, ENCODER_RES_PAT);
-// Knob 1 while Shift is held: rests at 1, and io_loop takes each click off
-// it.
+// Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
-// Knobs 3 and 4 while Shift is held: they do nothing.
+// Knobs 3 and 4 during the edit: they do nothing.
 static MCLEncoder io_idle;
 
 // FADE's word: ON lets each column pick its direction, IN and OUT force it.
@@ -1736,6 +1735,24 @@ static const char *fade_word() {
   return force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
          : force == LOAD_FADE_FORCE_OUT ? mclstr_fade_out
                                         : mclstr_on;
+}
+
+// The edit is held with the Machinedrum's [Global] (io_handleEvent).
+static bool io_global;
+
+// Start or end editing the Load panel's rows: knob 1 changes the chosen
+// row and knob 2 picks it, or the knobs go back to the Grid page.
+static void io_rows_edit(Encoder **encoders, bool on) {
+  io_editing = on;
+  if (on) {
+    io_menu_value.cur = 1;
+    encoders[0] = &io_menu_value;
+    encoders[1] = &io_menu_line;
+    encoders[2] = &io_idle;
+    encoders[3] = &io_idle;
+  } else {
+    grid_knobs(encoders);
+  }
 }
 
 // One step of the chosen row. pressed: knob 1 is pressed while turned.
@@ -1775,7 +1792,8 @@ static void io_setting_step(int8_t dir, bool pressed) {
 
 void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
-  io_shift = false;
+  io_editing = false;
+  io_global = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::track_select = 0;
@@ -1794,9 +1812,9 @@ void GridPage::io_begin(uint8_t mode) {
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
-    // The knobs stay the Grid page's own until Shift opens the settings
-    // menu. The settings live in these knob objects, which io_loop compares
-    // with mcl_cfg, not with their old values.
+    // The knobs stay the Grid page's own until the rows are edited. The
+    // settings live in these knob objects, which io_loop compares with
+    // mcl_cfg, not with their old values.
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
@@ -1817,7 +1835,7 @@ void GridPage::io_begin(uint8_t mode) {
 
 void GridPage::io_end(bool reinit) {
   io_mode = GRID_IO_OFF;
-  io_shift = false;
+  io_editing = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::offset = 255;
@@ -1833,7 +1851,7 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
-  if (io_shift) {
+  if (io_editing) {
     const int8_t dir = io_menu_value.cur - 1;
     io_menu_value.cur = 1;
     if (dir != 0 && !GridIOPage::show_offset) {
@@ -2003,9 +2021,9 @@ void GridPage::io_display_panel() {
       }
       GridLoadPage::get_modestr(str);
       text_at(0, 32, str);
-      if (io_shift) {
-        // Shift held: the row the knobs edit is inverted (on line 4, the
-        // mode alone).
+      if (io_editing) {
+        // Editing: the row the knobs edit is inverted (on line 4, the mode
+        // alone).
         const uint8_t row = io_menu_line.cur;
         oled_display.fillRect(0, 10 + 8 * row, row == IO_ROW_MODE ? 13 : 38,
                               7, INVERT);
@@ -2129,8 +2147,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_LEFT:
       case MDX_KEY_RIGHT:
-        // Shift held: LEFT/RIGHT change the chosen row.
-        if (load && io_shift) {
+        // Editing: LEFT/RIGHT change the chosen row.
+        if (load && io_editing) {
           io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1, false);
           return true;
         }
@@ -2147,8 +2165,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
-        // Shift held: UP/DOWN pick the row.
-        if (load && io_shift) {
+        // Editing: UP/DOWN pick the row.
+        if (load && io_editing) {
           io_menu_line.cur = limit_value(
               io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1, 0, IO_ROW_MODE);
           return true;
@@ -2180,42 +2198,48 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       io_toggle_grid();
       return true;
     }
-    // Shift|Menu, and the Machinedrum's [Global]: held, the Load panel's
-    // rows can be edited. It does nothing on Save or while DEST is open.
-    if (event->source == Buttons.BUTTON3) {
-      io_shift = load && (event->mask & EVENT_BUTTON_PRESSED) &&
-                 !GridIOPage::show_offset;
-      if (io_shift) {
-        // Knob 1 changes the chosen row, knob 2 picks it.
-        io_menu_value.cur = 1;
-        encoders[0] = &io_menu_value;
-        encoders[1] = &io_menu_line;
-        encoders[2] = &io_idle;
-        encoders[3] = &io_idle;
-      } else {
-        grid_knobs(encoders);
+    const bool pressed = (event->mask & EVENT_BUTTON_PRESSED) != 0;
+    // The Machinedrum's [Global] arrives as Shift|Menu, with its own key
+    // down on the press and up again on its release. On Load it is the edit
+    // key, not the row load.
+    bool global = false;
+    if (load && event->source == Buttons.BUTTON3) {
+      const bool md_key = key_interface.is_key_down(MDX_KEY_PATSONG);
+      if (pressed ? md_key : (io_global && !md_key)) {
+        io_global = pressed;
+        global = true;
       }
-      return true;
     }
-    // Load|Yes is the Machinedrum's YES: hold for the groups, release to
-    // load or save the row. With Save|No held it is the config chord, which
-    // the Grid page takes once Load/Save is disarmed.
-    if (EVENT_PRESSED(event, Buttons.BUTTON4)) {
-      if (BUTTON_DOWN(Buttons.BUTTON1)) {
+    // Load|Yes on Load, held: the panel's rows can be edited, as with
+    // [Global]. With Save|No held it is the config chord, which the Grid
+    // page takes once Load is disarmed.
+    if (global || (load && event->source == Buttons.BUTTON4)) {
+      if (pressed && !global && BUTTON_DOWN(Buttons.BUTTON1)) {
         io_end();
         return false;
       }
+      // The edit lasts while either key is held, and not while DEST is
+      // open.
+      io_rows_edit(encoders,
+                   !GridIOPage::show_offset &&
+                       (pressed || BUTTON_DOWN(Buttons.BUTTON4) ||
+                        key_interface.is_key_down(MDX_KEY_PATSONG)));
+      return true;
+    }
+    // Shift|Menu: hold for the groups, release to load or save the row.
+    if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
       io_group_select();
       return true;
     }
-    if (EVENT_RELEASED(event, Buttons.BUTTON4)) {
+    if (EVENT_RELEASED(event, Buttons.BUTTON3)) {
       if (GridIOPage::show_track_type) {
         io_action(true);
       }
       return true;
     }
-    // Save|No is NO: close.
-    if (EVENT_RELEASED(event, Buttons.BUTTON1)) {
+    // Save|No closes; on Save, Load|Yes does too.
+    if (EVENT_RELEASED(event, Buttons.BUTTON1) ||
+        EVENT_RELEASED(event, Buttons.BUTTON4)) {
       io_end();
       return true;
     }

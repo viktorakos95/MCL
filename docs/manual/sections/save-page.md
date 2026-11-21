@@ -31,8 +31,8 @@ The actual saved data depends on the selected device and slot type.
 | --- | --- |
 | **[Trig]** keys | Select the slots to save. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
-| **[Yes/Enter]**, **`Load | Yes`** | Hold to open group selection; release to save selected groups. |
-| **[No/Exit]**, **`Save | No`** | Cancel Save. |
+| **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to save selected groups. |
+| **[No/Exit]**, **`Save | No`**, **`Load | Yes`** | Cancel Save. |
 
 ## Saving Individual Slots
 
