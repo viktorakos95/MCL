@@ -37,7 +37,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
 | **[Function]** | In Manual mode, select a destination offset. |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to load selected groups. |
-| **[No/Exit]**, **`Save | No`** | Close Load. |
+| **[No/Exit]**, **`Save | No`**, a tap of **`Load | Yes`** | Close Load. |
 | **[Bank A/B/C]** | Shortcut to Manual, Auto or Queue mode. |
 | **[Bank D]** (the Slide key) | Turn `FADE` on or off. |
 | **[Play]**, **[Stop]** | Start and stop the sequencer. Load stays open. |

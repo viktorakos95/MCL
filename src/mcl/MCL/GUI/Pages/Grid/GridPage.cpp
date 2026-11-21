@@ -1739,6 +1739,11 @@ static const char *fade_word() {
 
 // The edit is held with the Machinedrum's [Global] (io_handleEvent).
 static bool io_global;
+// When Load|Yes went down, and whether a row was changed since: released
+// within TRIG_HOLD_TIME with nothing changed, it was a tap, which closes
+// Load.
+static uint16_t io_tap_clock;
+static bool io_edited;
 
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
 // row and knob 2 picks it, or the knobs go back to the Grid page.
@@ -1758,6 +1763,7 @@ static void io_rows_edit(Encoder **encoders, bool on) {
 // One step of the chosen row. pressed: knob 1 is pressed while turned.
 static void io_setting_step(int8_t dir, bool pressed) {
   const uint8_t row = io_menu_line.cur;
+  io_edited = true;
   if (row != IO_ROW_LEN_FADE || mcl_cfg.load_mode == LOAD_QUEUE) {
     // QUANT, Queue's LEN or the mode: one click of the knob object that
     // holds it (io_loop stores the result). Pressed, QUANT and LEN move by
@@ -2210,13 +2216,24 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         global = true;
       }
     }
-    // Load|Yes on Load, held: the panel's rows can be edited, as with
-    // [Global]. With Save|No held it is the config chord, which the Grid
-    // page takes once Load is disarmed.
+    // Load|Yes on Load: a tap closes; held, the panel's rows can be edited,
+    // as with [Global]. With Save|No held it is the config chord, which the
+    // Grid page takes once Load is disarmed.
     if (global || (load && event->source == Buttons.BUTTON4)) {
       if (pressed && !global && BUTTON_DOWN(Buttons.BUTTON1)) {
         io_end();
         return false;
+      }
+      if (!global) {
+        // A tap of Load|Yes closes Load, as it always did; held, it edits.
+        if (pressed) {
+          io_tap_clock = read_clock_ms();
+          io_edited = false;
+        } else if (!io_edited &&
+                   clock_diff(io_tap_clock, read_clock_ms()) < TRIG_HOLD_TIME) {
+          io_end();
+          return true;
+        }
       }
       // The edit lasts while either key is held, and not while DEST is
       // open.
