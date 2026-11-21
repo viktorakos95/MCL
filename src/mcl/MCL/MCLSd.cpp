@@ -190,7 +190,7 @@ void upgrade_all_projects() {
 
 } // namespace
 
-#ifdef MCL_PROJECT_UPGRADER
+#ifndef WAV_DESIGNER
 // The menu tables still name the WAV designer entry points.
 void wavdesign_menu_handler() {}
 void wav_render() {}
