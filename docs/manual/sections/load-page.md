@@ -10,7 +10,7 @@ Open it from the Grid Page with:
 
 ![load from a](../assets/images/load_from_a.png)
 
-On MegaCommand, MegaCMD and TBD, Load keeps the Grid Page visible: the left column shows the Load settings and the grid shows the selected slots.
+On MegaCommand, MegaCMD and TBD, Load keeps the Grid Page visible: the left column shows the Load settings and the grid shows the selected slots. The box at the top shows the load mode: `LOAD` in `MAN`, `AUTO` in `AUT`, `QUE` in `QUE`.
 
 Load stays open after a load, ready for the next one. Close it with **[No/Exit]**.
 

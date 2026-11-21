@@ -1719,12 +1719,13 @@ static void print_fade_steps(uint8_t n, uint8_t y) {
 }
 
 // While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
-// own rows can be edited: QUANT, LEN (Queue) or FADE, and the mode. Knob 2
-// or UP/DOWN pick the row, which is inverted; knob 1 or LEFT/RIGHT change
-// it. Otherwise the knobs stay the Grid page's own (grid_knobs).
-enum : uint8_t { IO_ROW_QUANT, IO_ROW_LEN_FADE, IO_ROW_MODE };
+// own rows can be edited, top to bottom: the mode (the chip), QUANT, and LEN
+// (Queue) or FADE. Knob 2 or UP/DOWN pick the row, which is inverted; knob 1
+// or LEFT/RIGHT change it. Otherwise the knobs stay the Grid page's own
+// (grid_knobs).
+enum : uint8_t { IO_ROW_MODE, IO_ROW_QUANT, IO_ROW_LEN_FADE };
 // Knob 2 during the edit; its value is the row.
-static MCLEncoder io_menu_line(IO_ROW_MODE, 0, ENCODER_RES_PAT);
+static MCLEncoder io_menu_line(IO_ROW_LEN_FADE, 0, ENCODER_RES_PAT);
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 // Knobs 3 and 4 during the edit: they do nothing.
@@ -1991,11 +1992,18 @@ uint16_t GridPage::io_visible_mask() {
 void GridPage::io_display_panel() {
   const bool load = io_mode == GRID_IO_LOAD;
 
-  // Line 1: the action in the 5x7 font, in an inverted chip.
+  // Line 1: the action in the 5x7 font, in an inverted chip. On Load it is
+  // the mode: LOAD (Manual), AUTO or QUE.
   oled_display.fillRect(0, 0, 25, 9, WHITE);
   oled_font_default();
   oled_text_color(BLACK);
-  text_at_P(1, 1, load ? mclstr_load : mclstr_save);
+  const char *chip = mclstr_save;
+  if (load) {
+    chip = mcl_cfg.load_mode == LOAD_AUTO    ? mclstr_auto
+           : mcl_cfg.load_mode == LOAD_QUEUE ? mclstr_queue_short
+                                             : mclstr_load;
+  }
+  text_at_P(1, 1, chip);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
@@ -2008,8 +2016,8 @@ void GridPage::io_display_panel() {
     mcl_gui.put_value_at(step_count, str);
     text_at(37 - 4 * strlen(str), 8, str);
     // Line 2: QUANT. Line 3: LEN, in Queue. A QUANT or LEN of 1 means "the
-    // slot's own length" and shows "-". Line 4: the load mode, before the
-    // row. While a destination is picked, DEST alone replaces them; the
+    // slot's own length" and shows "-". While a destination is picked, DEST
+    // alone replaces them; the
     // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
@@ -2035,14 +2043,16 @@ void GridPage::io_display_panel() {
           print_fade_steps(len - 1, 24);
         }
       }
-      GridLoadPage::get_modestr(str);
-      text_at(1, 32, str);
       if (io_editing) {
-        // Editing: the row the knobs edit is inverted (on line 4, the mode
-        // alone), with 1 px of the box each side of the text, as in menus.
+        // Editing: the row the knobs edit is inverted, with 1 px of the box
+        // each side of the text, as in menus; the mode inverts the chip.
         const uint8_t row = io_menu_line.cur;
-        oled_display.fillRect(0, 10 + 8 * row, row == IO_ROW_MODE ? 13 : 37,
-                              7, INVERT);
+        if (row == IO_ROW_MODE) {
+          oled_display.fillRect(0, 0, 25, 9, INVERT);
+        } else {
+          oled_display.fillRect(0, 10 + 8 * (row - IO_ROW_QUANT), 37, 7,
+                                INVERT);
+        }
       }
     }
   } else {
@@ -2056,7 +2066,7 @@ void GridPage::io_display_panel() {
     text_at_P(21, 21, mclstr_grid);
   }
   // Line 4, Load and Save alike: the armed row, where the Grid page prints
-  // it (after "X:01 "); on Load the mode stands before it. While DEST is
+  // it (after "X:01 "). While DEST is
   // open, the destination slot as grid:column ("Y:05") stands there instead,
   // where the Grid page prints the cursor's; "--" until a trig picks one.
   char val[4];
@@ -2184,7 +2194,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         // Editing: UP/DOWN pick the row.
         if (load && io_editing) {
           io_menu_line.cur = limit_value(
-              io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1, 0, IO_ROW_MODE);
+              io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1, 0,
+              IO_ROW_LEN_FADE);
           return true;
         }
         // On Load UP/DOWN move the armed row and Load stays armed. On Save
