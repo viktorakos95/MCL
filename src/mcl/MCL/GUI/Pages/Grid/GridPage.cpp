@@ -1719,13 +1719,13 @@ static void print_fade_steps(uint8_t n, uint8_t y) {
 }
 
 // While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
-// own rows can be edited, top to bottom: the mode (the chip), QUANT, and LEN
-// (Queue) or FADE. Knob 2 or UP/DOWN pick the row, which is inverted; knob 1
-// or LEFT/RIGHT change it. Otherwise the knobs stay the Grid page's own
-// (grid_knobs).
-enum : uint8_t { IO_ROW_MODE, IO_ROW_QUANT, IO_ROW_LEN_FADE };
+// own rows can be edited: QUANT, LEN (Queue) or FADE, and the mode, which
+// line 4 shows only while they are edited. Knob 2 or UP/DOWN pick the row,
+// which is inverted; knob 1 or LEFT/RIGHT change it. Otherwise the knobs stay
+// the Grid page's own (grid_knobs).
+enum : uint8_t { IO_ROW_QUANT, IO_ROW_LEN_FADE, IO_ROW_MODE };
 // Knob 2 during the edit; its value is the row.
-static MCLEncoder io_menu_line(IO_ROW_LEN_FADE, 0, ENCODER_RES_PAT);
+static MCLEncoder io_menu_line(IO_ROW_MODE, 0, ENCODER_RES_PAT);
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 // Knobs 3 and 4 during the edit: they do nothing.
@@ -2069,15 +2069,14 @@ void GridPage::io_display_panel() {
         }
       }
       if (io_editing) {
-        // Editing: the row the knobs edit is inverted, with 1 px of the box
-        // each side of the text, as in menus; the mode inverts the chip.
+        // Editing: line 4 shows the mode (MAN, AUT, QUE) before the row, and
+        // the row the knobs edit is inverted, with 1 px of the box each side
+        // of the text, as in menus.
+        GridLoadPage::get_modestr(str);
+        text_at(1, 32, str);
         const uint8_t row = io_menu_line.cur;
-        if (row == IO_ROW_MODE) {
-          oled_display.fillRect(0, 0, 25, 9, INVERT);
-        } else {
-          oled_display.fillRect(0, 10 + 8 * (row - IO_ROW_QUANT), 37, 7,
-                                INVERT);
-        }
+        oled_display.fillRect(0, 10 + 8 * row, row == IO_ROW_MODE ? 13 : 37,
+                              7, INVERT);
       }
     }
   } else {
@@ -2091,7 +2090,8 @@ void GridPage::io_display_panel() {
     text_at_P(21, 21, mclstr_grid);
   }
   // Line 4, Load and Save alike: the armed row, where the Grid page prints
-  // it (after "X:01 "). While DEST is
+  // it (after "X:01 "); while Load's rows are edited the mode stands before
+  // it. While DEST is
   // open, the destination slot as grid:column ("Y:05") stands there instead,
   // where the Grid page prints the cursor's; "--" until a trig picks one.
   char val[4];
@@ -2220,8 +2220,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         // Editing: UP/DOWN pick the row.
         if (load && io_editing) {
           io_menu_line.cur = limit_value(
-              io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1, 0,
-              IO_ROW_LEN_FADE);
+              io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1, 0, IO_ROW_MODE);
           return true;
         }
         // On Load, and on Save when it stays armed, UP/DOWN move the armed
