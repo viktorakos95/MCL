@@ -1703,40 +1703,58 @@ static void print_fade_steps(uint8_t n, uint8_t y) {
   oled_display.print(1u << n);
 }
 
-// The Load panel's settings layer: while Shift|Menu is held (the
-// Machinedrum's [Global] arrives as the same button), lines 2-4 list the
-// settings and the knobs work them like a menu: knob 2 or UP/DOWN pick a
-// line, knob 1 or LEFT/RIGHT change it.
+// The Load settings are a menu, open while Shift|Menu is held (the
+// Machinedrum's [Global] arrives as the same button): MODE, QUANT, then LEN
+// in Queue, or FADE and its length in the other modes. Knob 2 or UP/DOWN
+// pick a line, knob 1 or LEFT/RIGHT change it. Without Shift the knobs do
+// nothing on Load.
 static bool io_shift;
-// Knob 2 in the layer; its value is the line: 0 QUANT, 1 LEN (Queue) or
-// FADE, 2 fade length.
-static MCLEncoder io_menu_line(2, 0, ENCODER_RES_PAT);
-// Knob 1 in the layer: rests at 1, and io_loop takes each click off it.
+// Knob 2 in the menu; its value is the line.
+static MCLEncoder io_menu_line(3, 0, ENCODER_RES_PAT);
+// Knob 1 in the menu: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
+// The knobs outside the menu, and knobs 3 and 4 in it.
+static MCLEncoder io_idle;
+
+enum : uint8_t { IO_SET_MODE, IO_SET_QUANT, IO_SET_LEN_FADE, IO_SET_FADE_LEN };
 
 static uint8_t io_setting_line() NOINLINE();
 static uint8_t io_setting_line() {
-  const uint8_t last = mcl_cfg.load_mode == LOAD_QUEUE ? 1 : 2;
+  const uint8_t last = mcl_cfg.load_mode == LOAD_QUEUE ? IO_SET_LEN_FADE
+                                                       : IO_SET_FADE_LEN;
   const uint8_t line = io_menu_line.cur;
   return line < last ? line : last;
 }
 
-// LEFT/RIGHT on the settings layer: one step of the chosen line.
-static void io_setting_step(int8_t dir) {
+// FADE's word: ON lets each column pick its direction, IN and OUT force it.
+static const char *fade_word() {
+  const uint8_t force = mcl_cfg.load_fade >> 1;
+  return force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
+         : force == LOAD_FADE_FORCE_OUT ? mclstr_fade_out
+                                        : mclstr_on;
+}
+
+// One step of the menu's chosen line. fine: knob 1 is pressed, so QUANT and
+// LEN move by one and not to the next power of two.
+static void io_setting_step(int8_t dir, bool fine) {
   const uint8_t line = io_setting_line();
-  if (line == 0 || mcl_cfg.load_mode == LOAD_QUEUE) {
-    // QUANT, or Queue's LEN: one click of its knob (io_loop stores it).
-    Encoder *knob = &gridio_param4;
-    if (line != 0) {
+  if (line < IO_SET_LEN_FADE || mcl_cfg.load_mode == LOAD_QUEUE) {
+    // MODE, QUANT or Queue's LEN: one click of the knob object that holds
+    // it (io_loop stores the result).
+    Encoder *knob = &gridload_param1;
+    if (line == IO_SET_QUANT) {
+      knob = &gridio_param4;
+    } else if (line == IO_SET_LEN_FADE) {
       knob = &gridio_param2;
     }
     encoder_t click = {};
     click.normal = dir * (knob->rot_res * ENCODER_RES_MULTIPLIER + 1);
+    click.button = fine && line != IO_SET_MODE;
     knob->update(&click);
     return;
   }
   uint8_t len = mcl_cfg.load_fade_len;
-  if (line == 1) {
+  if (line == IO_SET_LEN_FADE) {
     // FADE: off, ON (each column's own direction), IN, OUT.
     uint8_t fade = mcl_cfg.load_fade;
     uint8_t state = (fade & 1) ? 1 + (fade >> 1) : 0;
@@ -1747,7 +1765,7 @@ static void io_setting_step(int8_t dir) {
     len = limit_value(len, dir, 0, LOAD_FADE_MAX);
     mcl_cfg.load_fade_len = len;
   }
-  // Knob 2 holds on/off and the length together; io_loop reads it back.
+  // This object holds on/off and the length together; io_loop reads it.
   gridload_fade.cur = (mcl_cfg.load_fade & 1) ? len + 1 : 0;
 }
 
@@ -1772,14 +1790,13 @@ void GridPage::io_begin(uint8_t mode) {
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
-    // The knobs follow the panel from the top, as the old Load page's
-    // followed its boxes: E1 QUANT (line 2), E2 LEN in Queue and FADE
-    // otherwise (line 3; io_loop picks), E3/E4 mode (line 4).
-    encoders[0] = &gridio_param4;
-    encoders[1] = &gridio_param2;
-    encoders[2] = &gridload_param1;
-    encoders[3] = &gridload_param1;
-    // io_loop compares the knobs with mcl_cfg, not with their old values.
+    // The knobs do nothing on Load until Shift opens the settings menu
+    // (io_loop). The settings live in these knob objects, which io_loop
+    // compares with mcl_cfg, not with their old values.
+    encoders[0] = &io_idle;
+    encoders[1] = &io_idle;
+    encoders[2] = &io_idle;
+    encoders[3] = &io_idle;
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
@@ -1815,45 +1832,43 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
+  // The knobs work the settings menu while Shift is held and do nothing
+  // otherwise.
+  Encoder *value = &io_idle;
+  Encoder *line = &io_idle;
   if (io_shift) {
-    // Settings layer: the menu's knobs in place of QUANT and LEN/FADE.
-    encoders[0] = &io_menu_value;
-    encoders[1] = &io_menu_line;
-    // Queue has two lines, the other modes three.
-    io_menu_line.max = mcl_cfg.load_mode == LOAD_QUEUE ? 1 : 2;
+    value = &io_menu_value;
+    line = &io_menu_line;
+    // Queue has three lines, the other modes four.
+    io_menu_line.max = mcl_cfg.load_mode == LOAD_QUEUE ? IO_SET_LEN_FADE
+                                                       : IO_SET_FADE_LEN;
     const int8_t dir = io_menu_value.cur - 1;
     io_menu_value.cur = 1;
     if (dir != 0 && !GridIOPage::show_offset) {
-      io_setting_step(dir);
+      io_setting_step(dir, BUTTON_DOWN(Buttons.ENCODER1));
     }
-  } else {
-    encoders[0] = &gridio_param4;
   }
+  encoders[0] = value;
+  encoders[1] = line;
   if (GridIOPage::show_offset) {
-    // Picking a destination: the knobs leave the settings alone.
+    // Picking a destination: the settings stay as they are.
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
     gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     return;
   }
-  // The settings follow their knobs (io_begin set them equal): the mode with
-  // its MD popup, then knob 2: LEN in Queue, FADE in the other modes (the
-  // mode can also change from the bank keys), then QUANT.
+  // The settings follow the knob objects that hold them (io_begin set them
+  // equal): the mode with its MD popup (the bank keys change it too), LEN
+  // in Queue, FADE in the other modes (the Slide key changes it too), QUANT.
   if ((uint8_t)gridload_param1.cur != mcl_cfg.load_mode) {
     mcl_cfg.load_mode = gridload_param1.cur;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   }
   if (mcl_cfg.load_mode == LOAD_QUEUE) {
-    if (!io_shift) {
-      encoders[1] = &gridio_param2;
-    }
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
-    // FADE: off, then on; past ON the knob sets the length (SLIDE keeps it).
-    if (!io_shift) {
-      encoders[1] = &gridload_fade;
-    }
+    // 0 is off, 1 on with QUANT's length, then on with a set length.
     mcl_cfg.load_fade = (mcl_cfg.load_fade & ~1) | (gridload_fade.cur != 0);
     if (gridload_fade.cur != 0) {
       mcl_cfg.load_fade_len = gridload_fade.cur - 1;
@@ -1951,8 +1966,39 @@ uint16_t GridPage::io_visible_mask() {
 
 void GridPage::io_display_panel() {
   const bool load = io_mode == GRID_IO_LOAD;
-  // The settings layer's fade length has line 4, not the mode and the row.
-  bool settings_len = false;
+
+  if (load && io_shift && !GridIOPage::show_offset) {
+    // The settings menu takes the column while Shift is held: MODE, QUANT,
+    // then LEN in Queue, or FADE and its length ("-": QUANT's).
+    char str[7];
+    text_at_P(0, 8, mclstr_mode);
+    GridLoadPage::get_modestr(str);
+    text_at(37 - 4 * strlen(str), 8, str);
+    uint8_t quant = mcl_cfg.chain_load_quant;
+    panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
+    if (mcl_cfg.load_mode == LOAD_QUEUE) {
+      uint8_t len = mcl_cfg.chain_queue_length;
+      panel_row(24, mclstr_len, len == 1 ? 0 : len);
+    } else {
+      if (!(mcl_cfg.load_fade & 1)) {
+        panel_row(24, mclstr_fade, 0);
+      } else {
+        const char *word = fade_word();
+        text_at_P(0, 24, mclstr_fade);
+        text_at_P(37 - 4 * strlen_P(word), 24, word);
+      }
+      uint8_t len = mcl_cfg.load_fade_len;
+      if (len == 0) {
+        panel_row(32, mclstr_fade_len, 0);
+      } else {
+        text_at_P(0, 32, mclstr_fade_len);
+        print_fade_steps(len - 1, 32);
+      }
+    }
+    // The chosen line, inverted.
+    oled_display.fillRect(0, 2 + 8 * io_setting_line(), 38, 7, INVERT);
+    return;
+  }
 
   // Line 1: the action in the 5x7 font, in an inverted chip.
   oled_display.fillRect(0, 0, 25, 9, WHITE);
@@ -1985,41 +2031,21 @@ void GridPage::io_display_panel() {
       } else {
         // FADE in the other modes: "FADE -" when off. With the QUANT length
         // "FADE ON" (direction by column), "FADE IN" or "FADE OUT" (forced);
-        // with a set length "FADE", "IN" or "OUT" and the steps. The
-        // settings layer splits it: the word on line 3, the length ("-" for
-        // QUANT's) on line 4 in the mode and row's place.
+        // with a set length "FADE", "IN" or "OUT" and the steps.
         uint8_t len = mcl_cfg.load_fade_len;
-        const uint8_t force = mcl_cfg.load_fade >> 1;
-        const char *word = force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
-                           : force == LOAD_FADE_FORCE_OUT ? mclstr_fade_out
-                                                          : mclstr_on;
+        const char *word = fade_word();
         if (!(mcl_cfg.load_fade & 1)) {
           panel_row(24, mclstr_fade, 0);
-        } else if (len == 0 || io_shift) {
+        } else if (len == 0) {
           text_at_P(0, 24, mclstr_fade);
           text_at_P(37 - 4 * strlen_P(word), 24, word);
         } else {
-          text_at_P(0, 24, force ? word : mclstr_fade);
+          text_at_P(0, 24, (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
           print_fade_steps(len - 1, 24);
         }
-        if (io_shift) {
-          settings_len = true;
-          if (len == 0) {
-            panel_row(32, mclstr_fade_len, 0);
-          } else {
-            text_at_P(0, 32, mclstr_fade_len);
-            print_fade_steps(len - 1, 32);
-          }
-        }
       }
-      if (io_shift) {
-        // The line the arrows edit, inverted.
-        oled_display.fillRect(0, 10 + 8 * io_setting_line(), 38, 7, INVERT);
-      }
-      if (!settings_len) {
-        GridLoadPage::get_modestr(str);
-        text_at(0, 32, str);
-      }
+      GridLoadPage::get_modestr(str);
+      text_at(0, 32, str);
     }
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
@@ -2042,10 +2068,8 @@ void GridPage::io_display_panel() {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
-  if (!settings_len) {
-    oled_display.setCursor(26, 32);
-    draw_bank_row_label(param2.cur, val);
-  }
+  oled_display.setCursor(26, 32);
+  draw_bank_row_label(param2.cur, val);
 }
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
@@ -2141,9 +2165,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_LEFT:
       case MDX_KEY_RIGHT:
-        // Settings layer: LEFT/RIGHT change the chosen line.
+        // Settings menu: LEFT/RIGHT change the chosen line.
         if (load && io_shift) {
-          io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1);
+          io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1, false);
           return true;
         }
         // On Load the trigs pick the columns, so LEFT/RIGHT scroll the
@@ -2159,10 +2183,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
-        // Settings layer: UP/DOWN pick the line.
+        // Settings menu: UP/DOWN pick the line.
         if (load && io_shift) {
-          io_menu_line.cur = limit_value(io_setting_line(),
-                                         key == MDX_KEY_DOWN ? 1 : -1, 0, 2);
+          io_menu_line.cur =
+              limit_value(io_setting_line(), key == MDX_KEY_DOWN ? 1 : -1, 0,
+                          IO_SET_FADE_LEN);
           return true;
         }
         // On Load UP/DOWN move the armed row and Load stays armed. On Save
@@ -2193,7 +2218,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       return true;
     }
     // Shift|Menu, and the Machinedrum's [Global]: held, the Load panel
-    // lists its settings. It does nothing on Save or while DEST is open.
+    // shows its settings menu. It does nothing on Save or while DEST is
+    // open.
     if (event->source == Buttons.BUTTON3) {
       io_shift = load && (event->mask & EVENT_BUTTON_PRESSED) &&
                  !GridIOPage::show_offset;

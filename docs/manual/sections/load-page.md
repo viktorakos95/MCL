@@ -29,10 +29,8 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 | Control | Assignment |
 | --- | --- |
-| Encoder 1 | Load quantization (`QUANT`). |
-| Encoder 2 | In Queue mode, queue length (`LEN`). In Manual and Auto mode, `FADE`: off, on, then a fade length. |
-| Encoder 3 | Load mode: `MAN`, `AUT`, `QUE`. |
-| Encoder 4 | Load mode. |
+| **[Global]**, **`Shift | Menu`** | Hold to open the Load settings. |
+| Encoder 1, Encoder 2 | Used in the Load settings only. |
 | **[Trig]** keys | Select slots to load. |
 | **[Up/Down]** | Move to another row. |
 | **[Left/Right]** | Scroll the columns shown. |
@@ -42,30 +40,30 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[No/Exit]**, **`Save | No`** | Close Load. |
 | **[Bank A/B/C]** | Shortcut to Manual, Auto or Queue mode. |
 | **[Bank D]** (the Slide key) | Turn `FADE` on or off. |
-| **[Global]**, **`Shift | Menu`** | Hold to show the Load settings. |
 | **[Play]**, **[Stop]** | Start and stop the sequencer. Load stays open. |
 
 ## Load Settings
 
-Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to edit the Load settings. While it is held, the left column lists the settings and one line is highlighted.
+Hold **[Global]** on the Machinedrum, or the **`Shift | Menu`** button, to open the Load settings. While it is held, the left column becomes a menu and one line is highlighted.
 
 | Line | Values |
 | --- | --- |
+| `MODE` | Load mode: `MAN`, `AUT`, `QUE`. |
 | `QUANT` | Load quantization. |
-| `FADE` | `-` off, `ON`, `IN` or `OUT`. See Fade below. |
-| `F.LEN` | Fade length: `-` uses the `QUANT` length, or 1 to 1024 steps. |
-
-In Queue mode the lines are `QUANT` and `LEN`.
+| `LEN` | Queue length. Queue mode only. |
+| `FADE` | `-` off, `ON`, `IN` or `OUT`. Manual and Auto mode. See Fade below. |
+| `F.LEN` | Fade length: `-` uses the `QUANT` length, or 1 to 1024 steps. Manual and Auto mode. |
 
 - Encoder 2 or **[Up/Down]** choose a line.
 - Encoder 1 or **[Left/Right]** change it.
-- Encoders 3 and 4 still set the load mode.
+
+The encoders do nothing on Load while the settings are closed. The left column then shows the current settings.
 
 ## Fade
 
 `FADE` fades the level of Machinedrum tracks when their slots load. It applies in Manual and Auto mode. Queue loads do not fade.
 
-Turn it on with **[Bank D]** (the Slide key), Encoder 2 or the Load settings. The left column shows `FADE -` when it is off and `FADE ON` when it is on.
+Turn it on with **[Bank D]** (the Slide key) or in the Load settings. The left column shows `FADE -` when it is off and `FADE ON` when it is on.
 
 With `FADE ON`, each track fades by what it was playing:
 
@@ -120,12 +118,12 @@ Each slot/column has its own chain state. This allows one track to follow an aut
 
 ## Queue Length Override
 
-In Queue mode, Encoder 2 sets a length override.
+In Queue mode, `LEN` in the Load settings sets a length override.
 
 | Value | Behavior |
 | --- | --- |
 | `-` | Use the queued slot's stored length. |
-| 2-64 | Override the queued length in steps. Normal encoder turns step through powers of two; holding the encoder button while turning allows intermediate values such as `3`, `5` or `6`. |
+| 2-64 | Override the queued length in steps. Encoder 1 steps through powers of two; holding its button while turning allows intermediate values such as `3`, `5` or `6`. |
 
 This is useful when a short track should loop for a longer phrase, or when a group of slots should advance together despite having different stored lengths.
 
@@ -136,7 +134,7 @@ Load quantization sets the transition interval for the selected load.
 | Value | Meaning |
 | --- | --- |
 | `-` | Load at the destination track's next transition point, based on its current length and speed. |
-| 2-64 | Load at the next matching step interval. Normal encoder turns step through powers of two; holding the encoder button allows intermediate values. |
+| 2-64 | Load at the next matching step interval. Encoder 1 steps through powers of two; holding its button while turning allows intermediate values. |
 
 Use quantization to keep manual, auto and queue loads aligned with the phrase length.
 

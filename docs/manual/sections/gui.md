@@ -24,7 +24,7 @@ While Load or Save is open:
 
 **`Load | Yes`**: Hold to open group selection; release to load or save the selected groups.
 **`Save | No`**: Closes Load or Save.
-**`Shift | Menu`**: On Load, hold to show the Load settings. Encoder 2 chooses a setting and Encoder 1 changes it.
+**`Shift | Menu`**: On Load, hold to open the Load settings. Encoder 2 chooses a setting and Encoder 1 changes it.
 
 
 ## Encoder Buttons
@@ -109,7 +109,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Bank A,B,C]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
 - **[Bank D]** (the Slide key) turns FADE on or off.
 - **[Function]** to specify a destination track offset for the next load.
-- Hold **[Global]** to show the Load settings. **[Up/Down]** choose a setting and **[Left/Right]** change it.
+- Hold **[Global]** to open the Load settings (MODE, QUANT, LEN, FADE). **[Up/Down]** choose a setting and **[Left/Right]** change it.
 - **[Exit/No]** closes the Load Page. It stays open after a load.
 
 
