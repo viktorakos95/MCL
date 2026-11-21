@@ -2018,10 +2018,15 @@ void GridPage::io_display_panel() {
   const bool load = io_mode == GRID_IO_LOAD;
 
   // Line 1: the action in the 5x7 font, in an inverted chip. On Load it is
-  // the mode: LOAD (Manual), AUTO or QUE.
-  oled_display.fillRect(0, 0, 25, 9, WHITE);
+  // the mode: LOAD (Manual), AUTO or QUE. While the rows are edited it is the
+  // mode row, boxed only while that row is picked, so the picked row is the
+  // only box.
+  const bool boxed = !(io_editing && io_menu_line.cur != IO_ROW_MODE);
+  if (boxed) {
+    oled_display.fillRect(0, 0, 25, 9, WHITE);
+  }
   oled_font_default();
-  oled_text_color(BLACK);
+  oled_text_color(boxed ? BLACK : WHITE);
   const char *chip = mclstr_save;
   if (load) {
     chip = mcl_cfg.load_mode == LOAD_AUTO    ? mclstr_auto
@@ -2070,11 +2075,9 @@ void GridPage::io_display_panel() {
       }
       if (io_editing) {
         // Editing: the row the knobs edit is inverted, with 1 px of the box
-        // each side of the text, as in menus; the mode inverts the chip.
+        // each side of the text, as in menus (the mode row is the chip).
         const uint8_t row = io_menu_line.cur;
-        if (row == IO_ROW_MODE) {
-          oled_display.fillRect(0, 0, 25, 9, INVERT);
-        } else {
+        if (row != IO_ROW_MODE) {
           oled_display.fillRect(0, 10 + 8 * (row - IO_ROW_QUANT), 37, 7,
                                 INVERT);
         }
