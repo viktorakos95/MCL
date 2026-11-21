@@ -2041,12 +2041,14 @@ void GridPage::io_display_panel() {
 
   if (load) {
     // Line 1, beside the chip: the 16th-step count, for timing the trig
-    // release against the quantise boundary.
-    char str[7];
-    uint8_t step_count =
-        (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
-    mcl_gui.put_value_at(step_count, str);
-    text_at(37 - 4 * strlen(str), 8, str);
+    // release against the quantise boundary (not while the rows are edited).
+    if (!io_editing) {
+      char str[7];
+      uint8_t step_count =
+          (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
+      mcl_gui.put_value_at(step_count, str);
+      text_at(37 - 4 * strlen(str), 8, str);
+    }
     // Line 2: QUANT. Line 3: LEN, in Queue. A QUANT or LEN of 1 means "the
     // slot's own length" and shows "-". While a destination is picked, DEST
     // alone replaces them; the
