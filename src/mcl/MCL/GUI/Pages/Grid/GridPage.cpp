@@ -1753,7 +1753,7 @@ static bool io_global;
 // Load|Yes is down and the edit has not started yet: it starts once the
 // button has been held this long (io_loop). Released sooner, it was a tap,
 // which closes Load.
-constexpr uint16_t IO_EDIT_HOLD_MS = 400;
+constexpr uint16_t IO_EDIT_HOLD_MS = 250;
 static uint16_t io_tap_clock;
 static bool io_pending;
 // The press of Load|Yes that opened Load is still held: held long enough it
