@@ -1771,7 +1771,7 @@ static const char *fade_word() {
 // The rows are edited while the Machinedrum's [Global] is held, or once
 // Load|Yes has been held this long (io_loop). Load|Yes released sooner was a
 // tap, which closes Load.
-constexpr uint16_t IO_EDIT_HOLD_MS = 150;
+constexpr uint16_t IO_EDIT_HOLD_MS = 200;
 // When Load|Yes went down, and whether it has been down long enough since.
 static uint16_t io_tap_clock;
 static bool io_held;
