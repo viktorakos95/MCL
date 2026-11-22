@@ -49,7 +49,7 @@ Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit th
 - Encoder 2 or **[Up/Down]** choose a row.
 - Encoder 1 or **[Left/Right]** change it.
 - On `FADE`, turning steps through `-`, `ON`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
-- On `QUANT` or `FADE`, **[Trig]** N sets 4 × N steps (4 to 64); on `FADE` it also turns the fade on. The trig matching the current value is lit.
+- On `QUANT` or `FADE`, **[Trig]** N sets N bars, 16 × N steps: **[Trig]** 1 to 4 set `QUANT` to 16 to 64 steps, and **[Trig]** 1 to 16 set the fade length to 16 to 256 steps, turning the fade on. The trig matching the current value is lit.
 
 While it is released, the encoders work as on the Grid Page.
 
@@ -67,7 +67,7 @@ With `FADE ON`, each track fades by what it was playing:
 | Playing | The slot it is playing | The track fades out and stays silent. |
 | Silent after a fade out, or not loaded yet | Any slot | The slot switches in and fades in. |
 
-- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps with Encoder 1, or 4 to 64 steps with the trigs, shown in place of `ON`. With `QUANT` at `-`, it lasts the slot's own length.
+- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps with Encoder 1, or 16 to 256 steps with the trigs, shown in place of `ON`. With `QUANT` at `-`, it lasts the slot's own length.
 - When the playing slot fades out first, the new slot switches in one fade length after the load point.
 - `FADE IN` and `FADE OUT`, set in the Load settings, make every loaded track fade in or fade out.
 - A load made while the sequencer is stopped fades when **[Play]** is pressed. A track that will fade in is silent until then.
