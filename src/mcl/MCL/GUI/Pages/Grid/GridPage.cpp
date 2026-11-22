@@ -1719,13 +1719,13 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
   print_right(value, 37, y);
 }
 
-// A fade length in steps (1 .. 1024), right-aligned like the panel's other
-// values.
-static void print_fade_steps(uint16_t steps, uint8_t y) NOINLINE();
-static void print_fade_steps(uint16_t steps, uint8_t y) {
-  uint8_t digits = steps < 10 ? 1 : steps < 100 ? 2 : steps < 1000 ? 3 : 4;
+// A fade length of 2^n steps, right-aligned like the panel's other values:
+// one digit up to 8, two to 64, three to 512, then 1024.
+static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
+static void print_fade_steps(uint8_t n, uint8_t y) {
+  uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
   oled_display.setCursor(37 - 4 * digits, y);
-  oled_display.print(steps);
+  oled_display.print(1u << n);
 }
 
 // While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
@@ -1738,8 +1738,6 @@ enum : uint8_t { IO_ROW_MODE, IO_ROW_QUANT, IO_ROW_LEN_FADE };
 static MCLEncoder io_menu_line(IO_ROW_LEN_FADE, 0, ENCODER_RES_PAT);
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
-// Knobs 3 and 4 during the edit: they do nothing.
-static MCLEncoder io_idle;
 
 // FADE's word: ON lets each column pick its direction, IN and OUT force it.
 static const char *fade_word() {
@@ -1749,27 +1747,23 @@ static const char *fade_word() {
                                         : mclstr_on;
 }
 
-// The edit is held with the Machinedrum's [Global] (io_handleEvent).
-static bool io_global;
-// Load|Yes is down and the edit has not started yet: it starts once the
-// button has been held this long (io_loop). Released sooner, it was a tap,
-// which closes Load.
+// The rows are edited while the Machinedrum's [Global] is held, or once
+// Load|Yes has been held this long (io_loop). Load|Yes released sooner was a
+// tap, which closes Load.
 constexpr uint16_t IO_EDIT_HOLD_MS = 250;
+// When Load|Yes went down, and whether it has been down long enough since.
 static uint16_t io_tap_clock;
-static bool io_pending;
-// The press of Load|Yes that opened Load is still held: held long enough it
-// starts the edit, as a press inside Load does, but let go early it leaves
-// Load open.
+static bool io_held;
+// The press of Load|Yes that opened Load is still down: let go early, it
+// leaves Load open.
 static bool io_opening;
 
-// Trigs pressed while the rows are edited (or held when the edit began):
-// their presses and releases set values and never pick slots, even if the
-// edit ends first; each is dropped from the note state at once, so it is
-// never shown as selected and never joins the next load.
-static uint16_t io_edit_trigs;
-// The trig lit for the value being edited: 0 none, 255 the selection's LEDs,
-// 254 not known (after the group popup).
-static uint8_t io_edit_led = 255;
+// The trig LEDs last sent while a value is edited: one bit for its trig, 0
+// for none. IO_LEDS_SELECTION: the selection's LEDs are showing;
+// IO_LEDS_UNKNOWN: the group popup had them.
+constexpr uint16_t IO_LEDS_SELECTION = 0xFFFF;
+constexpr uint16_t IO_LEDS_UNKNOWN = 0xFFFE;
+static uint16_t io_edit_leds = IO_LEDS_SELECTION;
 // The Slide key held on Load (outside Queue): the trigs set the fade length
 // and UP/DOWN its direction, as in the row edit. Released with neither used,
 // it was a tap, which turns FADE on or off.
@@ -1779,9 +1773,11 @@ static bool io_slide_used;
 // so a tap goes from blank straight to the length it turns on.
 static uint16_t io_slide_clock;
 
-// Trigs held as a trig edit begins become edit trigs; the selection clears.
+// A trig edit begins (the rows are edited, or Slide is held): the trigs set
+// values until it ends. The selection clears, and the note interface ignores
+// the release of each trig that is down, so none picks a slot.
 static void io_take_trigs() {
-  io_edit_trigs |= (uint16_t)note_interface.notes_on;
+  note_interface.notes_ignore |= note_interface.notes_on;
   note_interface.init_notes();
 }
 
@@ -1807,16 +1803,16 @@ static bool io_arrows_scroll(bool load) {
 // row and knob 2 picks it, or the knobs go back to the Grid page's (Load's
 // own in LEGACY).
 static void io_rows_edit(Encoder **encoders, bool on) {
-  if (on && !io_editing) {
-    io_take_trigs();
-  }
   io_editing = on;
   if (on) {
+    io_take_trigs();
     io_menu_value.cur = 1;
+    // Knobs 3 and 4 get the Grid page's third and fourth encoders, which do
+    // nothing outside the slot menu.
     encoders[0] = &io_menu_value;
     encoders[1] = &io_menu_line;
-    encoders[2] = &io_idle;
-    encoders[3] = &io_idle;
+    encoders[2] = &param3;
+    encoders[3] = &param4;
   } else if (mcl_cfg.io_stay == LOAD_SAVE_LEGACY) {
     io_load_knobs(encoders);
   } else {
@@ -1852,11 +1848,18 @@ static void io_setting_step(int8_t dir, bool pressed) {
     state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
     mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
   } else {
-    len = limit_value(len, dir, 0, LOAD_FADE_MAX);
-    mcl_cfg.load_fade_len = len;
+    mcl_cfg.load_fade_len = limit_value(len, dir, 0, LOAD_FADE_MAX);
   }
-  // This object holds on/off and the length together; io_loop reads it.
-  gridload_fade.cur = (mcl_cfg.load_fade & 1) ? len + 1 : 0;
+}
+
+// Nothing selected: no slots, DEST or group popup, and the trig LEDs clear.
+static void io_clear_selection() {
+  GridIOPage::show_track_type = false;
+  GridIOPage::show_offset = false;
+  GridIOPage::track_select = 0;
+  GridIOPage::offset = 255;
+  note_interface.init_notes();
+  GridIOPage::paint_track_select_leds();
 }
 
 // Save reads the Machinedrum's current pattern before saving.
@@ -1877,15 +1880,9 @@ static bool io_saved;
 void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
   io_editing = false;
-  io_edit_trigs = 0;
-  io_edit_led = 255;
+  io_edit_leds = IO_LEDS_SELECTION;
   io_slide = false;
   io_slide_used = false;
-  io_global = false;
-  GridIOPage::show_track_type = false;
-  GridIOPage::show_offset = false;
-  GridIOPage::track_select = 0;
-  GridIOPage::offset = 255;
   GridIOPage::old_grid = cur_grid;
   io_saved_grid = cur_grid;
   draw_encoders = false;
@@ -1895,8 +1892,7 @@ void GridPage::io_begin(uint8_t mode) {
   // replaces it, as TBD's Load/Save overlay did.
   GUI.clearOverlay();
 #endif
-  note_interface.init_notes();
-  GridIOPage::paint_track_select_leds();
+  io_clear_selection();
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
@@ -1906,14 +1902,13 @@ void GridPage::io_begin(uint8_t mode) {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     if (mcl_cfg.io_stay == LOAD_SAVE_LEGACY) {
       io_load_knobs(encoders);
     }
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
     // Opened by a Load|Yes press that is still down (Load opens on the press
     // on AVR): it times the hold like a press inside Load.
-    io_pending = io_opening = BUTTON_DOWN(Buttons.BUTTON4);
+    io_opening = BUTTON_DOWN(Buttons.BUTTON4);
     io_tap_clock = read_clock_ms();
   } else {
     io_saved = false;
@@ -1926,7 +1921,6 @@ void GridPage::io_begin(uint8_t mode) {
 void GridPage::io_end(bool reinit) {
   io_mode = GRID_IO_OFF;
   io_editing = false;
-  io_pending = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::offset = 255;
@@ -1942,14 +1936,14 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
-  if (io_pending &&
-      clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS) {
-    // Load|Yes has been held long enough: the rows can be edited.
-    io_pending = false;
-    io_opening = false;
-    if (!GridIOPage::show_offset) {
-      io_rows_edit(encoders, true);
-    }
+  // The rows are edited while Load|Yes has been held long enough or [Global]
+  // is held, and not while DEST is open.
+  io_held = BUTTON_DOWN(Buttons.BUTTON4) &&
+            clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS;
+  const bool edit = !GridIOPage::show_offset &&
+                    (io_held || key_interface.is_key_down(MDX_KEY_PATSONG));
+  if (edit != io_editing) {
+    io_rows_edit(encoders, edit);
   }
   if (io_editing) {
     const int8_t dir = io_menu_value.cur - 1;
@@ -1958,39 +1952,30 @@ void GridPage::io_loop() {
       io_setting_step(dir, BUTTON_DOWN(Buttons.ENCODER1));
     }
   }
-  // While QUANT or FADE is edited the trig matching its value is lit (2^n
-  // steps lights trig n, others none); otherwise the selection's.
-  uint8_t led = 255;
+  // While QUANT or FADE is edited the trig matching its value is lit: trig
+  // n is 2^n steps, so QUANT's LED bit is its step count halved (none for
+  // a count that is not a power of two) and a fade length code of n + 1
+  // lights trig n. Otherwise the selection's LEDs show.
+  uint16_t leds = IO_LEDS_SELECTION;
   if ((io_editing || io_slide) && !GridIOPage::show_offset) {
     const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
-    uint16_t steps = 0;
     if (row == IO_ROW_QUANT) {
-      steps = mcl_cfg.chain_load_quant;
-    } else if (row == IO_ROW_LEN_FADE && mcl_cfg.load_mode != LOAD_QUEUE) {
-      steps = (mcl_cfg.load_fade & 1) && mcl_cfg.load_fade_len
-                  ? load_fade_steps(mcl_cfg.load_fade_len)
-                  : 0;
-    }
-    if (row != IO_ROW_MODE &&
-        (row == IO_ROW_QUANT || mcl_cfg.load_mode != LOAD_QUEUE)) {
-      led = 0;
-      if (steps >= 2 && !(steps & (steps - 1))) {
-        while (steps >>= 1) {
-          led++;
-        }
-      }
+      const uint8_t quant = mcl_cfg.chain_load_quant;
+      leds = (quant & (quant - 1)) ? 0 : quant >> 1;
+    } else if (row != IO_ROW_MODE && mcl_cfg.load_mode != LOAD_QUEUE) {
+      const uint8_t len = mcl_cfg.load_fade_len;
+      leds = (mcl_cfg.load_fade & 1) && len >= 2 ? (uint16_t)1 << (len - 2) : 0;
     }
   }
   if (GridIOPage::show_track_type) {
     // The group popup has the LEDs; they are set again once it closes.
-    io_edit_led = 254;
-  } else if (led != io_edit_led) {
-    io_edit_led = led;
-    if (led == 255) {
+    io_edit_leds = IO_LEDS_UNKNOWN;
+  } else if (leds != io_edit_leds) {
+    io_edit_leds = leds;
+    if (leds == IO_LEDS_SELECTION) {
       GridIOPage::paint_track_select_leds();
     } else {
-      mcl_gui.set_trigleds(led ? (uint16_t)1 << (led - 1) : 0,
-                           TRIGLED_EXCLUSIVE);
+      mcl_gui.set_trigleds(leds, TRIGLED_EXCLUSIVE);
     }
   }
   if (GridIOPage::show_offset) {
@@ -1998,12 +1983,11 @@ void GridPage::io_loop() {
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
-    gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     return;
   }
-  // The settings follow the knob objects that hold them (io_begin set them
-  // equal): the mode with its MD popup (the bank keys change it too), LEN
-  // in Queue, FADE in the other modes (the Slide key changes it too), QUANT.
+  // The mode, LEN and QUANT follow the knob objects that hold them (io_begin
+  // set them equal): the mode with its MD popup (the bank keys change it
+  // too), LEN in Queue, QUANT. FADE is set where it is changed.
   if ((uint8_t)gridload_param1.cur != mcl_cfg.load_mode) {
     mcl_cfg.load_mode = gridload_param1.cur;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
@@ -2013,11 +1997,6 @@ void GridPage::io_loop() {
   } else {
     // Knob 2 is LEN only in Queue (LEGACY); elsewhere it stays put.
     gridio_param2.cur = mcl_cfg.chain_queue_length;
-    // 0 is off, 1 on with QUANT's length, then on with a set length.
-    mcl_cfg.load_fade = (mcl_cfg.load_fade & ~1) | (gridload_fade.cur != 0);
-    if (gridload_fade.cur != 0) {
-      mcl_cfg.load_fade_len = gridload_fade.cur - 1;
-    }
   }
   mcl_cfg.chain_load_quant = gridio_param4.cur;
 }
@@ -2058,12 +2037,7 @@ void GridPage::io_action(bool groups) {
   // Armed for the next one (the arrows move the grid): the selection, DEST
   // and the group popup clear, and the Machinedrum's popup returns. After a
   // save the grid reloads the slot labels.
-  GridIOPage::show_track_type = false;
-  GridIOPage::show_offset = false;
-  GridIOPage::track_select = 0;
-  GridIOPage::offset = 255;
-  note_interface.init_notes();
-  GridIOPage::paint_track_select_leds();
+  io_clear_selection();
   if (load) {
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
   } else {
@@ -2123,15 +2097,14 @@ uint16_t GridPage::io_visible_mask() {
                            : (uint16_t)GridIOPage::track_select;
   // While the rows are edited the trigs set values, not slots: the note
   // interface records a press before the panel drops it, so a frame drawn
-  // between would show it as selected. The same for an edit trig released
-  // after the edit.
+  // between would show it as selected.
   if (io_editing || io_slide) {
     return mask;
   }
   uint16_t bit = 1;
   for (uint8_t n = 0; n < GRID_WIDTH; n++, bit <<= 1) {
     // Trigs map to the shown grid; notes 16-31 address grid Y directly.
-    if ((note_interface.is_note(n) && !(io_edit_trigs & bit)) ||
+    if (note_interface.is_note(n) ||
         (cur_grid && note_interface.is_note(n + GRID_WIDTH))) {
       mask |= bit;
     }
@@ -2205,12 +2178,15 @@ void GridPage::io_display_panel() {
                                IO_EDIT_HOLD_MS)) {
             panel_row(24, mclstr_fade, 0);
           }
-        } else if (len == 0) {
-          text_at_P(1, 24, mclstr_fade);
-          text_at_P(37 - 4 * strlen_P(word), 24, word);
         } else {
-          text_at_P(1, 24, (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
-          print_fade_steps(load_fade_steps(len), 24);
+          // With a set length the steps take the word's place, and a forced
+          // direction's word the label's.
+          text_at_P(1, 24, len && (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
+          if (len) {
+            print_fade_steps(len - 1, 24);
+          } else {
+            text_at_P(37 - 4 * strlen_P(word), 24, word);
+          }
         }
       }
       if (io_editing) {
@@ -2265,34 +2241,27 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     // on), to 2^n steps, the knob's powers of two: QUANT to 64 on trigs 1-6
     // (trigs 7-16 set 64 too), the fade to 1024 on trigs 1-10. On the mode
     // row and Queue's LEN they do nothing.
-    const uint16_t bit = track < 16 ? (uint16_t)1 << track : 0;
-    const bool pressed = event->mask == EVENT_BUTTON_PRESSED;
-    if (bit && (pressed ? (io_editing || io_slide) &&
-                              !GridIOPage::show_track_type
-                        : (io_edit_trigs & bit) != 0)) {
-      if (pressed) {
-        io_edit_trigs |= bit;
-        // With Slide held the trigs set the fade length.
-        const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
-        io_slide_used |= io_slide;
-        if (row == IO_ROW_QUANT) {
-          // Trigs past 6 set QUANT's maximum, 64.
-          gridio_param4.cur = track < 6 ? 2 << track : 64;
-        } else if (row == IO_ROW_LEN_FADE &&
-                   mcl_cfg.load_mode != LOAD_QUEUE) {
-          // Length code n is 2^(n-1) steps; gridload_fade holds code + 1.
-          if (track < LOAD_FADE_MAX - 1) {
-            gridload_fade.cur = track + 3;
-          }
-        }
-      } else {
-        io_edit_trigs &= ~bit;
+    if (event->mask == EVENT_BUTTON_PRESSED && (io_editing || io_slide) &&
+        !GridIOPage::show_track_type && track < 16) {
+      // With Slide held the trigs set the fade length.
+      const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
+      io_slide_used |= io_slide;
+      if (GridIOPage::show_offset) {
+        // Picking a destination: the settings stay as they are.
+      } else if (row == IO_ROW_QUANT) {
+        // Trigs past 6 set QUANT's maximum, 64.
+        gridio_param4.cur = track < 6 ? 2 << track : 64;
+      } else if (row == IO_ROW_LEN_FADE && mcl_cfg.load_mode != LOAD_QUEUE &&
+                 track < LOAD_FADE_MAX - 1) {
+        // Length code n is 2^(n-1) steps; the fade turns on.
+        mcl_cfg.load_fade |= 1;
+        mcl_cfg.load_fade_len = track + 2;
       }
-      // Not a slot pick: the note interface took the press or release before
-      // this, and the grid and the LEDs show its notes as the selection, so
-      // drop the note again at once.
+      // Not a slot pick: the note interface has recorded the press, and the
+      // grid and the LEDs show its notes as the selection, so drop the note
+      // again and have its release ignored.
       CLEAR_BIT32(note_interface.notes_on, track);
-      CLEAR_BIT32(note_interface.notes_off, track);
+      note_interface.ignoreNextEvent(track);
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
@@ -2415,7 +2384,6 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           dirn = limit_value(dirn, key == MDX_KEY_UP ? 1 : -1, 0,
                              LOAD_FADE_FORCE_OUT);
           mcl_cfg.load_fade = (dirn << 1) | 1;
-          gridload_fade.cur = mcl_cfg.load_fade_len + 1;
           io_slide_used = true;
           return true;
         }
@@ -2441,8 +2409,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
       if (io_slide && !io_slide_used) {
-        gridload_fade.cur =
-            gridload_fade.cur != 0 ? 0 : mcl_cfg.load_fade_len + 1;
+        mcl_cfg.load_fade ^= 1;
       }
       io_slide = false;
       return true;
@@ -2461,52 +2428,24 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       io_toggle_grid();
       return true;
     }
-    const bool pressed = (event->mask & EVENT_BUTTON_PRESSED) != 0;
-    // The Machinedrum's [Global] arrives as Shift|Menu, with its own key
-    // down on the press and up again on its release. On Load it is the edit
-    // key, not the row load.
-    bool global = false;
-    if (load && event->source == Buttons.BUTTON3) {
-      const bool md_key = key_interface.is_key_down(MDX_KEY_PATSONG);
-      if (pressed ? md_key : (io_global && !md_key)) {
-        io_global = pressed;
-        global = true;
-      }
-    }
-    // Load|Yes on Load: a tap closes; held, the panel's rows can be edited,
-    // as at once with [Global]. With Save|No held it is the config chord,
+    // Load|Yes on Load: a tap closes it, as it always did; held, the rows
+    // can be edited (io_loop). With Save|No held it is the config chord,
     // which the Grid page takes once Load is disarmed.
-    if (global || (load && event->source == Buttons.BUTTON4)) {
-      if (pressed && !global && BUTTON_DOWN(Buttons.BUTTON1)) {
-        io_end();
-        return false;
-      }
-      if (!global) {
-        // A tap of Load|Yes closes Load, as it always did. Held, the edit
-        // starts after IO_EDIT_HOLD_MS (io_loop), so a tap shows nothing.
-        if (pressed) {
-          io_tap_clock = read_clock_ms();
-          io_pending = true;
-          io_opening = false;
-          return true;
-        }
-        if (io_pending) {
-          // The early release of the press that opened Load leaves it open.
-          io_pending = false;
-          if (io_opening) {
-            io_opening = false;
-            return true;
-          }
+    if (load && event->source == Buttons.BUTTON4) {
+      if (EVENT_PRESSED(event, Buttons.BUTTON4)) {
+        if (BUTTON_DOWN(Buttons.BUTTON1)) {
           io_end();
-          return true;
+          return false;
         }
+        io_tap_clock = read_clock_ms();
+      } else {
+        // Let go before the hold time: a tap, unless it is the press that
+        // opened Load.
+        if (!io_held && !io_opening) {
+          io_end();
+        }
+        io_opening = false;
       }
-      // The edit lasts while either key is held, and not while DEST is
-      // open.
-      io_rows_edit(encoders,
-                   !GridIOPage::show_offset &&
-                       (pressed || BUTTON_DOWN(Buttons.BUTTON4) ||
-                        key_interface.is_key_down(MDX_KEY_PATSONG)));
       return true;
     }
 #ifndef PLATFORM_TBD
@@ -2518,9 +2457,13 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       return false;
     }
 #endif
-    // Shift|Menu: hold for the groups, release to load or save the row.
+    // Shift|Menu: hold for the groups, release to load or save the row. The
+    // Machinedrum's [Global] arrives as Shift|Menu with its own key down: on
+    // Load it is the edit key (io_loop), not the row load.
     if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
-      io_group_select();
+      if (!(load && key_interface.is_key_down(MDX_KEY_PATSONG))) {
+        io_group_select();
+      }
       return true;
     }
     if (EVENT_RELEASED(event, Buttons.BUTTON3)) {

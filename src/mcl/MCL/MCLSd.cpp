@@ -339,24 +339,17 @@ bool MCLSd::load_init() {
           mcl_cfg.md_sample_bank_capture = 0;
         }
         {
-          // FADE and its length follow the persisted block, then their
-          // complements.
-          uint8_t *fade = (uint8_t *)&mcl_cfg.load_fade;
-          memset(fade, 0, 4);
-          mcl_cfg.cfgfile.read(fade, 4);
-          if ((uint8_t)~fade[0] != fade[2] || (uint8_t)~fade[1] != fade[3] ||
-              fade[0] > (1 | LOAD_FADE_FORCE_OUT << 1) ||
-              fade[1] > LOAD_FADE_MAX) {
-            fade[0] = 0;
-            fade[1] = 0;
+          // FADE, its length and SYSTEM > LOAD/SAVE follow the persisted
+          // block, then their tag.
+          uint8_t *panel = (uint8_t *)&mcl_cfg.load_fade;
+          memset(panel, 0, 4);
+          mcl_cfg.cfgfile.read(panel, 4);
+          if (mcl_cfg.load_panel_tag != LOAD_PANEL_CFG_TAG ||
+              panel[0] > (1 | LOAD_FADE_FORCE_OUT << 1) ||
+              mcl_cfg.load_fade_len > LOAD_FADE_MAX ||
+              mcl_cfg.io_stay > LOAD_SAVE_STAY) {
+            memset(panel, 0, 3);
           }
-          // SYSTEM > LOAD/SAVE follows, then its complement.
-          uint8_t stay[2] = {0, 0};
-          mcl_cfg.cfgfile.read(stay, 2);
-          mcl_cfg.io_stay =
-              (uint8_t)~stay[0] == stay[1] && stay[0] <= LOAD_SAVE_STAY
-                  ? stay[0]
-                  : LOAD_SAVE_LEGACY;
         }
         ptc_groups.load(mcl_cfg.ptc_group);
 

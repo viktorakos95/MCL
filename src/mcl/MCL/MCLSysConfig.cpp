@@ -180,10 +180,8 @@ bool MCLSysConfig::write_cfg() {
 
   ret = mcl_sd.write_data((uint8_t *)this, sizeof(MCLSysConfigData), &cfgfile);
   if (ret) {
-    load_fade_check[0] = ~load_fade;
-    load_fade_check[1] = ~load_fade_len;
-    io_stay_check = ~io_stay;
-    ret = mcl_sd.write_data(&load_fade, 6, &cfgfile);
+    load_panel_tag = LOAD_PANEL_CFG_TAG;
+    ret = mcl_sd.write_data(&load_fade, 4, &cfgfile);
   }
   if (!ret) {
     DEBUG_PRINTLN(F("Write cfg failed"));

@@ -101,6 +101,7 @@ static_assert(sizeof(MCLSysConfigData) == 185,
 // The Grid page LOAD panel's FADE length: 0 follows QUANT, n is 2^(n-1)
 // steps (n = 1 .. LOAD_FADE_MAX).
 #define LOAD_FADE_MAX 11
+#define LOAD_PANEL_CFG_TAG 0x4C
 // SYSTEM > LOAD/SAVE (io_stay).
 #define LOAD_SAVE_LEGACY 0 // as MCL always was: Load's knobs, arrows close
 #define LOAD_SAVE_CLOSE 1  // the Grid page's knobs and arrows; closes after
@@ -119,15 +120,13 @@ public:
   // LOAD_FADE_FORCE_IN / _OUT force it (SCALE+UP / SCALE+DOWN).
   int8_t load_fade;
   uint8_t load_fade_len;
-  // Both follow the persisted block in config.mcls, then their complements,
-  // so a file written before FADE existed reads as off. Older MCL reads and
-  // writes only the persisted block and leaves these bytes alone.
-  uint8_t load_fade_check[2];
-  // SYSTEM > LOAD/SAVE: LOAD_SAVE_LEGACY, _CLOSE or _STAY. It follows the
-  // fade bytes, then its complement, so a file written before it existed
-  // reads LEGACY.
+  // SYSTEM > LOAD/SAVE: LOAD_SAVE_LEGACY, _CLOSE or _STAY.
   uint8_t io_stay;
-  uint8_t io_stay_check;
+  // These three follow the persisted block in config.mcls, then this tag
+  // (LOAD_PANEL_CFG_TAG), so a file written before they existed reads as
+  // FADE off and LEGACY. Older MCL reads and writes only the persisted block
+  // and leaves these bytes alone.
+  uint8_t load_panel_tag;
   uint16_t cfg_save_lastclock;
   File cfgfile;
   bool write_cfg();

@@ -12,10 +12,6 @@ MCLEncoder gridload_param1(1, 3, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param2(64, 1, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param4(64, 1, ENCODER_RES_PAT);
 
-#if MCL_GRID_IO_PANEL
-MCLEncoder gridload_fade(LOAD_FADE_MAX + 1, 0, ENCODER_RES_PAT);
-#endif
-
 #if !MCL_GRID_IO_PANEL
 // AVR and TBD run Load and Save on the Grid page (GridPage::io_*).
 MCLEncoder gridsave_param1(0, 2, ENCODER_RES_PAT);

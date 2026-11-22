@@ -30,11 +30,6 @@ extern MCLEncoder gridload_param1;
 extern MCLExpEncoder gridio_param2;
 extern MCLEncoder gridio_param3;
 extern MCLExpEncoder gridio_param4;
-#if MCL_GRID_IO_PANEL
-// FADE on the LOAD panel: 0 off, 1 on with the QUANT length, then on with
-// 2^(n-2) steps.
-extern MCLEncoder gridload_fade;
-#endif
 
 extern GridSavePage grid_save_page;
 extern GridLoadPage grid_load_page;

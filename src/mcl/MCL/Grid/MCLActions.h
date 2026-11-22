@@ -81,8 +81,8 @@ public:
 
 // FADE's direction for a column's load (MCLActions::load_fade_dir).
 #define LOAD_FADE_DIR_NONE 0
-#define LOAD_FADE_DIR_IN 1
-#define LOAD_FADE_DIR_OUT 2
+#define LOAD_FADE_DIR_IN LOAD_FADE_FORCE_IN
+#define LOAD_FADE_DIR_OUT LOAD_FADE_FORCE_OUT
 #define LOAD_FADE_DIR_OUTIN 3
 
 class MCLActions : public LinkModeData {
@@ -169,7 +169,8 @@ public:
   void calc_latency();
   void clear_load_fades(bool preserve_armed_prestart = false);
   // panel: the LOAD panel's FADE replaces the slot's own (see panel_fade).
-  void start_load_fade_at(GridSlot slot, const TrackLoadFadeData *fade,
+  // False when the slot's track cannot fade (it is not a Machinedrum track).
+  bool start_load_fade_at(GridSlot slot, const TrackLoadFadeData *fade,
                           uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
                           ,
@@ -178,9 +179,9 @@ public:
                           ,
                           bool panel = true);
   // The fade FADE chose for this slot's pending load (load_fade_dir), used
-  // up here: false when there is none. OUTIN gives its IN, or its OUT with
-  // fade_out_first. Defined where the panel exists (MCL_GRID_IO_PANEL).
-  bool panel_fade(GridSlot slot, GridDeviceTrack *gdt, bool fade_out_first,
+  // up here: false when there is none. OUTIN gives its IN. Defined where the
+  // panel exists (MCL_GRID_IO_PANEL).
+  bool panel_fade(GridSlot slot, GridDeviceTrack *gdt,
                   TrackLoadFadeData *fade);
 
 private:
