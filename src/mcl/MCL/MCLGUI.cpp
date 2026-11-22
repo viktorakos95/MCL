@@ -329,12 +329,24 @@ void MCLGUI::draw_progress_bar(uint8_t cur, uint8_t _max, bool deferred_display,
     }
     ROTATE_LEFT(temp_bitmask, 8);
   }
+#if defined(__AVR__)
+  // The stripes step every 27 ms. They stepped every second draw, and a draw
+  // took a 12 ms frame send; the send is now under 1 ms. s_progress_count
+  // holds the low byte of the clock at the last step.
+  uint8_t now = (uint8_t)read_clock_ms();
+  if ((uint8_t)(now - s_progress_count) >= 27) {
+    s_progress_cookie = bitmask;
+    ROTATE_LEFT(s_progress_cookie, 8);
+    s_progress_count = now;
+  }
+#else
   if (s_progress_count == s_progress_speed * ENCODER_RES_MULTIPLIER) { //hack use ENCODER_RES_MULTIPLIER
     s_progress_cookie = bitmask;
     ROTATE_LEFT(s_progress_cookie, 8);
     s_progress_count = 0;
   }
   s_progress_count++;
+#endif
   if (border) oled_rect(x_pos, y_pos, width, height, WHITE);
 
   if (!deferred_display) {

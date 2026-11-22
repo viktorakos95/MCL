@@ -24,6 +24,9 @@ void MCLGfx::draw_evil(unsigned char* evil) {
 
   oled_display.drawBitmap(x, 1, evil, 33, 31, BLACK);
   oled_display.display();
+#ifdef __AVR__
+  delay(11); // what the frame send took before its waits were removed
+#endif
 }
   delay(2000);
   oled_text_color(WHITE, BLACK);
@@ -67,9 +70,7 @@ void MCLGfx::splashscreen(unsigned char* bitmap) {
     oled_hline(35, 32 - a, BITMAP_MCL_LOGO_W + 34, BLACK);
 #endif
     oled_display.display();
-#ifndef __AVR__
     delay(10);
-#endif
   }
 
 }

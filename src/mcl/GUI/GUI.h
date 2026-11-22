@@ -82,6 +82,15 @@ public:
 
   void loop();
   void deferDisplayOnce() { skip_display_once = true; }
+#if defined(__AVR__)
+  // Sending a frame took about 12 ms until the display's waits were removed,
+  // and everything that steps once a frame, such as the mixer's meters, is
+  // tuned to that. Frames stay that far apart: a new one starts no sooner
+  // than FRAME_GAP_MS after the last one was sent.
+  static constexpr uint8_t FRAME_GAP_MS = 11;
+  uint16_t frame_clock;
+  bool frame_due();
+#endif
   void wake_screen_saver();
   void mirror();
   void display();
