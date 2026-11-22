@@ -1599,7 +1599,14 @@ bool GridPage::handleEvent(gui_event_t *event) {
         return true;
       }
 
+#if MCL_GRID_IO_PANEL && !defined(PLATFORM_TBD)
+      // Load|Yes opens Load on the press. With Save|No held the press is the
+      // config chord below; with Load or Save armed the panel has the button.
+      if (EVENT_PRESSED(event, Buttons.BUTTON4) && !io_mode &&
+          !BUTTON_DOWN(Buttons.BUTTON1)) {
+#else
       if (EVENT_RELEASED(event, Buttons.BUTTON4)) {
+#endif
       load:
 #if MCL_GRID_IO_PANEL
         io_begin(GRID_IO_LOAD);
@@ -2303,6 +2310,15 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
                         key_interface.is_key_down(MDX_KEY_PATSONG)));
       return true;
     }
+#ifndef PLATFORM_TBD
+    // Save|No pressed with Load|Yes held (Load opens on that press) is the
+    // config chord, which the Grid page takes once the panel is disarmed.
+    if (EVENT_PRESSED(event, Buttons.BUTTON1) &&
+        BUTTON_DOWN(Buttons.BUTTON4)) {
+      io_end();
+      return false;
+    }
+#endif
     // Shift|Menu: hold for the groups, release to load or save the row.
     if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
       io_group_select();
