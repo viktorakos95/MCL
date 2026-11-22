@@ -163,6 +163,7 @@ public:
   void update_chain_links(GridSlot n, GridDeviceTrack *gdt);
   void cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_idx);
   void cache_next_tracks(uint8_t *slot_select_array, bool gui_update = false);
+  static uint32_t ui_pass_margin();
   void calc_next_slot_transition(GridSlot n, bool ignore_chain_settings = false,
                                  bool ignore_overflow = false);
   void calc_next_transition();

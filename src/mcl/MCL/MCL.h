@@ -81,6 +81,7 @@ public:
 
   void setup();
   void loop();
+  void loop_in_wait();
 
   void load_persistent_resources();
 };

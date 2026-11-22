@@ -1443,13 +1443,27 @@ void MCLActions::cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_
 }
 
 
+// How close to a deadline, in 192nd ticks, the UI may still be given a loop
+// pass. A pass can run long (a page draw, a key handler), and one that runs
+// past the deadline makes the load late. One second is tempo * 0.8 ticks, so
+// 80 ms is tempo * 64 / 1000. On the AVR every pass used to take another
+// 12 ms to send its frame; that is gone, so its margin is 69 ms (55).
+#if defined(__AVR__)
+#define UI_PASS_MARGIN 55
+#else
+#define UI_PASS_MARGIN 64
+#endif
+
+uint32_t MCLActions::ui_pass_margin() {
+  uint16_t tempo_uint = (uint16_t)MidiClock.get_tempo();
+  return MidiClock.scale_legacy_div192_to_current(
+      ((uint32_t)tempo_uint * UI_PASS_MARGIN + 999) / 1000);
+}
+
 void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
                                    bool gui_update) {
 
-  uint16_t tempo_uint = (uint16_t)MidiClock.get_tempo();
-  uint32_t gui_threshold =
-      MidiClock.scale_legacy_div192_to_current(
-          ((uint32_t)tempo_uint * 64 + 999) / 1000);
+  uint32_t gui_threshold = ui_pass_margin();
 
   uint8_t n = NUM_SLOTS;
 
@@ -1479,7 +1493,7 @@ void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
         break;
       }
       if (gui_update && diff > gui_threshold) {
-         mcl.loop();
+         mcl.loop_in_wait();
       }
     }
 
