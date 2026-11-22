@@ -54,6 +54,12 @@ constexpr uint16_t make_grid_slot_label(char a, char b) {
   return ((uint16_t)(uint8_t)a << 8) | (uint8_t)b;
 }
 
+// A copy to or from the track cache in bank 1, out of line: on AVR the bank
+// switch around the copy is 30 bytes at each of the places that store or
+// load a track.
+void track_mem_copy(volatile void *dst, volatile const void *src,
+                    uint16_t len);
+
 class ATTR_PACKED() GridTrackStorageHeader {
 public:
   uint8_t version = 0;

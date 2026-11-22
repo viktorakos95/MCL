@@ -32,12 +32,18 @@ bool GridTrack::storage_version_at_least(uint8_t min_version) const {
   return proj.version == PROJ_VERSION && version >= min_version;
 }
 
+__attribute__((noinline)) void track_mem_copy(volatile void *dst,
+                                              volatile const void *src,
+                                              uint16_t len) {
+  memcpy_bank1(dst, src, len);
+}
+
 bool GridTrack::store_in_mem(GridSlot column) {
   uintptr_t pos = get_region() +
                   static_cast<uintptr_t>(get_region_size() *
                                          static_cast<uint32_t>(column));
   volatile uint8_t *ptr = reinterpret_cast<uint8_t *>(pos);
-  memcpy_bank1(ptr, _this(), get_track_size());
+  track_mem_copy(ptr, _this(), get_track_size());
   return true;
 }
 
@@ -47,7 +53,7 @@ bool GridTrack::load_from_mem(GridSlot column, size_t size) {
                   static_cast<uintptr_t>(get_region_size() *
                                          static_cast<uint32_t>(column));
   volatile uint8_t *ptr = reinterpret_cast<uint8_t *>(pos);
-  memcpy_bank1(_this(), ptr, bytes);
+  track_mem_copy(_this(), ptr, bytes);
   return true;
 }
 
