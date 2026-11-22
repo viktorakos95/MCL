@@ -189,10 +189,10 @@ void draw_lfo_enable_info_label(bool enabled) {
                         MCLGUI::pane_info_h, WHITE);
 
   oled_text_color(enabled ? BLACK : WHITE);
-  oled_display.setCursor(3, MCLGUI::pane_info1_y + 6);
+  oled_cursor(3, MCLGUI::pane_info1_y + 6);
   mcl_print_P(mclstr_on);
   oled_text_color(enabled ? WHITE : BLACK);
-  oled_display.setCursor(split_x + 2, MCLGUI::pane_info1_y + 6);
+  oled_cursor(split_x + 2, MCLGUI::pane_info1_y + 6);
   mcl_print_P(mclstr_off);
   oled_text_color(WHITE);
 }
@@ -316,7 +316,7 @@ void draw_lfo_wave_preview(uint8_t knob, uint8_t wav_type) {
 
   oled_font_small();
   oled_text_color(WHITE);
-  oled_display.setCursor(knob_x + 5, mcl_gui.knob_y0 + 6);
+  oled_cursor(knob_x + 5, mcl_gui.knob_y0 + 6);
   mcl_print_P(mclstr_wav_label);
   oled_font_default();
 

@@ -69,7 +69,7 @@ void RoutePage::draw_routes() {
     oled_display.fillRect(x, MCLGUI::trig_y, MCLGUI::seq_w, MCLGUI::trig_h,
                           note_on ? WHITE : BLACK);
     oled_text_color(note_on ? BLACK : WHITE);
-    oled_display.setCursor(x + 1, MCLGUI::trig_y + 5);
+    oled_cursor(x + 1, MCLGUI::trig_y + 5);
     oled_display.print((char)('A' + mcl_cfg.routing[i]));
   }
 

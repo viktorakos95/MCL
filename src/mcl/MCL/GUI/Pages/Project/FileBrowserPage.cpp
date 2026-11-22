@@ -280,7 +280,7 @@ void FileBrowserPage::open_filemenu() {
 void FileBrowserPage::draw_sidebar() {
   constexpr uint8_t x_offset = 43;
   oled_display.clearDisplay();
-  oled_display.setCursor(0, 8);
+  oled_cursor(0, 8);
   oled_text_color(WHITE, BLACK);
   oled_display.println(title);
   mcl_gui.draw_vertical_dashline(x_offset - 6);
@@ -289,7 +289,7 @@ void FileBrowserPage::draw_sidebar() {
 void FileBrowserPage::draw_filebrowser() {
 
   constexpr uint8_t x_offset = 43, y_offset = 8, width = MENU_WIDTH;
-  oled_display.setCursor(x_offset, 8);
+  oled_cursor(x_offset, 8);
   uint8_t max_items = min(MAX_VISIBLE_ROWS, numEntries);
   uint16_t first_entry = encoders[1]->cur - cur_row;
 
@@ -297,7 +297,7 @@ void FileBrowserPage::draw_filebrowser() {
 
   for (uint8_t n = 0; n < max_items; n++) {
     uint8_t y_pos = y_offset + 8 * n;
-    oled_display.setCursor(x_offset, y_pos);
+    oled_cursor(x_offset, y_pos);
     bool color = n == cur_row;
     if (color) {
       oled_text_color(BLACK, WHITE);
@@ -308,7 +308,7 @@ void FileBrowserPage::draw_filebrowser() {
     }
     uint16_t entry_num = first_entry + n;
     if (entry_num == cur_file) {
-      oled_display.setCursor(x_offset - 4, y_pos);
+      oled_cursor(x_offset - 4, y_pos);
       mcl_print_P(mclstr_arrow_right);
     }
     if (entry_num < (uint16_t)numEntries) {
@@ -318,7 +318,7 @@ void FileBrowserPage::draw_filebrowser() {
       if (type == DIR_TYPE && draw_dirs) {
         oled_display.drawRect(x_offset, y_pos - 4, 6, 4, !color);
         oled_display.drawFastHLine(x_offset + 1, y_pos - 1 - 4, 3, !color);
-        oled_display.setCursor(x_offset + 8, y_pos);
+        oled_cursor(x_offset + 8, y_pos);
       }
       oled_display.println(temp_entry);
     }

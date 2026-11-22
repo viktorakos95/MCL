@@ -60,7 +60,7 @@ void GridIOPage::draw_popup_P(const char *title_P) {
 
 void GridIOPage::draw_grid_marker(uint8_t body_y_offset) {
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(MCLGUI::s_menu_x + 4, 21 + body_y_offset);
+  oled_cursor(MCLGUI::s_menu_x + 4, 21 + body_y_offset);
   oled_display.print((char)(0x3A + old_grid));
   oled_font_small();
 }
@@ -87,7 +87,7 @@ void GridIOPage::draw_tbd_panel_header(const char *title, uint8_t y_offset) {
 
   oled_display.fillRect(title_x, title_y, title_w, title_h, WHITE);
   oled_text_color(BLACK, WHITE);
-  oled_display.setCursor(title_x + 2, title_y + 2);
+  oled_cursor(title_x + 2, title_y + 2);
   oled_display.print(title);
 
   oled_text_color(WHITE, BLACK);
@@ -96,7 +96,7 @@ void GridIOPage::draw_tbd_panel_header(const char *title, uint8_t y_offset) {
   const uint8_t bank = row / 16;
   mcl_gui.put_value_at2(row - bank * 16 + 1, val);
 
-  oled_display.setCursor(92, y_offset + 2);
+  oled_cursor(92, y_offset + 2);
   oled_display.print((char)('X' + old_grid));
   oled_display.print(':');
   oled_display.print((char)('A' + bank));

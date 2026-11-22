@@ -176,7 +176,7 @@ COLD_SMALL() void OscPage::display() {
 
   uint8_t c = 1;
   uint8_t i = 0;
-  oled_display.setCursor(0, 0);
+  oled_cursor(0, 0);
 
   switch (osc_waveform) {
   default:

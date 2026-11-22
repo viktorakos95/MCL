@@ -420,7 +420,7 @@ void MixerPage::draw_encs() {
     uint8_t val = MixerPerf::display_value(encoders[n], perf_locks,
                                            preview_mute_set, n, highlight);
     mcl_gui.draw_encoder(24 + pos, fader_y + 4, val, highlight);
-    oled_display.setCursor(16 + pos, fader_y + 6);
+    oled_cursor(16 + pos, fader_y + 6);
     oled_display.write((uint8_t)('A' + n));
   }
 }
@@ -494,7 +494,7 @@ void MixerPage::display() {
     draw_encs();
     oled_font_small();
     if (load_perf_state != 255 && load_perf_state == preview_mute_set) {
-      oled_display.setCursor(111, 31);
+      oled_cursor(111, 31);
       mcl_print_P(mclstr_load);
     }
     oled_font_default();

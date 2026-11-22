@@ -245,12 +245,12 @@ void PageSelectPage::display() {
   oled_display.fillRect(0, 0, 128, 7, WHITE);
   oled_font_small();
   oled_text_color(BLACK);
-  oled_display.setCursor(47, 6);
+  oled_cursor(47, 6);
   mcl_print_P(mclstr_page_select);
   oled_display.fillRect(0, 7, 128, 25, BLACK);
   oled_text_color(WHITE);
   for (uint8_t i = 0; i < 4; ++i) {
-    oled_display.setCursor(pgm_read_byte(&page_category_label_x[i]), 31);
+    oled_cursor(pgm_read_byte(&page_category_label_x[i]), 31);
     print_category_name_by_idx(i);
   }
   bool valid_page = page_select < PageRegistry::kMaxPageSlots &&
@@ -303,7 +303,7 @@ void PageSelectPage::display() {
   }
 
   oled_font_default();
-  oled_display.setCursor(29, 9);
+  oled_cursor(29, 9);
   mcl_print_P(name_P);
 
   if (icon != nullptr) {

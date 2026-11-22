@@ -119,7 +119,7 @@ void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
     entry.close();
     if (path[at] != '\0' && path[at] != '.') {
       oled_display.clearDisplay();
-      oled_display.setCursor(0, 8);
+      oled_cursor(0, 8);
       oled_display.println(F("UPGRADING"));
       oled_display.println(path);
       oled_display.display();
@@ -163,14 +163,14 @@ void upgrade_all_projects() {
   if (confirmed) {
     // Reading the free space of a large card takes a few seconds.
     oled_display.clearDisplay();
-    oled_display.setCursor(0, 8);
+    oled_cursor(0, 8);
     oled_display.println(F("CHECKING SD CARD"));
     oled_display.display();
     proj.upgrade_room = count_upgrade_room();
     upgrade_projects_in(path, 1, &upgraded);
   }
   oled_display.clearDisplay();
-  oled_display.setCursor(0, 8);
+  oled_cursor(0, 8);
   if (confirmed) {
     oled_display.print(upgraded);
     oled_display.println(F(" PROJECTS READY"));

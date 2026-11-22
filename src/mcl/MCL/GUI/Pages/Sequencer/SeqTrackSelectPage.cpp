@@ -24,7 +24,7 @@ constexpr uint8_t kOverlayH = 32;
 void draw_track_number(uint8_t y_top, uint8_t track) {
   oled_text_color(WHITE, BLACK);
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(MCLGUI::pane_trackid_x,
+  oled_cursor(MCLGUI::pane_trackid_x,
                          y_top + MCLGUI::pane_trackid_y);
   if (track < 10) {
     oled_display.print('0');
@@ -40,12 +40,12 @@ void draw_device_toggle(uint8_t y_top, const char *primary,
   oled_display.fillRect(MCLGUI::pane_label_x, active_y,
                         MCLGUI::pane_label_w, MCLGUI::pane_label_h, WHITE);
 
-  oled_display.setCursor(MCLGUI::pane_label_x + 1,
+  oled_cursor(MCLGUI::pane_label_x + 1,
                          y_top + MCLGUI::pane_label_md_y + 6);
   oled_text_color(primary_active ? BLACK : WHITE);
   oled_display.print(primary);
 
-  oled_display.setCursor(MCLGUI::pane_label_x + 1,
+  oled_cursor(MCLGUI::pane_label_x + 1,
                          y_top + MCLGUI::pane_label_ex_y + 6);
   oled_text_color(primary_active ? WHITE : BLACK);
   oled_display.print(secondary);
@@ -230,9 +230,9 @@ void SeqTrackSelectPage::display() {
 
   oled_font_default();
   oled_text_color(WHITE, BLACK);
-  oled_display.setCursor(34, kOverlayY + 4);
+  oled_cursor(34, kOverlayY + 4);
   oled_display.print("TRACK SELECT");
-  oled_display.setCursor(34, kOverlayY + 17);
+  oled_cursor(34, kOverlayY + 17);
   oled_display.print(SeqPage::device_idx_name(device_idx_));
 }
 

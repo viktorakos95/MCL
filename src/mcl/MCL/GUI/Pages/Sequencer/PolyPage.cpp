@@ -94,7 +94,7 @@ void PolyPage::draw_mask() {
       oled_display.drawRect(x, y, 15, 10, WHITE);
     }
 
-    oled_display.setCursor(ptc_group_text_x(group, x), y + 8);
+    oled_cursor(ptc_group_text_x(group, x), y + 8);
     oled_text_color(filled ? BLACK : WHITE);
     print_ptc_group_label(group);
 
@@ -176,7 +176,7 @@ void PolyPage::loop() {
 void PolyPage::display() {
   oled_display.clearDisplay();
 
-  oled_display.setCursor(0, 2);
+  oled_cursor(0, 2);
   mcl_print_P(mclstr_channel_select);
   mcl_print_P(mclstr_space);
   print_ptc_group_label(selected_group);

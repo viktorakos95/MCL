@@ -246,7 +246,7 @@ void MenuPageBase::draw_item(MenuBase *m, uint8_t item_n) {
 
 uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
                                 uint8_t width, uint8_t scrollbar_width) {
-  oled_display.setCursor(x_offset, y_offset);
+  oled_cursor(x_offset, y_offset);
   MenuBase *m = get_menu();
   uint8_t number_of_items = m->get_number_of_items();
   bool show_scrollbar = scrollbar_width > 0 && number_of_items > visible_rows;
@@ -263,7 +263,7 @@ uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
   uint8_t first_item = encoders[1]->cur - cur_row;
   for (uint8_t n = 0; n < max_items; n++) {
 
-    oled_display.setCursor(x_offset, y_offset + 8 * n);
+    oled_cursor(x_offset, y_offset + 8 * n);
     if (n == cur_row) {
       oled_text_color(BLACK, WHITE);
       oled_display.fillRect(max(0, oled_display.getCursorX() - 3),
@@ -309,7 +309,7 @@ void MenuPageBase::display() {
   oled_display.clearDisplay();
   oled_text_color(WHITE, BLACK);
   oled_font_small();
-  oled_display.setCursor(0, 8);
+  oled_cursor(0, 8);
   oled_display.println(m->get_name());
   mcl_gui.draw_vertical_dashline(x_offset - 6);
 

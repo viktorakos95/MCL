@@ -231,6 +231,10 @@ extern MCLGUI mcl_gui;
 // font. The display state they set is unchanged.
 void oled_font_small();    // TomThumb
 void oled_font_default();  // the built-in 5x7 font
+// The text cursor, out of line: a call is smaller than the four stores at
+// every place that sets it. x may be left of the screen (the splash scrolls
+// text in from there).
+void oled_cursor(int8_t x, uint8_t y);
 void oled_text_color(uint16_t c);
 void oled_text_color(uint16_t c, uint16_t bg);
 

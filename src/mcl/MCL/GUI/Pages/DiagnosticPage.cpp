@@ -14,16 +14,16 @@ void DiagnosticPage::draw_perfcounter() {
 
   auto clock = read_slowclock();
 
-  oled_display.setCursor(64, 7);
+  oled_cursor(64, 7);
   mcl_print_P(mclstr_gui_loop);
-  oled_display.setCursor(97, 7);
+  oled_cursor(97, 7);
   oled_display.print(clock_diff(last_clock, clock));
 
   uint8_t y = 13;
   for (int i = 0; i < DIAGNOSTIC_NUM_COUNTER; ++i) {
-    oled_display.setCursor(64, y);
+    oled_cursor(64, y);
     oled_display.print(perf_name[i]);
-    oled_display.setCursor(97, y);
+    oled_cursor(97, y);
     oled_display.print(perf_counters[i]);
     y += 6;
   }
@@ -43,7 +43,7 @@ void DiagnosticPage::draw_log() {
     if (log_idx >= DIAGNOSTIC_NUM_LOG) {
       log_idx = 0;
     }
-    oled_display.setCursor(64, y);
+    oled_cursor(64, y);
     oled_display.print(log_buf[log_idx++]);
     y = y + 6;
   }

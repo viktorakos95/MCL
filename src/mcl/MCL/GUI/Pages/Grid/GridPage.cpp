@@ -650,12 +650,12 @@ void GridPage::load_slot_models() {
 // Cursor + print in one out-of-line call: each inline pair costs ~30 bytes.
 static void text_at(uint8_t x, uint8_t y, const char *str) NOINLINE();
 static void text_at(uint8_t x, uint8_t y, const char *str) {
-  oled_display.setCursor(x, y);
+  oled_cursor(x, y);
   oled_display.print(str);
 }
 [[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) NOINLINE();
 [[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) {
-  oled_display.setCursor(x, y);
+  oled_cursor(x, y);
   mcl_print_P(str_P);
 }
 
@@ -712,7 +712,7 @@ void GridPage::display_grid_info() {
   uint8_t y_offset = 8;
 
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(0, 10);
+  oled_cursor(0, 10);
   oled_display.print((uint16_t)(MidiClock.get_tempo() + 0.5f));
 
   display_counters();
@@ -756,7 +756,7 @@ void GridPage::display_grid_info() {
 static void print_grid_column(uint8_t grid, uint8_t column, char *val)
     NOINLINE();
 static void print_grid_column(uint8_t grid, uint8_t column, char *val) {
-  oled_display.setCursor(10, 32);
+  oled_cursor(10, 32);
   oled_display.print((char)('X' + grid));
   oled_display.print(':');
   if (column) {
@@ -864,7 +864,7 @@ void GridPage::display_grid() {
 #endif
     for (uint8_t x = col_shift; x < MAX_VISIBLE_COLS + col_shift && x < w;
          x++) {
-      oled_display.setCursor(cur_posx, cur_posy);
+      oled_cursor(cur_posx, cur_posy);
 
       GridColumn track_idx = x + base_col;
       GridRow row_idx = y + base_row;
@@ -983,7 +983,7 @@ void GridPage::display_row_info() {
   for (uint8_t n = 0; n < MAX_VISIBLE_ROWS; n++) {
     GridRow row = base_row + n;
     if (row >= GRID_LENGTH) { return; }
-    oled_display.setCursor(27, (n + 1) * 8);
+    oled_cursor(27, (n + 1) * 8);
     draw_bank_row_label(row, val);
   }
 }
@@ -1055,16 +1055,16 @@ void GridPage::display() {
     oled_font_default();
     oled_display.setTextSize(1);
     oled_text_color(WHITE, BLACK);
-    oled_display.setCursor(0, 32);
+    oled_cursor(0, 32);
     snprintf(buf, sizeof(buf), "f:%02X d:%04X", dbg.f_btns, dbg.d_btns);
     oled_display.print(buf);
-    oled_display.setCursor(0, 40);
+    oled_cursor(0, 40);
     snprintf(buf, sizeof(buf), "m:%04X p:%02X%02X%02X%02X",
       dbg.mcl_btns,
       dbg.pot_states[0], dbg.pot_states[1],
       dbg.pot_states[2], dbg.pot_states[3]);
     oled_display.print(buf);
-    oled_display.setCursor(0, 48);
+    oled_cursor(0, 48);
     snprintf(buf, sizeof(buf), "fl:%02X ml:%04X", dbg.f_btns_long_press, dbg.mcl_btns_long_press);
     oled_display.print(buf);
   }
@@ -1732,7 +1732,7 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
 static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
 static void print_fade_steps(uint8_t n, uint8_t y) {
   uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
-  oled_display.setCursor(37 - 4 * digits, y);
+  oled_cursor(37 - 4 * digits, y);
   oled_display.print(1u << n);
 }
 
@@ -2218,7 +2218,7 @@ void GridPage::io_display_panel() {
   }
   // Not while Load's rows are edited.
   if (!io_editing) {
-    oled_display.setCursor(26, 32);
+    oled_cursor(26, 32);
     draw_bank_row_label(param2.cur, val);
   }
 }

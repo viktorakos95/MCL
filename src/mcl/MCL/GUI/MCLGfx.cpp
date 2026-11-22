@@ -16,10 +16,10 @@ void MCLGfx::draw_evil(unsigned char* evil) {
   oled_font_small();
   for (int8_t x = -45; x < 128 - 45; x += 2) {
   oled_display.fillScreen(WHITE);
-  oled_display.setCursor(x - 60, 10);
+  oled_cursor(x - 60, 10);
   oled_text_color(BLACK, WHITE);
   mcl_println_P(mclstr_this_piece_of);
-  oled_display.setCursor(x - 60, 20);
+  oled_cursor(x - 60, 20);
   mcl_println_P(mclstr_machine_is_ok);
 
   oled_display.drawBitmap(x, 1, evil, 33, 31, BLACK);
@@ -43,10 +43,10 @@ void MCLGfx::splashscreen(unsigned char* bitmap) {
   oled_display.drawBitmap(35, logo_y, bitmap, BITMAP_MCL_LOGO_W,
                           BITMAP_MCL_LOGO_H, WHITE);
   /* oled_display.println("MEGA");
-   oled_display.setCursor(22, 15);
+   oled_cursor(22, 15);
    oled_display.println("COMMAND");
    */
-  oled_display.setCursor(90, logo_y);
+  oled_cursor(90, logo_y);
   oled_display.setTextSize(1);
   mcl_print_P(mclstr_v_label);
   oled_display.print(VERSION_STR);
