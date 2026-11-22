@@ -17,20 +17,24 @@ env.AppendUnique(
 # but makes the loops in the sources below longer, so those keep the default.
 # The SD card library's sector read loop gained a cycle for each byte (the
 # 0xFF it sends was loaded inside the loop), so the SD and display libraries
-# keep the default as well and compile exactly as before.
-env.Append(CCFLAGS=["-fno-move-loop-invariants", "-fmerge-all-constants"])
-_KEEP_LOOP_INVARIANTS = ("*/src/mcl/Midi/Midi.cpp",
-                         "*/Sequencer/ArpSeqTrack.cpp",
-                         "*/Sequencer/ExtSeqTrack.cpp",
-                         "*/SdFat/*", "*/Adafruit*/*")
+# keep the default as well and compile exactly as before. -maccumulate-args
+# changed register allocation in ExtSeqTrack::add_event and lengthened its
+# loop; the same sources keep its default too.
+env.Append(CCFLAGS=["-fno-move-loop-invariants", "-fmerge-all-constants",
+                    "-maccumulate-args"])
+_DEFAULT_CODEGEN = ("*/src/mcl/Midi/Midi.cpp",
+                    "*/Sequencer/ArpSeqTrack.cpp",
+                    "*/Sequencer/ExtSeqTrack.cpp",
+                    "*/SdFat/*", "*/Adafruit*/*")
 
 
-def _keep_loop_invariants(env, node):
-    return env.Object(node, CCFLAGS=env["CCFLAGS"] + ["-fmove-loop-invariants"])
+def _default_codegen(env, node):
+    return env.Object(node, CCFLAGS=env["CCFLAGS"] +
+                      ["-fmove-loop-invariants", "-mno-accumulate-args"])
 
 
-for _pattern in _KEEP_LOOP_INVARIANTS:
-    env.AddBuildMiddleware(_keep_loop_invariants, _pattern)
+for _pattern in _DEFAULT_CODEGEN:
+    env.AddBuildMiddleware(_default_codegen, _pattern)
 
 # Link layout (see tools/platform/avr_lowtext.py): one section per function
 # from the LTO link, relocations kept in the ELF (the image is unchanged), and
