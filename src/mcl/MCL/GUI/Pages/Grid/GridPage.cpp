@@ -1720,44 +1720,6 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
 
 // A fade length of 2^n steps, right-aligned like the panel's other values:
 // one digit up to 8, two to 64, three to 512, then 1024.
-// The chip's letters (LOAD, AUTO, QUE, SAVE): the 5x7 font less one column,
-// a repeated one where the letter has it, else the middle, so a letter steps
-// 5 px and the chip is 21 px wide. A and V would lose their point that way
-// and are drawn by hand. Columns, bit 0 at the top.
-static const char thin_letters[] PROGMEM = "ADELOQSTUV";
-static const uint8_t thin_glyphs[][4] PROGMEM = {
-    {0x7e, 0x11, 0x11, 0x7e}, // A
-    {0x7f, 0x41, 0x41, 0x3e}, // D
-    {0x7f, 0x49, 0x49, 0x41}, // E
-    {0x7f, 0x40, 0x40, 0x40}, // L
-    {0x3e, 0x41, 0x41, 0x3e}, // O
-    {0x3e, 0x41, 0x21, 0x5e}, // Q
-    {0x46, 0x49, 0x49, 0x31}, // S
-    {0x01, 0x7f, 0x01, 0x01}, // T
-    {0x3f, 0x40, 0x40, 0x3f}, // U
-    {0x1f, 0x60, 0x60, 0x1f}, // V
-};
-
-static void print_thin_P(uint8_t x, uint8_t y, const char *str_P,
-                         uint16_t color) {
-  for (char c; (c = pgm_read_byte(str_P++)); x += 5) {
-    for (uint8_t n = 0; n < sizeof(thin_glyphs) / 4; n++) {
-      if (pgm_read_byte(&thin_letters[n]) != c) {
-        continue;
-      }
-      for (uint8_t i = 0; i < 4; i++) {
-        uint8_t bits = pgm_read_byte(&thin_glyphs[n][i]);
-        for (uint8_t j = 0; bits; j++, bits >>= 1) {
-          if (bits & 1) {
-            oled_display.drawPixel(x + i, y + j, color);
-          }
-        }
-      }
-      break;
-    }
-  }
-}
-
 static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
 static void print_fade_steps(uint8_t n, uint8_t y) {
   uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
@@ -2086,21 +2048,23 @@ uint16_t GridPage::io_visible_mask() {
 void GridPage::io_display_panel() {
   const bool load = io_mode == GRID_IO_LOAD;
 
-  // Line 1: the action in the thin font, in an inverted chip. On Load it is
+  // Line 1: the action in the 5x7 font, in an inverted chip. On Load it is
   // the mode: LOAD (Manual), AUTO or QUE. While the rows are edited it is the
   // mode row, boxed only while that row is picked, so the picked row is the
   // only box.
   const bool boxed = !(io_editing && io_menu_line.cur != IO_ROW_MODE);
   if (boxed) {
-    oled_display.fillRect(0, 0, 21, 9, WHITE);
+    oled_display.fillRect(0, 0, 25, 9, WHITE);
   }
+  oled_font_default();
+  oled_text_color(boxed ? BLACK : WHITE);
   const char *chip = mclstr_save;
   if (load) {
     chip = mcl_cfg.load_mode == LOAD_AUTO    ? mclstr_auto
            : mcl_cfg.load_mode == LOAD_QUEUE ? mclstr_queue_short
                                              : mclstr_load;
   }
-  print_thin_P(1, 1, chip, boxed ? BLACK : WHITE);
+  text_at_P(1, 1, chip);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
