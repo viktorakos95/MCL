@@ -1284,7 +1284,10 @@ __attribute__((noinline)) void oled_cursor(int8_t x, uint8_t y) {
 }
 __attribute__((noinline)) void oled_rect(uint8_t x, uint8_t y, uint8_t w,
                                          uint8_t h, uint8_t color) {
-  oled_display.drawRect(x, y, w, h, color);
+  oled_hline(x, y, w, color);
+  oled_hline(x, y + h - 1, w, color);
+  oled_display.drawFastVLine(x, y, h, color);
+  oled_display.drawFastVLine(x + w - 1, y, h, color);
 }
 __attribute__((noinline)) void oled_hline(uint8_t x, uint8_t y, uint8_t w,
                                           uint8_t color) {
