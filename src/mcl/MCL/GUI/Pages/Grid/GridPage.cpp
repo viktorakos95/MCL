@@ -1778,16 +1778,6 @@ static bool io_held;
 // The press of Load|Yes that opened Load is still down: let go early, it
 // leaves Load open.
 static bool io_opening;
-// On Load, Shift|Menu or the Machinedrum's [YES] is down and the group popup
-// is not up yet: held IO_EDIT_HOLD_MS it comes up (io_loop), or at once with
-// a trig; let go before that it was a tap, which loads the row with the
-// groups as they are.
-static bool io_group_pending;
-static uint16_t io_group_clock;
-static void io_group_arm() {
-  io_group_pending = true;
-  io_group_clock = read_clock_ms();
-}
 
 // The trig LEDs last sent while a value is edited: one bit for its trig, 0
 // for none. IO_LEDS_SELECTION: the selection's LEDs are showing;
@@ -1902,7 +1892,6 @@ static bool io_saved;
 void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
   io_editing = false;
-  io_group_pending = false;
   io_edit_leds = IO_LEDS_SELECTION;
   io_slide = false;
   io_slide_used = false;
@@ -1944,7 +1933,6 @@ void GridPage::io_begin(uint8_t mode) {
 void GridPage::io_end(bool reinit) {
   io_mode = GRID_IO_OFF;
   io_editing = false;
-  io_group_pending = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::offset = 255;
@@ -1960,11 +1948,6 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
-  if (io_group_pending &&
-      clock_diff(io_group_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS) {
-    io_group_pending = false;
-    io_group_select();
-  }
   // The rows are edited while Load|Yes has been held long enough or [Global]
   // is held, and not while DEST is open.
   io_held = BUTTON_DOWN(Buttons.BUTTON4) &&
@@ -2294,11 +2277,6 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
-      // A trig while a group key is held picks groups: the popup comes up.
-      if (io_group_pending) {
-        io_group_pending = false;
-        io_group_select();
-      }
       if (GridIOPage::show_track_type) {
         if (track < 5) {
           TOGGLE_BIT16(mcl_cfg.track_type_select, track);
@@ -2338,11 +2316,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     if (event->mask == EVENT_BUTTON_PRESSED) {
       switch (key) {
       case MDX_KEY_YES:
-        if (load) {
-          io_group_arm();
-        } else {
-          io_group_select();
-        }
+        io_group_select();
         return true;
       case MDX_KEY_NO:
         io_end();
@@ -2460,8 +2434,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       return true;
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_YES) {
-      if (io_group_pending || GridIOPage::show_track_type) {
-        io_group_pending = false;
+      if (GridIOPage::show_track_type) {
         io_action(true);
       }
       return true;
@@ -2507,16 +2480,13 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     // Machinedrum's [Global] arrives as Shift|Menu with its own key down: on
     // Load it is the edit key (io_loop), not the row load.
     if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
-      if (!load) {
+      if (!(load && key_interface.is_key_down(MDX_KEY_PATSONG))) {
         io_group_select();
-      } else if (!key_interface.is_key_down(MDX_KEY_PATSONG)) {
-        io_group_arm();
       }
       return true;
     }
     if (EVENT_RELEASED(event, Buttons.BUTTON3)) {
-      if (io_group_pending || GridIOPage::show_track_type) {
-        io_group_pending = false;
+      if (GridIOPage::show_track_type) {
         io_action(true);
       }
       return true;
