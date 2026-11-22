@@ -2245,12 +2245,17 @@ void GridPage::io_display_panel() {
   // it (after "X:01 "). While DEST is
   // open, the destination slot as grid:column ("Y:05") stands there instead,
   // where the Grid page prints the cursor's; "--" until a trig picks one.
+  // Once DEST has closed on a pick, the slot's grid and "--" ("X:--") stand
+  // there until the next load goes to it.
   char val[4];
-  if (load && GridIOPage::show_offset) {
-    GridSlot offset = GridIOPage::offset;
-    bool picked = offset < NUM_SLOTS;
+  const GridSlot offset = GridIOPage::offset;
+  const bool picked = offset < NUM_SLOTS;
+  if (load && (GridIOPage::show_offset || picked)) {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
-                      picked ? offset % GRID_WIDTH + 1 : 0, val);
+                      picked && GridIOPage::show_offset
+                          ? offset % GRID_WIDTH + 1
+                          : 0,
+                      val);
   }
   // Not while Load's rows are edited.
   if (!io_editing) {
