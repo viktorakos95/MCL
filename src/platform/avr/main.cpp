@@ -100,6 +100,11 @@ int main(void) {
 #else
   PORTE |= (1 << PE7);
 #endif
+  // Nothing drives the display's chip select until the display is started,
+  // and a reset leaves it low: the display would take the SD card's start-up
+  // as its own commands and data. Drive it high before the card is touched.
+  PORTL |= _BV(PL7);
+  DDRL |= _BV(PL7);
   setup();
   for (;;) {
     loop();
