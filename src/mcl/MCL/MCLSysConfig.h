@@ -105,16 +105,9 @@ static_assert(sizeof(MCLSysConfigData) == 185,
 #define LOAD_SAVE_LEGACY 0 // as MCL always was: Load's knobs, arrows close
 #define LOAD_SAVE_CLOSE 1  // the Grid page's knobs and arrows; closes after
 #define LOAD_SAVE_STAY 2   // as CLOSE, and Load and Save stay armed after
-// A trig in the Load edit sets a length of 16 x n steps (trig n, a bar a
-// trig, up to 256), stored as LOAD_FADE_TRIG_FIRST + n - 1, after the knob's
-// lengths.
-#define LOAD_FADE_TRIG_FIRST 12
-#define LOAD_FADE_CODES_MAX (LOAD_FADE_TRIG_FIRST + 15)
-
-// The steps of a set fade length (load_fade_len 1 .. LOAD_FADE_CODES_MAX).
+// The steps of a set fade length (load_fade_len 1 .. LOAD_FADE_MAX).
 static inline uint16_t load_fade_steps(uint8_t len) {
-  return len >= LOAD_FADE_TRIG_FIRST ? 16 * (len - LOAD_FADE_TRIG_FIRST + 1)
-                                     : (uint16_t)1 << (len - 1);
+  return (uint16_t)1 << (len - 1);
 }
 #define LOAD_FADE_FORCE_IN 1
 #define LOAD_FADE_FORCE_OUT 2
