@@ -1786,13 +1786,13 @@ static void io_take_trigs() {
 }
 
 // SYSTEM > LOAD/SAVE LEGACY: while Load is open its knobs are its settings,
-// as on the old Load page: knob 1 QUANT, knob 2 Queue's LEN, knobs 3 and 4
-// the mode.
+// in the order of the released Load page (5.02): knob 1 the mode, knob 2
+// Queue's LEN, knobs 3 and 4 QUANT.
 static void io_load_knobs(Encoder **encoders) {
-  encoders[0] = &gridio_param4;
+  encoders[0] = &gridload_param1;
   encoders[1] = &gridio_param2;
-  encoders[2] = &gridload_param1;
-  encoders[3] = &gridload_param1;
+  encoders[2] = &gridio_param4;
+  encoders[3] = &gridio_param4;
 }
 
 // Whether the arrows move the grid with the panel left armed: Load's in
