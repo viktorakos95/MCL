@@ -1762,13 +1762,8 @@ static bool io_pending;
 static bool io_opening;
 
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
-// row and knob 2 picks it, or the knobs go back to the Grid page. Each edit
-// opens on QUANT, one below the mode, so the bar moving off the chip shows
-// at once that the rows are being edited.
+// row and knob 2 picks it, or the knobs go back to the Grid page.
 static void io_rows_edit(Encoder **encoders, bool on) {
-  if (on && !io_editing) {
-    io_menu_line.cur = IO_ROW_QUANT;
-  }
   io_editing = on;
   if (on) {
     io_menu_value.cur = 1;
