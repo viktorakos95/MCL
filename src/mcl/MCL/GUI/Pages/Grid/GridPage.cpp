@@ -1711,6 +1711,44 @@ static void print_right(uint8_t value, uint8_t right, uint8_t y) {
   text_at(right - 4 * strlen(str), y, str);
 }
 
+// One to three digits of v at p; returns the end.
+static char *put_digits(char *p, uint8_t v) {
+  if (v >= 100) {
+    *p++ = '0' + v / 100;
+  }
+  if (v >= 10) {
+    *p++ = '0' + v / 10 % 10;
+  }
+  *p++ = '0' + v % 10;
+  return p;
+}
+
+// QUANT in bars, 16 steps a bar, at the right edge like print_right: 1/8,
+// 1/4, 1/2, 1, 2, 4, and the fine steps (knob pressed) as fractions where
+// they fit beside the label (3/4, 3/16), else in steps ("11s"). 1 is the
+// slot's own length, " -".
+static void print_quant_bars(uint8_t quant, uint8_t y) {
+  char str[8] = {' ', '-', '\0'};
+  if (quant != 1) {
+    uint8_t num = quant, den = 16;
+    while (!(num & 1) && den > 1) {
+      num >>= 1;
+      den >>= 1;
+    }
+    char *p = put_digits(str, num);
+    if (den > 1) {
+      *p++ = '/';
+      p = put_digits(p, den);
+    }
+    if (p - str > 4) {
+      p = put_digits(str, quant);
+      *p++ = 's';
+    }
+    *p = '\0';
+  }
+  text_at(37 - 4 * strlen(str), y, str);
+}
+
 // "LEN 8", "QUANT 16": label on the left, value at the right edge. The label
 // starts at x 1 so the edit box (x 0 to 36) shows 1 px each side, as in menus.
 static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
@@ -2048,8 +2086,14 @@ void GridPage::io_display_panel() {
   // mode row, boxed only while that row is picked, so the picked row is the
   // only box.
   const bool boxed = !(io_editing && io_menu_line.cur != IO_ROW_MODE);
+  // While the rows are edited the chip stands right of a filled arrow,
+  // which shows while the mode row is picked: >[LOAD].
+  const uint8_t cx = io_editing ? 4 : 0;
+  if (io_editing && io_menu_line.cur == IO_ROW_MODE) {
+    oled_display.fillTriangle_3px(0, 2, WHITE);
+  }
   if (boxed) {
-    oled_display.fillRect(0, 0, 25, 9, WHITE);
+    oled_display.fillRect(cx, 0, 25, 9, WHITE);
   }
   oled_font_default();
   oled_text_color(boxed ? BLACK : WHITE);
@@ -2059,19 +2103,20 @@ void GridPage::io_display_panel() {
            : mcl_cfg.load_mode == LOAD_QUEUE ? mclstr_queue_short
                                              : mclstr_load;
   }
-  text_at_P(1, 1, chip);
+  text_at_P(cx + 1, 1, chip);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
   if (load) {
-    // Line 1, beside the chip: the 16th-step count, for timing the trig
-    // release against the quantise boundary (not while the rows are edited).
+    // Line 1, beside the chip: bar:beat in a 4-bar window, the Grid page's
+    // bar count wrapped every 4 bars, for timing the trig release against
+    // QUANT, which is in bars too (not while the rows are edited).
     if (!io_editing) {
-      char str[7];
-      uint8_t step_count =
+      uint8_t step =
           (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
-      mcl_gui.put_value_at(step_count, str);
-      text_at(37 - 4 * strlen(str), 8, str);
+      char str[4] = {(char)('1' + step / 16), ':', (char)('1' + step / 4 % 4),
+                     '\0'};
+      text_at(27, 8, str);
     }
     // Line 2: QUANT. Line 3: LEN, in Queue. A QUANT or LEN of 1 means "the
     // slot's own length" and shows "-". While a destination is picked, DEST
@@ -2080,8 +2125,8 @@ void GridPage::io_display_panel() {
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
     } else {
-      uint8_t quant = mcl_cfg.chain_load_quant;
-      panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
+      text_at_P(1, 16, mclstr_quant);
+      print_quant_bars(mcl_cfg.chain_load_quant, 16);
       if (mcl_cfg.load_mode == LOAD_QUEUE) {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
