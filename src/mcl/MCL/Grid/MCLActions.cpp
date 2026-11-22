@@ -780,7 +780,8 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
         continue;
       }
       deferred_rows[n] = 255;
-      if (may_defer && chain_hops_before(n, load_point)) {
+      if (may_defer && row_is_loadable(_row_array[n]) &&
+          chain_hops_before(n, load_point)) {
         deferred_rows[n] = _row_array[n];
         deferred_mode = load_mode;
         slot_select_array[n] = 0;
