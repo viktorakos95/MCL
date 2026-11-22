@@ -13,7 +13,7 @@ MCLExpEncoder gridio_param2(64, 1, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param4(64, 1, ENCODER_RES_PAT);
 
 #if MCL_GRID_IO_PANEL
-MCLEncoder gridload_fade(LOAD_FADE_MAX + 1, 0, ENCODER_RES_PAT);
+MCLEncoder gridload_fade(LOAD_FADE_CODES_MAX + 1, 0, ENCODER_RES_PAT);
 #endif
 
 #if !MCL_GRID_IO_PANEL

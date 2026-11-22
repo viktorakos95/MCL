@@ -101,6 +101,16 @@ static_assert(sizeof(MCLSysConfigData) == 185,
 // The Grid page LOAD panel's FADE length: 0 follows QUANT, n is 2^(n-1)
 // steps (n = 1 .. LOAD_FADE_MAX).
 #define LOAD_FADE_MAX 11
+// A trig in the Load edit sets a length of 4 x n steps (trig n), stored as
+// LOAD_FADE_TRIG_FIRST + n - 1, after the knob's lengths.
+#define LOAD_FADE_TRIG_FIRST 12
+#define LOAD_FADE_CODES_MAX (LOAD_FADE_TRIG_FIRST + 15)
+
+// The steps of a set fade length (load_fade_len 1 .. LOAD_FADE_CODES_MAX).
+static inline uint16_t load_fade_steps(uint8_t len) {
+  return len >= LOAD_FADE_TRIG_FIRST ? 4 * (len - LOAD_FADE_TRIG_FIRST + 1)
+                                     : (uint16_t)1 << (len - 1);
+}
 #define LOAD_FADE_FORCE_IN 1
 #define LOAD_FADE_FORCE_OUT 2
 

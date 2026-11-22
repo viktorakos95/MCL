@@ -368,7 +368,7 @@ bool MCLActions::panel_fade(GridSlot slot, GridDeviceTrack *gdt,
   uint8_t len = mcl_cfg.load_fade_len;
   uint8_t quant = mcl_cfg.chain_load_quant;
   if (len != 0) {
-    fade->duration_q12 = (uint16_t)12 << (len - 1);
+    fade->duration_q12 = 12 * load_fade_steps(len);
   } else if (quant != 1) {
     fade->duration_q12 = (uint16_t)quant * 12;
   } else {

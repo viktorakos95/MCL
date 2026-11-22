@@ -1718,13 +1718,13 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
   print_right(value, 37, y);
 }
 
-// A fade length of 2^n steps, right-aligned like the panel's other values:
-// one digit up to 8, two to 64, three to 512, then 1024.
-static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
-static void print_fade_steps(uint8_t n, uint8_t y) {
-  uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
+// A fade length in steps (1 .. 1024), right-aligned like the panel's other
+// values.
+static void print_fade_steps(uint16_t steps, uint8_t y) NOINLINE();
+static void print_fade_steps(uint16_t steps, uint8_t y) {
+  uint8_t digits = steps < 10 ? 1 : steps < 100 ? 2 : steps < 1000 ? 3 : 4;
   oled_display.setCursor(37 - 4 * digits, y);
-  oled_display.print(1u << n);
+  oled_display.print(steps);
 }
 
 // While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
@@ -1761,9 +1761,22 @@ static bool io_pending;
 // Load open.
 static bool io_opening;
 
+// Trigs pressed while the rows are edited (or held when the edit began):
+// their presses and releases set values and never pick slots, even if the
+// edit ends first. Once they are all up the note state is cleared, so no tap
+// joins the next load.
+static uint16_t io_edit_trigs;
+// The trig lit for the value being edited: 0 none, 255 the selection's LEDs,
+// 254 not known (after the group popup).
+static uint8_t io_edit_led = 255;
+
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
 // row and knob 2 picks it, or the knobs go back to the Grid page.
 static void io_rows_edit(Encoder **encoders, bool on) {
+  if (on && !io_editing) {
+    io_edit_trigs |= (uint16_t)note_interface.notes_on;
+    note_interface.init_notes();
+  }
   io_editing = on;
   if (on) {
     io_menu_value.cur = 1;
@@ -1804,7 +1817,20 @@ static void io_setting_step(int8_t dir, bool pressed) {
     state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
     mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
   } else {
-    len = limit_value(len, dir, 0, LOAD_FADE_MAX);
+    if (len >= LOAD_FADE_TRIG_FIRST) {
+      // From a trig's length, the next of the knob's powers of two.
+      const uint16_t steps = load_fade_steps(len);
+      uint8_t c = 1;
+      while (c < LOAD_FADE_MAX && load_fade_steps(c) < steps) {
+        c++;
+      }
+      len = dir > 0 ? c + (load_fade_steps(c) == steps) : c - 1;
+      if (len > LOAD_FADE_MAX) {
+        len = LOAD_FADE_MAX;
+      }
+    } else {
+      len = limit_value(len, dir, 0, LOAD_FADE_MAX);
+    }
     mcl_cfg.load_fade_len = len;
   }
   // This object holds on/off and the length together; io_loop reads it.
@@ -1829,6 +1855,8 @@ static bool io_saved;
 void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
   io_editing = false;
+  io_edit_trigs = 0;
+  io_edit_led = 255;
   io_global = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
@@ -1901,6 +1929,36 @@ void GridPage::io_loop() {
     io_menu_value.cur = 1;
     if (dir != 0 && !GridIOPage::show_offset) {
       io_setting_step(dir, BUTTON_DOWN(Buttons.ENCODER1));
+    }
+  }
+  // While QUANT or FADE is edited the trig matching its value is lit (a value
+  // of 4 x n steps lights trig n, others none); otherwise the selection's.
+  uint8_t led = 255;
+  if (io_editing && !GridIOPage::show_offset) {
+    const uint8_t row = io_menu_line.cur;
+    uint16_t steps = 0;
+    if (row == IO_ROW_QUANT) {
+      steps = mcl_cfg.chain_load_quant;
+    } else if (row == IO_ROW_LEN_FADE && mcl_cfg.load_mode != LOAD_QUEUE) {
+      steps = (mcl_cfg.load_fade & 1) && mcl_cfg.load_fade_len
+                  ? load_fade_steps(mcl_cfg.load_fade_len)
+                  : 0;
+    }
+    if (row != IO_ROW_MODE &&
+        (row == IO_ROW_QUANT || mcl_cfg.load_mode != LOAD_QUEUE)) {
+      led = (steps >= 4 && steps <= 64 && !(steps & 3)) ? steps / 4 : 0;
+    }
+  }
+  if (GridIOPage::show_track_type) {
+    // The group popup has the LEDs; they are set again once it closes.
+    io_edit_led = 254;
+  } else if (led != io_edit_led) {
+    io_edit_led = led;
+    if (led == 255) {
+      GridIOPage::paint_track_select_leds();
+    } else {
+      mcl_gui.set_trigleds(led ? (uint16_t)1 << (led - 1) : 0,
+                           TRIGLED_EXCLUSIVE);
     }
   }
   if (GridIOPage::show_offset) {
@@ -2105,7 +2163,7 @@ void GridPage::io_display_panel() {
           text_at_P(37 - 4 * strlen_P(word), 24, word);
         } else {
           text_at_P(1, 24, (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
-          print_fade_steps(len - 1, 24);
+          print_fade_steps(load_fade_steps(len), 24);
         }
       }
       if (io_editing) {
@@ -2151,6 +2209,29 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
   if (EVENT_NOTE(event)) {
     uint8_t track = event->source;
     if (track >= NUM_SLOTS) {
+      return true;
+    }
+    // Editing the rows: trig n sets QUANT, or the FADE length (turning FADE
+    // on), to 4 x n steps. On the mode row and Queue's LEN they do nothing.
+    const uint16_t bit = track < 16 ? (uint16_t)1 << track : 0;
+    const bool pressed = event->mask == EVENT_BUTTON_PRESSED;
+    if (bit && (pressed ? io_editing && !GridIOPage::show_track_type
+                        : (io_edit_trigs & bit) != 0)) {
+      if (pressed) {
+        io_edit_trigs |= bit;
+        const uint8_t row = io_menu_line.cur;
+        if (row == IO_ROW_QUANT) {
+          gridio_param4.cur = 4 * (track + 1);
+        } else if (row == IO_ROW_LEN_FADE &&
+                   mcl_cfg.load_mode != LOAD_QUEUE) {
+          gridload_fade.cur = LOAD_FADE_TRIG_FIRST + track + 1;
+        }
+      } else {
+        io_edit_trigs &= ~bit;
+        if (!io_edit_trigs) {
+          note_interface.init_notes();
+        }
+      }
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
