@@ -1447,7 +1447,8 @@ void MCLActions::cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_
 // pass. A pass can run long (a page draw, a key handler), and one that runs
 // past the deadline makes the load late. One second is tempo * 0.8 ticks, so
 // 80 ms is tempo * 64 / 1000. On the AVR every pass used to take another
-// 12 ms to send its frame; that is gone, so its margin is 69 ms (55).
+// 12 ms to send its frame; that is gone, so its margin is 69 ms (55). The
+// longest page draw measured is 30 ms.
 #if defined(__AVR__)
 #define UI_PASS_MARGIN 55
 #else
@@ -1493,7 +1494,7 @@ void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
         break;
       }
       if (gui_update && diff > gui_threshold) {
-         mcl.loop_in_wait();
+         mcl.loop();
       }
     }
 

@@ -11,7 +11,10 @@
 #include "../../../../Drivers/MD/MD.h"
 
 #define FADER_LEN 18
-#define FADE_RATE 8
+// How far a meter falls each frame. The page runs at about 62 frames a second;
+// it was 8 at the 53 (playing) to 63 (stopped) it ran at before the frame
+// rate was fixed.
+#define FADE_RATE 7
 
 namespace {
 

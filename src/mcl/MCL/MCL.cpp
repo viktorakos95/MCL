@@ -463,18 +463,6 @@ void MCL::setup() {
   param4.cur = 4;
 }
 
-// A loop pass for code that is waiting on the clock (a transition, a track's
-// cache). It draws a frame only when one is due and never waits for one, so
-// between frames the caller has control back in well under a millisecond.
-void MCL::loop_in_wait() {
-#if defined(__AVR__)
-  if (!GUI.frame_due()) {
-    GUI.deferDisplayOnce();
-  }
-#endif
-  loop();
-}
-
 void MCL::loop() {
   platform_poll();
   md_usr.service();

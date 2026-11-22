@@ -36,7 +36,10 @@ inline void GridTask::pre_cache_ui_yield() {
   }
 
   last_pre_cache_ui_ms = pre_cache_ui_ms;
-  mcl.loop_in_wait();
+  // No frame here: drawing a page takes 14-20 ms, and the tracks for the
+  // next transition are about to be read.
+  GUI.deferDisplayOnce();
+  mcl.loop();
 }
 #endif
 
@@ -433,7 +436,7 @@ void GridTask::wait_blocking(uint32_t go_step) {
     platform_poll();
 
     if (diff > gui_threshold) {
-      mcl.loop_in_wait();
+      mcl.loop();
     }
   }
 }

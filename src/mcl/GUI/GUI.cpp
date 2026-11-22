@@ -141,12 +141,6 @@ void GuiClass::wake_screen_saver() {
   if (screen_saver) { oled_display.wake(); screen_saver = false; }
 }
 
-#if defined(__AVR__)
-bool GuiClass::frame_due() {
-  return clock_diff(frame_clock, read_clock_ms()) >= FRAME_GAP_MS;
-}
-#endif
-
 void GuiClass::loop() {
   uint8_t _midi_lock_tmp = MidiUartParent::handle_midi_lock;
   MidiUartParent::handle_midi_lock = 1;
@@ -222,15 +216,13 @@ void GuiClass::loop() {
 
   if (!skip_display_once) {
 #if defined(__AVR__)
-    // Wait for the frame's turn. MIDI is unlocked here, as it was while a
-    // frame was being sent. Code that is waiting on the clock skips this with
-    // MCL::loop_in_wait().
-    while (!frame_due()) {
+    const uint16_t now = read_clock_ms();
+    if (clock_diff(frame_clock, now) >= FRAME_PERIOD_MS) {
+      frame_clock = now;
+      display();
     }
-#endif
+#else
     display();
-#if defined(__AVR__)
-    frame_clock = read_clock_ms();
 #endif
   }
   skip_display_once = false;
