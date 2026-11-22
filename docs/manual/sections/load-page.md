@@ -39,7 +39,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to load selected groups. |
 | **[No/Exit]**, **`Save | No`**, a tap of **`Load | Yes`** | Close Load. |
 | **[Bank A/B/C]** | Shortcut to Manual, Auto or Queue mode. |
-| **[Bank D]** (the Slide key) | Turn `FADE` on or off. |
+| **[Bank D]** (the Slide key) | Tap to turn `FADE` on or off. Hold to set the fade with the trigs and **[Up/Down]**. |
 | **[Play]**, **[Stop]** | Start and stop the sequencer. Load stays open. |
 
 ## Load Settings
@@ -57,7 +57,9 @@ While it is released, the encoders work as on the Grid Page.
 
 `FADE` fades the level of Machinedrum tracks when their slots load. It applies in Manual and Auto mode. Queue loads do not fade.
 
-Turn it on with **[Bank D]** (the Slide key) or in the Load settings. The left column shows `FADE -` when it is off and `FADE ON` when it is on.
+Turn it on with a tap of **[Bank D]** (the Slide key) or in the Load settings. The left column shows `FADE -` when it is off and `FADE ON` when it is on.
+
+While **[Bank D]** is held, **[Trig]** N sets the fade length to N bars (16 × N steps) and turns the fade on; the trig matching the current length is lit. **[Up/Down]** choose `ON`, `IN` or `OUT`, **[Up]** towards `OUT`.
 
 With `FADE ON`, each track fades by what it was playing:
 

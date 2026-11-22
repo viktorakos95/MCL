@@ -1769,13 +1769,23 @@ static uint16_t io_edit_trigs;
 // The trig lit for the value being edited: 0 none, 255 the selection's LEDs,
 // 254 not known (after the group popup).
 static uint8_t io_edit_led = 255;
+// The Slide key held on Load (outside Queue): the trigs set the fade length
+// and UP/DOWN its direction, as in the row edit. Released with neither used,
+// it was a tap, which turns FADE on or off.
+static bool io_slide;
+static bool io_slide_used;
+
+// Trigs held as a trig edit begins become edit trigs; the selection clears.
+static void io_take_trigs() {
+  io_edit_trigs |= (uint16_t)note_interface.notes_on;
+  note_interface.init_notes();
+}
 
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
 // row and knob 2 picks it, or the knobs go back to the Grid page.
 static void io_rows_edit(Encoder **encoders, bool on) {
   if (on && !io_editing) {
-    io_edit_trigs |= (uint16_t)note_interface.notes_on;
-    note_interface.init_notes();
+    io_take_trigs();
   }
   io_editing = on;
   if (on) {
@@ -1857,6 +1867,8 @@ void GridPage::io_begin(uint8_t mode) {
   io_editing = false;
   io_edit_trigs = 0;
   io_edit_led = 255;
+  io_slide = false;
+  io_slide_used = false;
   io_global = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
@@ -1934,8 +1946,8 @@ void GridPage::io_loop() {
   // While QUANT or FADE is edited the trig matching its value is lit (a value
   // of 16 x n steps lights trig n, others none); otherwise the selection's.
   uint8_t led = 255;
-  if (io_editing && !GridIOPage::show_offset) {
-    const uint8_t row = io_menu_line.cur;
+  if ((io_editing || io_slide) && !GridIOPage::show_offset) {
+    const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
     uint16_t steps = 0;
     if (row == IO_ROW_QUANT) {
       steps = mcl_cfg.chain_load_quant;
@@ -2091,7 +2103,7 @@ uint16_t GridPage::io_visible_mask() {
   // interface records a press before the panel drops it, so a frame drawn
   // between would show it as selected. The same for an edit trig released
   // after the edit.
-  if (io_editing) {
+  if (io_editing || io_slide) {
     return mask;
   }
   uint16_t bit = 1;
@@ -2224,11 +2236,14 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     // nothing.
     const uint16_t bit = track < 16 ? (uint16_t)1 << track : 0;
     const bool pressed = event->mask == EVENT_BUTTON_PRESSED;
-    if (bit && (pressed ? io_editing && !GridIOPage::show_track_type
+    if (bit && (pressed ? (io_editing || io_slide) &&
+                              !GridIOPage::show_track_type
                         : (io_edit_trigs & bit) != 0)) {
       if (pressed) {
         io_edit_trigs |= bit;
-        const uint8_t row = io_menu_line.cur;
+        // With Slide held the trigs set the fade length.
+        const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
+        io_slide_used |= io_slide;
         if (row == IO_ROW_QUANT) {
           if (track < 4) {
             gridio_param4.cur = 16 * (track + 1);
@@ -2305,12 +2320,14 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_end();
         return false;
       case MDX_KEY_BANKD:
-        // The Machinedrum's SLIDE key arrives as bank D: outside Queue it
-        // turns FADE on (with its last length) or off.
+        // The Machinedrum's SLIDE key arrives as bank D. Outside Queue, held,
+        // the trigs set the fade length and UP/DOWN its direction; a tap (on
+        // the release) turns FADE on (with its last length) or off.
         if (load && !GridIOPage::show_offset &&
             mcl_cfg.load_mode != LOAD_QUEUE) {
-          gridload_fade.cur =
-              gridload_fade.cur != 0 ? 0 : mcl_cfg.load_fade_len + 1;
+          io_slide = true;
+          io_slide_used = false;
+          io_take_trigs();
         }
         return true;
       case MDX_KEY_FUNC:
@@ -2352,6 +2369,17 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
+        // Slide held: UP/DOWN pick the fade's direction, UP towards OUT:
+        // each column's own (ON), IN, OUT. FADE turns on.
+        if (load && io_slide) {
+          uint8_t dirn = mcl_cfg.load_fade >> 1;
+          dirn = limit_value(dirn, key == MDX_KEY_UP ? 1 : -1, 0,
+                             LOAD_FADE_FORCE_OUT);
+          mcl_cfg.load_fade = (dirn << 1) | 1;
+          gridload_fade.cur = mcl_cfg.load_fade_len + 1;
+          io_slide_used = true;
+          return true;
+        }
         // Editing: UP/DOWN pick the row.
         if (load && io_editing) {
           io_menu_line.cur = limit_value(
@@ -2372,6 +2400,14 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_end();
         return false;
       }
+    }
+    if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
+      if (io_slide && !io_slide_used) {
+        gridload_fade.cur =
+            gridload_fade.cur != 0 ? 0 : mcl_cfg.load_fade_len + 1;
+      }
+      io_slide = false;
+      return true;
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_YES) {
       if (GridIOPage::show_track_type) {
