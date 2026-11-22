@@ -1774,6 +1774,9 @@ static uint8_t io_edit_led = 255;
 // it was a tap, which turns FADE on or off.
 static bool io_slide;
 static bool io_slide_used;
+// When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
+// so a tap goes from blank straight to the length it turns on.
+static uint16_t io_slide_clock;
 
 // Trigs held as a trig edit begins become edit trigs; the selection clears.
 static void io_take_trigs() {
@@ -2177,8 +2180,10 @@ void GridPage::io_display_panel() {
         const char *word = fade_word();
         if (!(mcl_cfg.load_fade & 1)) {
           // Off, the row shows only while FADE can be turned on: in the row
-          // edit or with Slide held.
-          if (io_editing || io_slide) {
+          // edit, or with Slide held past a tap.
+          if (io_editing ||
+              (io_slide && clock_diff(io_slide_clock, read_clock_ms()) >=
+                               IO_EDIT_HOLD_MS)) {
             panel_row(24, mclstr_fade, 0);
           }
         } else if (len == 0) {
@@ -2331,6 +2336,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
             mcl_cfg.load_mode != LOAD_QUEUE) {
           io_slide = true;
           io_slide_used = false;
+          io_slide_clock = read_clock_ms();
           io_take_trigs();
         }
         return true;
