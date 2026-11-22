@@ -1763,8 +1763,8 @@ static bool io_opening;
 
 // Trigs pressed while the rows are edited (or held when the edit began):
 // their presses and releases set values and never pick slots, even if the
-// edit ends first. Once they are all up the note state is cleared, so no tap
-// joins the next load.
+// edit ends first; each is dropped from the note state at once, so it is
+// never shown as selected and never joins the next load.
 static uint16_t io_edit_trigs;
 // The trig lit for the value being edited: 0 none, 255 the selection's LEDs,
 // 254 not known (after the group popup).
@@ -2228,10 +2228,12 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         }
       } else {
         io_edit_trigs &= ~bit;
-        if (!io_edit_trigs) {
-          note_interface.init_notes();
-        }
       }
+      // Not a slot pick: the note interface took the press or release before
+      // this, and the grid and the LEDs show its notes as the selection, so
+      // drop the note again at once.
+      CLEAR_BIT32(note_interface.notes_on, track);
+      CLEAR_BIT32(note_interface.notes_off, track);
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
