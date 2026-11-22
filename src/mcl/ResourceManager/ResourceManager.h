@@ -35,7 +35,6 @@ class ResourceManager {
 private:
 	uint8_t m_buffer[RM_BUFSIZE];
 	uint16_t m_bufsize;
-	uint16_t m_clears;
 	uint16_t m_persistent_size;
 #if !defined(__AVR__)
 	__T_machine_param_names *m_persistent_machine_param_names = nullptr;
@@ -48,7 +47,9 @@ private:
 
 public:
 	ResourceManager() = default;
-	void Clear();
+	// Out of line: every page's init() calls it, and a call is smaller than
+	// its body at each of them.
+	void Clear() NOINLINE();
 	void SetPersistent();
 	void Save(uint8_t* buf, size_t* sz);
 	void Restore(uint8_t* buf, size_t sz);
@@ -59,11 +60,6 @@ public:
 	void restore_menu_layout_deps();
 	void restore_page_entry_deps();
 	size_t Size();
-	// Counts Clear() calls. A page that loads an extra resource once keeps
-	// the count it loaded it at: once the count has moved on, another page
-	// cleared the buffer and the resource is gone, even if its address is
-	// still inside what that page loaded since.
-	uint16_t Clears() const { return m_clears; }
 
 #include "ResMan.h"
 };

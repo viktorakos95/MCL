@@ -137,7 +137,6 @@ static void set_menu_layout(MenuBase *menu, const void *layout,
 
 void ResourceManager::Clear() {
     DEBUG_PRINTLN(F("resource clear"));
-	m_clears++;
 	m_bufsize = m_persistent_size;
 #if !defined(__AVR__)
 	machine_param_names = m_persistent_machine_param_names;

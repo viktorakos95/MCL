@@ -266,6 +266,11 @@ void close_slot_menu_from_mouse(GridPage &page) {
 // Machinedrum's [Global] is held): the knobs edit them (io_handleEvent,
 // io_loop). Otherwise they are the Grid page's own.
 static bool io_editing;
+#ifndef PLATFORM_TBD
+// The group popup's icons are loaded after the page's own resources (init()
+// loads those and clears this).
+static bool io_icons_loaded;
+#endif
 #endif
 
 // The Grid page's own knobs: the performance encoders when they are enabled,
@@ -314,6 +319,9 @@ void GridPage::init() {
   RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
 #else
   RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob);
+#if MCL_GRID_IO_PANEL
+  io_icons_loaded = false;
+#endif
 #endif
 }
 
@@ -1773,14 +1781,6 @@ static bool io_slide_used;
 // so a tap goes from blank straight to the length it turns on.
 static uint16_t io_slide_clock;
 
-// A trig edit begins (the rows are edited, or Slide is held): the trigs set
-// values until it ends. The selection clears, and the note interface ignores
-// the release of each trig that is down, so none picks a slot.
-static void io_take_trigs() {
-  note_interface.notes_ignore |= note_interface.notes_on;
-  note_interface.init_notes();
-}
-
 // SYSTEM > LOAD/SAVE LEGACY: while Load is open its knobs are its settings,
 // in the order of the released Load page (5.02): knob 1 the mode, knob 2
 // Queue's LEN, knobs 3 and 4 QUANT.
@@ -1805,7 +1805,6 @@ static bool io_arrows_scroll(bool load) {
 static void io_rows_edit(Encoder **encoders, bool on) {
   io_editing = on;
   if (on) {
-    io_take_trigs();
     io_menu_value.cur = 1;
     // Knobs 3 and 4 get the Grid page's third and fourth encoders, which do
     // nothing outside the slot menu.
@@ -2050,19 +2049,13 @@ void GridPage::io_group_select() {
 #ifndef PLATFORM_TBD
   // The popup draws the device icons; they fit beside the grid's resources
   // (TBD's Grid page loads them already). Load stays armed across loads, so
-  // load them only once: each copy took another 1,631 bytes, and the third
-  // ran past the end of the resource buffer. Another page (config, opened
-  // from Load) clears the buffer and can leave its own, larger set there,
-  // with the old icon address inside it: so the copy is checked against R's
-  // clear count, and a reload starts the grid's set afresh.
-  static uint16_t icons_clears;
-  if (icons_clears != R.Clears()) {
-    R.Clear();
-    R.use_machine_names_short();
-    R.use_icons_knob();
+  // load them once after each time init() loads the page's own: each copy
+  // took another 1,631 bytes, and the third ran past the end of the
+  // resource buffer.
+  if (!io_icons_loaded) {
     RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
     R.use_icons_logo();
-    icons_clears = R.Clears();
+    io_icons_loaded = true;
   }
 #endif
   GridIOPage::show_track_type = true;
@@ -2237,31 +2230,37 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     if (track >= NUM_SLOTS) {
       return true;
     }
-    // Editing the rows: trig n sets QUANT, or the FADE length (turning FADE
-    // on), to 2^n steps, the knob's powers of two: QUANT to 64 on trigs 1-6
-    // (trigs 7-16 set 64 too), the fade to 1024 on trigs 1-10. On the mode
-    // row and Queue's LEN they do nothing.
-    if (event->mask == EVENT_BUTTON_PRESSED && (io_editing || io_slide) &&
-        !GridIOPage::show_track_type && track < 16) {
-      // With Slide held the trigs set the fade length.
-      const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
-      io_slide_used |= io_slide;
-      if (GridIOPage::show_offset) {
-        // Picking a destination: the settings stay as they are.
-      } else if (row == IO_ROW_QUANT) {
-        // Trigs past 6 set QUANT's maximum, 64.
-        gridio_param4.cur = track < 6 ? 2 << track : 64;
-      } else if (row == IO_ROW_LEN_FADE && mcl_cfg.load_mode != LOAD_QUEUE &&
-                 track < LOAD_FADE_MAX - 1) {
-        // Length code n is 2^(n-1) steps; the fade turns on.
-        mcl_cfg.load_fade |= 1;
-        mcl_cfg.load_fade_len = track + 2;
+    // Editing the rows, or Slide held: the trigs set values, not slots. Trig
+    // n sets QUANT, or the FADE length (turning FADE on), to 2^n steps, the
+    // knob's powers of two: QUANT to 64 on trigs 1-6 (trigs 7-16 set 64
+    // too), the fade to 1024 on trigs 1-10. On the mode row and Queue's LEN
+    // they do nothing.
+    if ((io_editing || io_slide) && !GridIOPage::show_track_type &&
+        track < 16) {
+      if (event->mask == EVENT_BUTTON_PRESSED) {
+        // With Slide held the trigs set the fade length.
+        const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
+        io_slide_used |= io_slide;
+        if (GridIOPage::show_offset) {
+          // Picking a destination: the settings stay as they are.
+        } else if (row == IO_ROW_QUANT) {
+          // Trigs past 6 set QUANT's maximum, 64.
+          gridio_param4.cur = track < 6 ? 2 << track : 64;
+        } else if (row == IO_ROW_LEN_FADE &&
+                   mcl_cfg.load_mode != LOAD_QUEUE &&
+                   track < LOAD_FADE_MAX - 1) {
+          // Length code n is 2^(n-1) steps; the fade turns on.
+          mcl_cfg.load_fade |= 1;
+          mcl_cfg.load_fade_len = track + 2;
+        }
+        // Its release may come after the edit: it is ignored.
+        note_interface.ignoreNextEvent(track);
       }
-      // Not a slot pick: the note interface has recorded the press, and the
-      // grid and the LEDs show its notes as the selection, so drop the note
-      // again and have its release ignored.
+      // Not a slot pick: the note interface recorded this press, or the
+      // release of a trig held from before the edit, and the grid and the
+      // LEDs show its notes as the selection, so drop the note again.
       CLEAR_BIT32(note_interface.notes_on, track);
-      note_interface.ignoreNextEvent(track);
+      CLEAR_BIT32(note_interface.notes_off, track);
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
@@ -2330,7 +2329,6 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           io_slide = true;
           io_slide_used = false;
           io_slide_clock = read_clock_ms();
-          io_take_trigs();
         }
         return true;
       case MDX_KEY_FUNC:
