@@ -2354,6 +2354,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_LEFT:
       case MDX_KEY_RIGHT:
+        // Slide held: the arrows belong to the fade (UP/DOWN pick its
+        // direction), so LEFT/RIGHT do nothing.
+        if (load && io_slide) {
+          return true;
+        }
         // Editing: LEFT/RIGHT change the chosen row.
         if (load && io_editing) {
           io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1, false);
