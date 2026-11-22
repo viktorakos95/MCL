@@ -294,6 +294,50 @@ void MCLActions::init_chains() {
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
     chains[n].init();
   }
+  clear_deferred_loads();
+}
+
+// The point a Manual or Auto load made now goes in at: the next QUANT
+// boundary, as manual_transition() takes it.
+static uint16_t quant_load_point(uint8_t q) {
+  return (MidiClock.div16th_counter / q) * q + q;
+}
+
+bool MCLActions::chain_hops_before(GridSlot n, uint16_t point) {
+  return is_grid_chain_load_mode(chains[n].mode) && links[n].loops != 0 &&
+         grid_page.active_slots[n] != SLOT_DISABLED &&
+         next_transitions[n] != (uint16_t)-1 &&
+         MidiClock.clock_less_than(next_transitions[n], point);
+}
+
+void MCLActions::release_deferred_loads() {
+  const uint8_t q = get_quant();
+  const uint16_t point = q == QUANT_LEN ? 0 : quant_load_point(q);
+  GridRow rows[NUM_SLOTS];
+  uint8_t select[NUM_SLOTS];
+  bool any = false;
+  for (uint8_t n = 0; n < NUM_SLOTS; n++) {
+    rows[n] = deferred_rows[n];
+    // Still waiting while the chain hops before the load's point.
+    select[n] = rows[n] != 255 &&
+                !(q != QUANT_LEN && chain_hops_before(n, point));
+    if (select[n]) {
+      deferred_rows[n] = 255;
+      any = true;
+    } else {
+      rows[n] = 255;
+    }
+  }
+  if (any) {
+#if defined(__AVR__)
+    // As the AVR load queue handler does.
+    write_original = 1;
+    load_tracks(select, rows, deferred_mode);
+#else
+    // The host queue handler also flushes the arranger's runtime edits.
+    grid_task.load_queue.put(deferred_mode, rows);
+#endif
+  }
 }
 
 void MCLActions::clear_load_fades(bool preserve_armed_prestart) {
@@ -714,6 +758,41 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
 #endif
       ) {
     load_offset = 255;
+  }
+  if (load_offset == 255) {
+    // A Manual or Auto load for a column whose chain hops before the load's
+    // point waits (deferred_rows), so the chain keeps going until then. Any
+    // load for a column replaces the one waiting there. A load with a
+    // destination offset (DEST) loads as before.
+    const uint8_t q = get_quant();
+    const bool may_defer =
+        MidiClock.state == 2 && q != QUANT_LEN &&
+        (load_mode == LOAD_MANUAL || load_mode == LOAD_AUTO)
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+        && !immediate
+#endif
+        ;
+    const uint16_t load_point = may_defer ? quant_load_point(q) : 0;
+    bool deferred = false;
+    bool loading = false;
+    for (uint8_t n = 0; n < NUM_SLOTS; ++n) {
+      if (slot_select_array[n] == 0) {
+        continue;
+      }
+      deferred_rows[n] = 255;
+      if (may_defer && chain_hops_before(n, load_point)) {
+        deferred_rows[n] = _row_array[n];
+        deferred_mode = load_mode;
+        slot_select_array[n] = 0;
+        deferred = true;
+        continue;
+      }
+      loading = true;
+    }
+    // Every slot waits behind its chain: nothing to load now.
+    if (deferred && !loading) {
+      return;
+    }
   }
 #if MCL_FEATURE_HOST_ARRANGER
   if (load_mode != LOAD_ARRANG) {

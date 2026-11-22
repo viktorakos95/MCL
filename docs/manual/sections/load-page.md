@@ -110,6 +110,8 @@ Group selection is also used by bank/trig row loading and program-change row loa
 | `AUT` | Load the selected slots, then follow each slot's `LOOP` and `JUMP` settings when its loop count is reached. |
 | `QUE` | Add the selected row or slot to that column's queue. Queued entries repeat in order. |
 
+A `MAN` or `AUT` load for a column that is chaining waits until the chain would next move at or after the load's `QUANT` point: the chain keeps going until then, and the load goes in at that point. With `QUANT` at `-`, or with a destination offset, it loads as before.
+
 Each slot/column has its own chain state. This allows one track to follow an automatic chain, another to play a queued set of rows, and another to remain static.
 
 ## Queue Length Override

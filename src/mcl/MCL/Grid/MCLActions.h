@@ -75,6 +75,17 @@ public:
   GridSlot dev_sync_slot[NUM_DEVS];
 
   GridChain chains[NUM_SLOTS];
+
+  // A Manual or Auto load for a column whose chain hops before the load's
+  // own point waits here (its row; 255 none), so the chain keeps going:
+  // release_deferred_loads() loads it once the chain's next hop is not
+  // before that point, in the mode of the latest load that waited
+  // (deferred_mode).
+  GridRow deferred_rows[NUM_SLOTS];
+  uint8_t deferred_mode;
+  void clear_deferred_loads() {
+    memset(deferred_rows, 255, sizeof(deferred_rows));
+  }
 };
 
 #define QUANT_LEN 255
@@ -126,6 +137,11 @@ public:
   GridDeviceTrack *get_grid_dev_track(GridSlot slot_number);
 
   void init_chains();
+  // Loads the loads waiting behind a chain (deferred_rows) whose time has
+  // come (the transition handler calls it after each transition).
+  void release_deferred_loads() NOINLINE();
+  // Whether column n's chain hops before point (a load point, in steps).
+  bool chain_hops_before(GridSlot n, uint16_t point) NOINLINE();
 
   void send_globals();
   void switch_global(uint8_t global_page);

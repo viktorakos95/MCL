@@ -920,8 +920,9 @@ void GridPage::display_grid() {
         }
       }
 #if MCL_GRID_IO_PANEL
-      if (active_slot == SLOT_PENDING &&
-          mcl_actions.links[track_grid_idx].row == row_idx) {
+      if ((active_slot == SLOT_PENDING &&
+           mcl_actions.links[track_grid_idx].row == row_idx) ||
+          mcl_actions.deferred_rows[track_grid_idx] == row_idx) {
         // Neighbouring pending rings share a column (11 px rings, 10 px
         // pitch): only the left ring's side is drawn there. Each ring starts
         // its dots where the one to its left reached (10 px on, 2 mod 4), so
