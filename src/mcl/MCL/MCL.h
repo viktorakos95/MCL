@@ -32,6 +32,9 @@ public:
   static const lightpage_ptr_t pages_table[NUM_PAGES] PROGMEM;
 
   PageIndex current_page = GRID_PAGE;
+  // The page setPage() last left, for a page that comes back to a state it
+  // had (the Grid page's Load or Save, after the mixer or step edit).
+  PageIndex previous_page = NULL_PAGE;
 
   LightPage *getPage(PageIndex page) {
     if (page >= NUM_PAGES) return nullptr;
@@ -50,6 +53,7 @@ public:
     if (page >= NUM_PAGES) {
       page = GRID_PAGE;
     }
+    previous_page = current_page;
     current_page = page;
     GUI.setPage(getPage(page));
   }

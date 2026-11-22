@@ -266,6 +266,9 @@ void close_slot_menu_from_mouse(GridPage &page) {
 // Machinedrum's [Global] is held): the knobs edit them (io_handleEvent,
 // io_loop). Otherwise they are the Grid page's own.
 static bool io_editing;
+// Load or Save was armed when Classic/Extended opened the mixer or REC
+// opened step edit: init() arms it again on the return from there.
+static uint8_t io_resume;
 #ifndef PLATFORM_TBD
 // The group popup's icons are loaded after the page's own resources (init()
 // loads those and clears this).
@@ -322,6 +325,16 @@ void GridPage::init() {
 #if MCL_GRID_IO_PANEL
   io_icons_loaded = false;
 #endif
+#endif
+#if MCL_GRID_IO_PANEL
+  if (io_resume) {
+    const uint8_t mode = io_resume;
+    io_resume = GRID_IO_OFF;
+    if (mcl.previous_page == MIXER_PAGE ||
+        mcl.previous_page == SEQ_STEP_PAGE) {
+      io_begin(mode);
+    }
+  }
 #endif
 }
 
@@ -2425,10 +2438,18 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         }
         io_end();
         return false;
-      default:
-        // Any other key disarms and does its usual job.
+      default: {
+        // Any other key disarms and does its usual job. The mixer
+        // (Classic/Extended while playing) and step edit (REC) come back to
+        // the panel: init() arms it again on the return.
+        const uint8_t mode = io_mode;
         io_end();
+        if (key == MDX_KEY_REC ||
+            (key == MDX_KEY_EXTENDED && MidiClock.state == 2)) {
+          io_resume = mode;
+        }
         return false;
+      }
       }
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
