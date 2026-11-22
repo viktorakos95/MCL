@@ -103,9 +103,9 @@ menu_option_t MENU_OPTIONS[] = {
   // 144 AVR / 152 TBD: MD sample bank project link
   {0, "OFF"},
   // 145 AVR / 153 TBD: SYSTEM > LOAD/SAVE
-  {0, "CLOSE"}, {1, "STAY"},
+  {0, "LEGACY"}, {1, "CLOSE"}, {2, "STAY"},
 #if defined(__AVR__)
-  // 147: SEQ CHANNEL routed primary track labels
+  // 148: SEQ CHANNEL routed primary track labels
   {17, "MD1"}, {18, "MD2"}, {19, "MD3"}, {20, "MD4"},
   {21, "MD5"}, {22, "MD6"}, {23, "MD7"}, {24, "MD8"},
   {25, "MD9"}, {26, "MD10"}, {27, "MD11"}, {28, "MD12"},

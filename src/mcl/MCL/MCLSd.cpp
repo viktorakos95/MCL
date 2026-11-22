@@ -354,7 +354,9 @@ bool MCLSd::load_init() {
           uint8_t stay[2] = {0, 0};
           mcl_cfg.cfgfile.read(stay, 2);
           mcl_cfg.io_stay =
-              (uint8_t)~stay[0] == stay[1] && stay[0] <= 1 ? stay[0] : 0;
+              (uint8_t)~stay[0] == stay[1] && stay[0] <= LOAD_SAVE_STAY
+                  ? stay[0]
+                  : LOAD_SAVE_LEGACY;
         }
         ptc_groups.load(mcl_cfg.ptc_group);
 

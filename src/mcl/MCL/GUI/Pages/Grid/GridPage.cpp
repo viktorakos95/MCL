@@ -462,7 +462,8 @@ void GridPage::loop() {
   } else {
     if (mcl_cfg.grid_page_mode == PERF_ENC
 #if MCL_GRID_IO_PANEL
-        && !io_editing
+        && !io_editing &&
+        !(io_mode == GRID_IO_LOAD && mcl_cfg.io_stay == LOAD_SAVE_LEGACY)
 #endif
     ) {
       if (encoders[0]->hasChanged() || encoders[1]->hasChanged() || encoders[2]->hasChanged() || encoders[3]->hasChanged()) {
@@ -1784,8 +1785,27 @@ static void io_take_trigs() {
   note_interface.init_notes();
 }
 
+// SYSTEM > LOAD/SAVE LEGACY: while Load is open its knobs are its settings,
+// as on the old Load page: knob 1 QUANT, knob 2 Queue's LEN, knobs 3 and 4
+// the mode.
+static void io_load_knobs(Encoder **encoders) {
+  encoders[0] = &gridio_param4;
+  encoders[1] = &gridio_param2;
+  encoders[2] = &gridload_param1;
+  encoders[3] = &gridload_param1;
+}
+
+// Whether the arrows move the grid with the panel left armed: Load's in
+// CLOSE and STAY, Save's in STAY. In LEGACY they disarm and move the
+// cursor, as MCL always did.
+static bool io_arrows_scroll(bool load) {
+  return mcl_cfg.io_stay == LOAD_SAVE_STAY ||
+         (load && mcl_cfg.io_stay == LOAD_SAVE_CLOSE);
+}
+
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
-// row and knob 2 picks it, or the knobs go back to the Grid page.
+// row and knob 2 picks it, or the knobs go back to the Grid page's (Load's
+// own in LEGACY).
 static void io_rows_edit(Encoder **encoders, bool on) {
   if (on && !io_editing) {
     io_take_trigs();
@@ -1797,6 +1817,8 @@ static void io_rows_edit(Encoder **encoders, bool on) {
     encoders[1] = &io_menu_line;
     encoders[2] = &io_idle;
     encoders[3] = &io_idle;
+  } else if (mcl_cfg.io_stay == LOAD_SAVE_LEGACY) {
+    io_load_knobs(encoders);
   } else {
     grid_knobs(encoders);
   }
@@ -1898,6 +1920,9 @@ void GridPage::io_begin(uint8_t mode) {
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
     gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
+    if (mcl_cfg.io_stay == LOAD_SAVE_LEGACY) {
+      io_load_knobs(encoders);
+    }
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
     // Opened by a Load|Yes press that is still down (Load opens on the press
     // on AVR): it times the hold like a press inside Load.
@@ -1994,6 +2019,8 @@ void GridPage::io_loop() {
   if (mcl_cfg.load_mode == LOAD_QUEUE) {
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
+    // Knob 2 is LEN only in Queue (LEGACY); elsewhere it stays put.
+    gridio_param2.cur = mcl_cfg.chain_queue_length;
     // 0 is off, 1 on with QUANT's length, then on with a set length.
     mcl_cfg.load_fade = (mcl_cfg.load_fade & ~1) | (gridload_fade.cur != 0);
     if (gridload_fade.cur != 0) {
@@ -2008,7 +2035,7 @@ void GridPage::io_action(bool groups) {
   const bool load = io_mode == GRID_IO_LOAD;
   // SYSTEM > LOAD/SAVE: STAY keeps Load and Save armed for the next one;
   // CLOSE closes them, as MCL always did.
-  const bool stay = mcl_cfg.io_stay;
+  const bool stay = mcl_cfg.io_stay == LOAD_SAVE_STAY;
   if (groups) {
     if (!stay) {
       key_interface.off();
@@ -2370,10 +2397,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1, false);
           return true;
         }
-        // On Load, and on Save when it stays armed (SYSTEM > LOAD/SAVE:
-        // STAY), the trigs pick the columns, so LEFT/RIGHT scroll the
-        // columns shown by one straight away and the panel stays armed.
-        if (load || mcl_cfg.io_stay) {
+        // The trigs pick the columns, so where the arrows move the grid
+        // (io_arrows_scroll) LEFT/RIGHT scroll the columns shown by one
+        // straight away and the panel stays armed.
+        if (io_arrows_scroll(load)) {
           int8_t base = param1.cur - cur_col + (key == MDX_KEY_RIGHT ? 1 : -1);
           if (base >= 0 && base <= (int8_t)getWidth() - MAX_VISIBLE_COLS) {
             io_set_view(base);
@@ -2402,10 +2429,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
               IO_ROW_LEN_FADE);
           return true;
         }
-        // On Load, and on Save when it stays armed, UP/DOWN move the armed
-        // row and the panel stays armed. Otherwise Save's arrows disarm, as
-        // below.
-        if (load || mcl_cfg.io_stay) {
+        // Where the arrows move the grid, UP/DOWN move the armed row and the
+        // panel stays armed; otherwise they disarm, as below.
+        if (io_arrows_scroll(load)) {
           return false;
         }
         io_end();

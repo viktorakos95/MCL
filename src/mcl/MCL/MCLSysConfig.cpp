@@ -224,7 +224,7 @@ bool MCLSysConfig::cfg_init() {
   memset((uint8_t *)&version, 0, sizeof(MCLSysConfigData)); //<---- flush zero to config
   load_fade = 0;
   load_fade_len = 0;
-  io_stay = 0;
+  io_stay = LOAD_SAVE_LEGACY;
   ptc_groups.clear();
 
   version = CONFIG_VERSION;

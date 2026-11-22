@@ -119,7 +119,7 @@ menu_t<midi_config_page_N> midiconfig_menu_layout = {
 
 #if defined(__AVR__)
   #define SEQ_CHANNEL_OPTIONS_COUNT 16
-  #define SEQ_CHANNEL_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 3)
+  #define SEQ_CHANNEL_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 4)
 #else
   #define SEQ_CHANNEL_OPTIONS_COUNT 0
   #define SEQ_CHANNEL_OPTIONS_OFFSET 0
@@ -318,7 +318,7 @@ menu_t<mcl_config_page_N> mclconfig_menu_layout = {
         {"DISPLAY:", 0, 2, 2, 13, NULL_PAGE, 0, 23},
         {"PROJ CFG:", 0, 2, 2, 72, NULL_PAGE, 0, 25},
         {"GRID ENCOD:", 0, 2, 2, 62, NULL_PAGE, 0, 114},
-        {"LOAD/SAVE:", 0, 2, 2, 75, NULL_PAGE, 0, LOAD_SAVE_OPTIONS_OFFSET},
+        {"LOAD/SAVE:", 0, 3, 3, 75, NULL_PAGE, 0, LOAD_SAVE_OPTIONS_OFFSET},
     },
     1
 };

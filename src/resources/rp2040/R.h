@@ -513,10 +513,10 @@ extern const unsigned char __R_menu_options[] PROGMEM;
 struct __T_menu_options {
   union {
     menu_option_t MENU_OPTIONS[0];
-    char zz__MENU_OPTIONS[1396];
+    char zz__MENU_OPTIONS[1404];
   };
-  static constexpr size_t countof_MENU_OPTIONS = 1396 / sizeof(menu_option_t);
-  static constexpr size_t sizeofof_MENU_OPTIONS = 1396;
-  static constexpr size_t __total_size = 1396;
+  static constexpr size_t countof_MENU_OPTIONS = 1404 / sizeof(menu_option_t);
+  static constexpr size_t sizeofof_MENU_OPTIONS = 1404;
+  static constexpr size_t __total_size = 1404;
 };
 

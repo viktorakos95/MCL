@@ -30,10 +30,10 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | Control | Assignment |
 | --- | --- |
 | **[Global]**, **`Load | Yes`** | Hold to edit the Load settings. |
-| Encoders | As on the Grid Page. With **[Global]** or **`Load | Yes`** held, they edit the Load settings. |
+| Encoders | With `CONFIG > SYSTEM > LOAD/SAVE` at `LEGACY`, Encoder 1 sets `QUANT`, Encoder 2 `LEN` (Queue) and Encoders 3 and 4 the mode. Otherwise as on the Grid Page. With **[Global]** or **`Load | Yes`** held, they edit the Load settings. |
 | **[Trig]** keys | Select slots to load. |
-| **[Up/Down]** | Move to another row. |
-| **[Left/Right]** | Scroll the columns shown. |
+| **[Up/Down]** | Move to another row. In `LEGACY`, close Load and move the Grid Page cursor. |
+| **[Left/Right]** | Scroll the columns shown. In `LEGACY`, close Load and move the Grid Page cursor. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
 | **[Function]** | In Manual mode, select a destination offset. |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to load selected groups. |
@@ -51,7 +51,7 @@ Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit th
 - On `FADE`, turning steps through `-`, `ON`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
 - On `QUANT` or `FADE`, **[Trig]** N sets N bars, 16 × N steps: **[Trig]** 1 to 4 set `QUANT` to 16 to 64 steps, and **[Trig]** 1 to 16 set the fade length to 16 to 256 steps, turning the fade on. The trig matching the current value is lit.
 
-While it is released, the encoders work as on the Grid Page.
+While it is released, the encoders work as on the Grid Page, or in `LEGACY` set `QUANT`, `LEN` and the mode.
 
 ## Fade
 
