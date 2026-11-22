@@ -103,7 +103,7 @@ void ArpPage::display() {
   oled_font_small();
 
   oled_display.fillRect(8, 2, 128 - 16, 32 - 2, BLACK);
-  oled_display.drawRect(8 + 1, 2 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
+  oled_rect(8 + 1, 2 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
 
   oled_cursor(42, 10);
 

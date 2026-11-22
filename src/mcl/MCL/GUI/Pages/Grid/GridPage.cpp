@@ -2196,8 +2196,8 @@ void GridPage::io_display_panel() {
     // SND + SEQ -> GRID, as on the old Save page.
     text_at_P(0, 17, mclstr_name_snd);
     text_at_P(0, 25, mclstr_seq);
-    oled_display.drawFastHLine(12, 14, 2, WHITE);
-    oled_display.drawFastHLine(12, 22, 2, WHITE);
+    oled_hline(12, 14, 2, WHITE);
+    oled_hline(12, 22, 2, WHITE);
     oled_display.drawFastVLine(14, 14, 9, WHITE);
     mcl_gui.draw_horizontal_arrow(15, 18, 5);
     text_at_P(21, 21, mclstr_grid);

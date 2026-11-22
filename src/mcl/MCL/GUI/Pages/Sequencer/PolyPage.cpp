@@ -91,7 +91,7 @@ void PolyPage::draw_mask() {
     oled_display.fillRect(x, y, 15, 10, filled ? WHITE : BLACK);
 
     if (!filled) {
-      oled_display.drawRect(x, y, 15, 10, WHITE);
+      oled_rect(x, y, 15, 10, WHITE);
     }
 
     oled_cursor(ptc_group_text_x(group, x), y + 8);

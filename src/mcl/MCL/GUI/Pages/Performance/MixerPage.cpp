@@ -290,12 +290,12 @@ void MixerPage::oled_draw_mutes() {
             oled_display.drawFastVLine(fader_x + 3, 2, 5, WHITE);
           }
         } else {
-          oled_display.drawFastHLine(fader_x, 5, 6, WHITE);
+          oled_hline(fader_x, 5, 6, WHITE);
         }
       } else if (mute_state) {
-        oled_display.drawRect(fader_x, 2, 6, 6, WHITE);
+        oled_rect(fader_x, 2, 6, 6, WHITE);
       } else {
-        oled_display.drawFastHLine(fader_x, 5, 6, WHITE);
+        oled_hline(fader_x, 5, 6, WHITE);
       }
     }
     fader_x += 8;
@@ -525,7 +525,7 @@ void MixerPage::display() {
 
       if (redraw & 1) {
         oled_display.fillRect(fader_x, fader_y - 1, 6, FADER_LEN + 1, BLACK);
-        oled_display.drawRect(fader_x, fader_y + (FADER_LEN - fader_level), 6,
+        oled_rect(fader_x, fader_y + (FADER_LEN - fader_level), 6,
                               fader_level + 2, WHITE);
       }
       if (note_interface.is_note_on(i)) {

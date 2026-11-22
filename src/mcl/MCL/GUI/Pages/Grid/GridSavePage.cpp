@@ -104,8 +104,8 @@ void GridSavePage::display_at(uint8_t y_offset) {
     oled_cursor(data_x + 9, menu_y + 22);
     mcl_print_P(mclstr_seq);
 
-    oled_display.drawFastHLine(data_x + 13 + 9, menu_y + 11, 2, WHITE);
-    oled_display.drawFastHLine(data_x + 13 + 9, menu_y + 18, 2, WHITE);
+    oled_hline(data_x + 13 + 9, menu_y + 11, 2, WHITE);
+    oled_hline(data_x + 13 + 9, menu_y + 18, 2, WHITE);
     oled_display.drawFastVLine(data_x + 15 + 9, menu_y + 11, 8, WHITE);
     mcl_gui.draw_horizontal_arrow(data_x + 16 + 9, menu_y + 15, 5);
 

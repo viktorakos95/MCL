@@ -114,7 +114,7 @@ void BankPopupPage::display() {
   constexpr uint8_t kGridY = kWinY + kPad;
 
   oled_display.fillRect(kWinX - 1, kWinY - 1, kWinW + 2, kWinH + 2, BLACK);
-  oled_display.drawRect(kWinX, kWinY, kWinW, kWinH, WHITE);
+  oled_rect(kWinX, kWinY, kWinW, kWinH, WHITE);
 
   for (uint8_t i = 0; i < 8; i++) {
     uint8_t row = i / 4;

@@ -264,7 +264,7 @@ void FileBrowserPage::init() {
 
 void FileBrowserPage::draw_menu() {
   oled_display.fillRect(0, 3, 45, 29, BLACK);
-  oled_display.drawRect(1, 4, 43, 27, WHITE);
+  oled_rect(1, 4, 43, 27, WHITE);
   file_menu_page.draw_menu(6, 12, 34, 2);
   oled_display.display();
 }
@@ -316,8 +316,8 @@ void FileBrowserPage::draw_filebrowser() {
       get_entry(entry_num, temp_entry, type);
       type = resolve_entry_type(entry_num, temp_entry, type);
       if (type == DIR_TYPE && draw_dirs) {
-        oled_display.drawRect(x_offset, y_pos - 4, 6, 4, !color);
-        oled_display.drawFastHLine(x_offset + 1, y_pos - 1 - 4, 3, !color);
+        oled_rect(x_offset, y_pos - 4, 6, 4, !color);
+        oled_hline(x_offset + 1, y_pos - 1 - 4, 3, !color);
         oled_cursor(x_offset + 8, y_pos);
       }
       oled_display.println(temp_entry);

@@ -167,7 +167,7 @@ void TextInputPage::display_normal() {
 void TextInputPage::display_charpane() {
   oled_font_small();
   oled_display.clearDisplay();
-  oled_display.drawRect(0, 0, 128, 32, WHITE);
+  oled_rect(0, 0, 128, 32, WHITE);
   uint8_t chidx = 0;
   for (uint8_t y = 0; y < charpane_h; ++y) {
     for (uint8_t x = 0; x < charpane_w; ++x) {

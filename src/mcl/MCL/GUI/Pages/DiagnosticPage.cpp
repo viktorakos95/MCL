@@ -6,7 +6,7 @@
 
 void _draw_frame(uint8_t w) {
   oled_display.fillRect(60, 0, w + 2, 32, BLACK);
-  oled_display.drawRect(61, 0, w, 32, WHITE);
+  oled_rect(61, 0, w, 32, WHITE);
 }
 
 void DiagnosticPage::draw_perfcounter() {

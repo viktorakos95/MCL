@@ -162,7 +162,7 @@ void MCLGUI::draw_horizontal_dashline(uint8_t y, uint8_t from, uint8_t to) {
 }
 
 void MCLGUI::draw_horizontal_arrow(uint8_t x, uint8_t y, uint8_t w) {
-  oled_display.drawFastHLine(x, y, w, WHITE);
+  oled_hline(x, y, w, WHITE);
   oled_display.drawFastVLine(x + w - 2, y - 1, 3, WHITE);
   oled_display.drawFastVLine(x + w - 3, y - 2, 5, WHITE);
 }
@@ -190,7 +190,7 @@ void MCLGUI::draw_vertical_scrollbar(uint8_t x, uint8_t n_items,
 
   mcl_gui.draw_vertical_separator(x + 1);
   oled_display.fillRect(x + 1, y + 1, 3, length - 1, BLACK);
-  oled_display.drawRect(x, y, 5, length, WHITE);
+  oled_rect(x, y, 5, length, WHITE);
 }
 
 void MCLGUI::draw_knob_frame() {
@@ -240,8 +240,8 @@ void MCLGUI::draw_popup_title(const char *title, uint8_t y_offset) {
 
   const uint8_t menu_y = s_menu_y + y_offset;
   // oled_cursor(s_title_x + 2, s_menu_y + 3);
-  oled_display.drawFastHLine(s_title_x + 2, menu_y, s_title_w - 4, WHITE);
-  oled_display.drawFastHLine(s_title_x + 1, menu_y + 1, s_title_w - 2, WHITE);
+  oled_hline(s_title_x + 2, menu_y, s_title_w - 4, WHITE);
+  oled_hline(s_title_x + 1, menu_y + 1, s_title_w - 2, WHITE);
   oled_display.fillRect(s_menu_x + 1, menu_y + 2, s_menu_w - 2, 5, WHITE);
 
   oled_text_color(BLACK);
@@ -335,7 +335,7 @@ void MCLGUI::draw_progress_bar(uint8_t cur, uint8_t _max, bool deferred_display,
     s_progress_count = 0;
   }
   s_progress_count++;
-  if (border) oled_display.drawRect(x_pos, y_pos, width, height, WHITE);
+  if (border) oled_rect(x_pos, y_pos, width, height, WHITE);
 
   if (!deferred_display) {
     oled_display.display();
@@ -349,9 +349,9 @@ void MCLGUI::draw_infobox(const char *line1, const char *line2,
 
   oled_display.fillRect(dlg_info_x1 - 1, dlg_info_y1 - 1, dlg_info_w + 3,
                         dlg_info_h + 3, BLACK);
-  oled_display.drawRect(dlg_info_x1, dlg_info_y1, dlg_info_w, dlg_info_h,
+  oled_rect(dlg_info_x1, dlg_info_y1, dlg_info_w, dlg_info_h,
                         WHITE);
-  oled_display.drawFastHLine(dlg_info_x1 + 1, dlg_info_y2 + 1, dlg_info_w,
+  oled_hline(dlg_info_x1 + 1, dlg_info_y2 + 1, dlg_info_w,
                              WHITE);
   oled_display.drawFastVLine(dlg_info_x2 + 1, dlg_info_y1 + 1, dlg_info_h - 1,
                              WHITE);
@@ -731,11 +731,11 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
   }
 
   oled_display.fillRect(8, 1, 128 - 16, 32 - 2, BLACK);
-  oled_display.drawRect(8 + 1, 1 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
+  oled_rect(8 + 1, 1 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
 
   print_timing_label(K, condition);
   constexpr uint8_t base_h = 11;
-  oled_display.drawFastHLine(x, y_pos + base_h, w + 1, WHITE);
+  oled_hline(x, y_pos + base_h, w + 1, WHITE);
   for (uint8_t n = 0; n <= degrees; n++) {
     uint8_t tick_h = pgm_height_at(h, a);
     oled_display.drawFastVLine(x, y_pos + base_h - tick_h, tick_h + 1, WHITE);
@@ -812,7 +812,7 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
   constexpr uint8_t baseline_y = y_pos + 11;
 
   oled_display.fillRect(popup_x, popup_y, popup_w, popup_h, BLACK);
-  oled_display.drawRect(popup_x + 1, popup_y + 1, popup_w - 2, popup_h - 2, WHITE);
+  oled_rect(popup_x + 1, popup_y + 1, popup_w - 2, popup_h - 2, WHITE);
 
   char K[5];
   if (timing_offset == 0) {
@@ -828,7 +828,7 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
 
   print_timing_label(K, condition);
 
-  oled_display.drawFastHLine(ruler_x, baseline_y, ruler_w + 1, WHITE);
+  oled_hline(ruler_x, baseline_y, ruler_w + 1, WHITE);
   for (uint16_t n = 0; n <= degrees; n++) {
     uint8_t dist =
         (n >= timing_center) ? (n - timing_center) : (timing_center - n);
@@ -883,7 +883,7 @@ void MCLGUI::draw_keyboard(uint8_t x, uint8_t y, uint8_t note_width,
 
     if (black) {
       // previous '|' has already filled the center col.
-      oled_display.drawRect(x - 1, y + 1, 3, half - 1, WHITE);
+      oled_rect(x - 1, y + 1, 3, half - 1, WHITE);
       if (pressed) {
         oled_display.drawFastVLine(x, y + 1, half - 2, BLACK);
       }
@@ -896,8 +896,8 @@ void MCLGUI::draw_keyboard(uint8_t x, uint8_t y, uint8_t note_width,
         oled_display.fillRect(x, y, note_width, note_height, WHITE);
       } else {
         // draw ']'
-        oled_display.drawFastHLine(x, y, note_width, WHITE);
-        oled_display.drawFastHLine(x, y2, note_width, WHITE);
+        oled_hline(x, y, note_width, WHITE);
+        oled_hline(x, y2, note_width, WHITE);
         oled_display.drawFastVLine(x + wm1, y, note_height, WHITE);
       }
 
@@ -920,7 +920,7 @@ void MCLGUI::draw_trigs(uint8_t x, uint8_t y, const uint16_t &trig_selection) {
       oled_display.fillRect(x, y, seq_w, trig_h, WHITE);
     }
     else{
-      oled_display.drawRect(x, y, seq_w, trig_h, WHITE);
+      oled_rect(x, y, seq_w, trig_h, WHITE);
     }
     x += seq_w + 1;
   }
@@ -944,7 +944,7 @@ void MCLGUI::draw_trigs(uint8_t x, uint8_t y, uint8_t offset,
       // don't draw
     } else {
 
-      oled_display.drawRect(x, y, seq_w, trig_h, WHITE);
+      oled_rect(x, y, seq_w, trig_h, WHITE);
       if ((idx != step_count) || (MidiClock.state != 2)) {
 
         if (IS_BIT_SET64(slide_mask, idx)) {
@@ -1039,9 +1039,9 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
     if (select) {
       oled_display.fillRect(x + 1, 10 + y_base, 23, 20, INVERT);
       drawRoundRect(x, 9 + y_base, 24, 21, WHITE);
-      oled_display.drawRect(x + 1, 10 + y_base, 22, 19, BLACK);
+      oled_rect(x + 1, 10 + y_base, 22, 19, BLACK);
     } else {
-      oled_display.drawRect(x, 9 + y_base, 24, 21, WHITE);
+      oled_rect(x, 9 + y_base, 24, 21, WHITE);
     }
 
     x += 26;
@@ -1130,9 +1130,9 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
    //   gif->reset();
       oled_display.fillRect(x + 1, 10 + y_base, 23, 20, INVERT);
       drawRoundRect(x, 9 + y_base, 24, 21, WHITE);
-      oled_display.drawRect(x + 1, 10 + y_base, 22, 19, BLACK);
+      oled_rect(x + 1, 10 + y_base, 22, 19, BLACK);
 } else {
-      oled_display.drawRect(x, 9 + y_base, 24, 21, WHITE);
+      oled_rect(x, 9 + y_base, 24, 21, WHITE);
 }
 
 /*
@@ -1140,9 +1140,9 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
    //   gif->reset();
       oled_display.fillRect(x, 9, 24, 21, INVERT);
 
-       oled_display.drawRect(x + 1, 10, 22, 19, BLACK);
+       oled_rect(x + 1, 10, 22, 19, BLACK);
     } else {
-       oled_display.drawRect(x, 9, 24, 21, WHITE);
+       oled_rect(x, 9, 24, 21, WHITE);
     }
       oled_display.drawPixel(x,9,!select);
       oled_display.drawPixel(x + 23,9,!select);
@@ -1166,7 +1166,7 @@ void MCLGUI::draw_leds(uint8_t x, uint8_t y, uint8_t offset,
     bool locked = in_range && IS_BIT_SET64(lock_mask, idx);
 
     // TI feedback
-    //     oled_display.drawRect(x, y, seq_w, led_h, WHITE);
+    //     oled_rect(x, y, seq_w, led_h, WHITE);
     if (!in_range) {
       // don't draw
     } else if (current ^ locked) {
@@ -1174,7 +1174,7 @@ void MCLGUI::draw_leds(uint8_t x, uint8_t y, uint8_t offset,
       oled_display.fillRect(x, y, seq_w, led_h, WHITE);
     } else {
       // (current && locked) or (not current && not locked), frame only
-      oled_display.drawRect(x, y, seq_w, led_h, WHITE);
+      oled_rect(x, y, seq_w, led_h, WHITE);
     }
 
     x += seq_w + 1;
@@ -1244,8 +1244,8 @@ void MCLGUI::draw_panel_number(uint8_t number) {
 }
 
 void MCLGUI::drawRoundRect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t color) {
-  oled_display.drawFastHLine(x + 1, y, w - 2, color);         // top edge
-  oled_display.drawFastHLine(x + 1, y + h - 1, w - 2, color); // bottom edge
+  oled_hline(x + 1, y, w - 2, color);         // top edge
+  oled_hline(x + 1, y + h - 1, w - 2, color); // bottom edge
   oled_display.drawFastVLine(x, y + 1, h - 2, color);         // left edge
   oled_display.drawFastVLine(x + w - 1, y + 1, h - 2, color); // right edge
 }
@@ -1304,6 +1304,14 @@ __attribute__((noinline)) void oled_font_small() {
 __attribute__((noinline)) void oled_font_default() { oled_display.setFont(); }
 __attribute__((noinline)) void oled_cursor(int8_t x, uint8_t y) {
   oled_display.setCursor(x, y);
+}
+__attribute__((noinline)) void oled_rect(uint8_t x, uint8_t y, uint8_t w,
+                                         uint8_t h, uint8_t color) {
+  oled_display.drawRect(x, y, w, h, color);
+}
+__attribute__((noinline)) void oled_hline(uint8_t x, uint8_t y, uint8_t w,
+                                          uint8_t color) {
+  oled_display.drawFastHLine(x, y, w, color);
 }
 __attribute__((noinline)) void oled_text_color(uint16_t c) {
   oled_display.setTextColor(c);

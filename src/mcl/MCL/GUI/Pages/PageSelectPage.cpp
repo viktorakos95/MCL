@@ -283,7 +283,7 @@ void PageSelectPage::display() {
     if (i == catidx) {
       oled_display.fillRect(group_x, 18, 23, 6, WHITE);
     } else {
-      oled_display.drawRect(group_x, 18, 23, 6, WHITE);
+      oled_rect(group_x, 18, 23, 6, WHITE);
     }
 
     for (uint8_t j = 0; j < 4; ++j) {
