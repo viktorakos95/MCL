@@ -2086,10 +2086,11 @@ void GridPage::io_display_panel() {
   // mode row, boxed only while that row is picked, so the picked row is the
   // only box.
   const bool boxed = !(io_editing && io_menu_line.cur != IO_ROW_MODE);
-  // While the rows are edited the chip stands right of a filled arrow,
-  // which shows while the mode row is picked: >[LOAD].
-  const uint8_t cx = io_editing ? 4 : 0;
-  if (io_editing && io_menu_line.cur == IO_ROW_MODE) {
+  // While the mode row is picked, the chip stands right of a filled arrow:
+  // >[LOAD]. Otherwise it is in its place.
+  const bool arrow = io_editing && io_menu_line.cur == IO_ROW_MODE;
+  const uint8_t cx = arrow ? 4 : 0;
+  if (arrow) {
     oled_display.fillTriangle_3px(0, 2, WHITE);
   }
   if (boxed) {
