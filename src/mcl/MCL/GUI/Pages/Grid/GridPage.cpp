@@ -2087,10 +2087,17 @@ uint16_t GridPage::io_visible_mask() {
   }
   uint16_t mask = cur_grid ? (uint16_t)(GridIOPage::track_select >> 16)
                            : (uint16_t)GridIOPage::track_select;
+  // While the rows are edited the trigs set values, not slots: the note
+  // interface records a press before the panel drops it, so a frame drawn
+  // between would show it as selected. The same for an edit trig released
+  // after the edit.
+  if (io_editing) {
+    return mask;
+  }
   uint16_t bit = 1;
   for (uint8_t n = 0; n < GRID_WIDTH; n++, bit <<= 1) {
     // Trigs map to the shown grid; notes 16-31 address grid Y directly.
-    if (note_interface.is_note(n) ||
+    if ((note_interface.is_note(n) && !(io_edit_trigs & bit)) ||
         (cur_grid && note_interface.is_note(n + GRID_WIDTH))) {
       mask |= bit;
     }
