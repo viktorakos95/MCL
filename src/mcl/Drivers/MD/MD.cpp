@@ -817,16 +817,7 @@ bool MDStepEditCapability::configure_kit_sound_panel(
     }
   }
 
-  if (info_len >= 7) {
-    const char *name = md_usr.name(model);
-    if (name) { memcpy(info, name, 7); return true; }
-  }
-  const char *str1 = getMDMachineNameShort(model, 1);
-  const char *str2 = getMDMachineNameShort(model, 2);
-  copyMachineNameShort(str1, info);
-  info[2] = '>';
-  copyMachineNameShort(str2, info + 3);
-  info[5] = '\0';
+  copyMDTrackLabel(model, info, info_len);
   return true;
 }
 

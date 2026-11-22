@@ -41,8 +41,11 @@ private:
   bool request(uint8_t page, uint8_t kit = 127);
   void retry();
   uint8_t readByte(uint16_t offset) const;
+  // Where a slot's labels start, after their validity byte, or 0 when the
+  // slot has none from the current library.
+  uint16_t labels(uint8_t slot) const;
   void writeByte(uint16_t offset, uint8_t value);
-  uint32_t generation_ = 0;
+  uint8_t generation_[5]{}; // as received: five 7-bit bytes, low first
   uint16_t requested_at_ = 0;
   uint8_t valid_pages_ = 0, slot_count_ = 0, pending_ = 255, tag_ = 0;
   uint8_t retries_ = 0;

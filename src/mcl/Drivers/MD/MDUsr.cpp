@@ -1,4 +1,5 @@
 #include "MDUsr.h"
+#include <string.h>
 #include "MD.h"
 #include "MCLMemory.h"
 
@@ -38,6 +39,11 @@ void MDUsrCache::writeByte(uint16_t offset, uint8_t value) {
 #endif
 }
 
+uint16_t MDUsrCache::labels(uint8_t slot) const {
+  const uint16_t offset = kUsrLabels + uint16_t(slot) * MD_USR_LABEL_BYTES;
+  return readByte(offset) == (0x80 | label_epoch_) ? offset + 1 : 0;
+}
+
 void MDUsrCache::reset() {
   valid_pages_ = 0x80;
   slot_count_ = 0;
@@ -51,8 +57,8 @@ void MDUsrCache::reset() {
 #endif
 }
 
+// Callers have checked FW_CAP_USR_QUERY.
 bool MDUsrCache::request(uint8_t page, uint8_t kit) {
-  if (!(MD.fw_caps & FW_CAP_USR_QUERY)) return false;
   if (++tag_ == 127) tag_ = 0; // $7f is reserved for unsolicited notices.
   uint8_t message[] = {0x70, MD_USR_QUERY, MD_USR_VERSION, tag_, page, kit};
   pending_ = page;
@@ -113,9 +119,7 @@ void MDUsrCache::service() {
   if (MD.fw_caps & FW_CAP_USR_LABELS) {
     for (uint8_t track = 0; track < 16; ++track) {
       const uint8_t slot = uint8_t(MD.kit.get_model(track) - MD_USR_FIRST);
-      if (slot < slot_count_ &&
-          readByte(kUsrLabels + uint16_t(slot) * MD_USR_LABEL_BYTES) !=
-              (0x80 | label_epoch_)) {
+      if (slot < slot_count_ && !labels(slot)) {
         label_slot_ = slot;
         if (!request(MD_USR_LABEL_PAGE, slot)) retry();
         return;
@@ -143,28 +147,30 @@ bool MDUsrCache::readKitTuning(uint8_t kit, uint16_t timeout) {
 #endif
 
 void MDUsrCache::receive(const SysexView &view) {
-  // Excludes F0/F7: header[5], 72, command, version, tag, page, count,
-  // five little-endian 7-bit generation bytes, then fixed-size records.
-  if (view.get_recordLen() < 16 || view.getByte(7) != MD_USR_VERSION ||
-      view.getByte(15) > 15) return;
-  const uint8_t count = view.getByte(10), page = view.getByte(9);
+  // Excludes F0/F7: header[5], 72, command, then from byte 7: version, tag,
+  // page, count, five little-endian 7-bit generation bytes, then
+  // fixed-size records from byte 16.
+  const uint16_t len = view.get_recordLen();
+  if (len < 16) return;
+  uint8_t head[9];
+  for (uint8_t n = 0; n < sizeof(head); ++n) head[n] = view.getByte(7 + n);
+  const uint8_t tag = head[1], page = head[2], count = head[3];
+  const uint8_t *generation = head + 4;
+  if (head[0] != MD_USR_VERSION || generation[4] > 15) return;
   if (count != 0 && count != 16 && count != 48) return;
-  uint32_t generation = 0;
-  for (uint8_t n = 0; n < 5; ++n)
-    generation |= uint32_t(view.getByte(11 + n)) << (n * 7);
-  if (view.getByte(8) == 127) {
-    if (page != MD_USR_STATUS_PAGE || view.get_recordLen() != 16) return;
+  if (tag == 127) {
+    if (page != MD_USR_STATUS_PAGE || len != 16) return;
     // Also catches same-slot replacements and changes to unassigned machines.
     invalidate();
-    generation_ = generation;
+    memcpy(generation_, generation, sizeof(generation_));
     slot_count_ = count;
     pending_ = 255;
     retries_ = 0;
     if (count == 0) valid_pages_ |= 7;
     return;
   }
-  if (pending_ > MD_USR_LABEL_PAGE || view.getByte(8) != tag_ || page != pending_) return;
-  if (count == 0 && view.get_recordLen() == 16) {
+  if (pending_ > MD_USR_LABEL_PAGE || tag != tag_ || page != pending_) return;
+  if (count == 0 && len == 16) {
     // Try a busy peer briefly, then wait for its completion notice.
     slot_count_ = 0;
     invalidate();
@@ -182,7 +188,7 @@ void MDUsrCache::receive(const SysexView &view) {
       : page == MD_USR_LABEL_PAGE ? MD_USR_LABEL_BYTES
       : slots * MD_USR_RECORD_BYTES;
 #endif
-  if (view.get_recordLen() != uint16_t(16 + bytes)) return;
+  if (len != uint16_t(16 + bytes)) return;
   if (page == MD_USR_LABEL_PAGE) {
     // label() shows only printable characters.
     if (view.getByte(16) != label_slot_) return;
@@ -206,32 +212,37 @@ void MDUsrCache::receive(const SysexView &view) {
     }
   }
 #endif
-  if (generation != generation_ || count != slot_count_) invalidate();
-  generation_ = generation;
+  if (memcmp(generation, generation_, sizeof(generation_)) != 0 ||
+      count != slot_count_)
+    invalidate();
+  memcpy(generation_, generation, sizeof(generation_));
   slot_count_ = count;
-  if (page == MD_USR_LABEL_PAGE) {
-    const uint16_t offset = kUsrLabels + uint16_t(label_slot_) * MD_USR_LABEL_BYTES;
-    writeByte(offset, 0x80 | label_epoch_);
-    for (uint8_t n = 1; n < MD_USR_LABEL_BYTES; ++n)
-      writeByte(offset + n, view.getByte(16 + n));
-    valid_pages_ |= 0x80;
-  } else if (page < 3) {
-    const uint16_t offset = uint16_t(page) * 16 * MD_USR_RECORD_BYTES;
-    for (uint8_t n = 0; n < bytes; ++n) writeByte(offset + n, view.getByte(16 + n));
-    valid_pages_ |= 1u << page;
-    if (count == 16) valid_pages_ |= 6;
-    // New names: the Grid page's slot labels and the current track's page
-    // read them again (MCL::loop).
-    valid_pages_ |= 0x80;
-  }
 #if !defined(__AVR__)
-  else if (page == MD_USR_KIT_PAGE) {
+  if (page == MD_USR_KIT_PAGE) {
     for (uint8_t track = 0; track < 16; ++track)
       MD.kit.models[track] = mdModelFromMachineFlags(view.getByte(16 + track * 2),
                                                     view.getByte(17 + track * 2));
     kit_received_ = true;
-  }
+  } else
 #endif
+  {
+    // Name records go to their page's place; a label page goes to its
+    // slot, after the validity byte that takes the place of the slot number.
+    uint16_t offset = uint16_t(page) * 16 * MD_USR_RECORD_BYTES;
+    uint8_t first = 0;
+    if (page == MD_USR_LABEL_PAGE) {
+      offset = kUsrLabels + uint16_t(label_slot_) * MD_USR_LABEL_BYTES;
+      writeByte(offset, 0x80 | label_epoch_);
+      first = 1;
+    } else {
+      valid_pages_ |= 1u << page;
+      if (count == 16) valid_pages_ |= 6;
+    }
+    for (uint8_t n = first; n < bytes; ++n) writeByte(offset + n, view.getByte(16 + n));
+    // New names or labels: the Grid page's slot labels and the current
+    // track's page read them again (MCL::loop).
+    valid_pages_ |= 0x80;
+  }
   pending_ = 255;
   retries_ = 0;
 }
@@ -245,9 +256,9 @@ uint8_t MDUsrCache::descriptor(uint8_t model) const {
 const char *MDUsrCache::label(uint8_t model, uint8_t param) {
   const uint8_t slot = model - MD_USR_FIRST;
   if (slot >= MD_USR_SLOTS || param >= 8) return nullptr;
-  uint16_t offset = kUsrLabels + uint16_t(slot) * MD_USR_LABEL_BYTES;
-  if (readByte(offset) != (0x80 | label_epoch_)) return nullptr;
-  offset += 1 + param * 4;
+  uint16_t offset = labels(slot);
+  if (!offset) return nullptr;
+  offset += param * 4;
   for (uint8_t n = 0; n < 3; ++n) {
     const uint8_t c = readByte(offset + n);
     name_[n] = c >= 32 && c < 127 ? c : 0;
