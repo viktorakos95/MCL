@@ -1756,6 +1756,10 @@ static bool io_global;
 constexpr uint16_t IO_EDIT_HOLD_MS = 400;
 static uint16_t io_tap_clock;
 static bool io_pending;
+// The press of Load|Yes that opened Load is still held: held long enough it
+// starts the edit, as a press inside Load does, but let go early it leaves
+// Load open.
+static bool io_opening;
 
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
 // row and knob 2 picks it, or the knobs go back to the Grid page.
@@ -1852,6 +1856,10 @@ void GridPage::io_begin(uint8_t mode) {
     gridio_param4.cur = mcl_cfg.chain_load_quant;
     gridload_fade.cur = (mcl_cfg.load_fade & 1) ? mcl_cfg.load_fade_len + 1 : 0;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+    // Opened by a Load|Yes press that is still down (Load opens on the press
+    // on AVR): it times the hold like a press inside Load.
+    io_pending = io_opening = BUTTON_DOWN(Buttons.BUTTON4);
+    io_tap_clock = read_clock_ms();
   } else {
     io_saved = false;
     io_read_md_pattern();
@@ -1883,6 +1891,7 @@ void GridPage::io_loop() {
       clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS) {
     // Load|Yes has been held long enough: the rows can be edited.
     io_pending = false;
+    io_opening = false;
     if (!GridIOPage::show_offset) {
       io_rows_edit(encoders, true);
     }
@@ -2295,9 +2304,16 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         if (pressed) {
           io_tap_clock = read_clock_ms();
           io_pending = true;
+          io_opening = false;
           return true;
         }
         if (io_pending) {
+          // The early release of the press that opened Load leaves it open.
+          io_pending = false;
+          if (io_opening) {
+            io_opening = false;
+            return true;
+          }
           io_end();
           return true;
         }
