@@ -49,7 +49,7 @@ Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit th
 - Encoder 2 or **[Up/Down]** choose a row.
 - Encoder 1 or **[Left/Right]** change it.
 - On `FADE`, turning steps through `-`, `ON`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
-- On `QUANT` or `FADE`, **[Trig]** N sets 2, 4, 8 … steps, doubling with each trig: **[Trig]** 1 to 6 set `QUANT` to 2 to 64 steps, and **[Trig]** 1 to 10 set the fade length to 2 to 1024 steps, turning the fade on. The trig matching the current value is lit.
+- On `QUANT` or `FADE`, **[Trig]** N sets 2, 4, 8 … steps, doubling with each trig: **[Trig]** 1 to 6 set `QUANT` to 2 to 64 steps (the trigs above set 64), and **[Trig]** 1 to 10 set the fade length to 2 to 1024 steps, turning the fade on. The trig matching the current value is lit.
 
 While it is released, the encoders work as on the Grid Page, or in `LEGACY` set the mode, `LEN` and `QUANT`.
 

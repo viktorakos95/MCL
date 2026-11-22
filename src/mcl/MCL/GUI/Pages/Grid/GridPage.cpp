@@ -2262,9 +2262,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       return true;
     }
     // Editing the rows: trig n sets QUANT, or the FADE length (turning FADE
-    // on), to 2^n steps, the knob's powers of two: QUANT to 64 on trigs 1-6,
-    // the fade to 1024 on trigs 1-10. On the mode row and Queue's LEN they
-    // do nothing.
+    // on), to 2^n steps, the knob's powers of two: QUANT to 64 on trigs 1-6
+    // (trigs 7-16 set 64 too), the fade to 1024 on trigs 1-10. On the mode
+    // row and Queue's LEN they do nothing.
     const uint16_t bit = track < 16 ? (uint16_t)1 << track : 0;
     const bool pressed = event->mask == EVENT_BUTTON_PRESSED;
     if (bit && (pressed ? (io_editing || io_slide) &&
@@ -2276,9 +2276,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         const uint8_t row = io_slide ? IO_ROW_LEN_FADE : io_menu_line.cur;
         io_slide_used |= io_slide;
         if (row == IO_ROW_QUANT) {
-          if (track < 6) {
-            gridio_param4.cur = 2 << track;
-          }
+          // Trigs past 6 set QUANT's maximum, 64.
+          gridio_param4.cur = track < 6 ? 2 << track : 64;
         } else if (row == IO_ROW_LEN_FADE &&
                    mcl_cfg.load_mode != LOAD_QUEUE) {
           // Length code n is 2^(n-1) steps; gridload_fade holds code + 1.
