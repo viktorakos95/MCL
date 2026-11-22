@@ -2176,7 +2176,11 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.load_fade_len;
         const char *word = fade_word();
         if (!(mcl_cfg.load_fade & 1)) {
-          panel_row(24, mclstr_fade, 0);
+          // Off, the row shows only while FADE can be turned on: in the row
+          // edit or with Slide held.
+          if (io_editing || io_slide) {
+            panel_row(24, mclstr_fade, 0);
+          }
         } else if (len == 0) {
           text_at_P(1, 24, mclstr_fade);
           text_at_P(37 - 4 * strlen_P(word), 24, word);
