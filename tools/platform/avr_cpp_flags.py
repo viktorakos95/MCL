@@ -15,10 +15,14 @@ env.AppendUnique(
 # -fmerge-all-constants changes none of it; -fno-move-loop-invariants
 # shortens the sequencer tick, the clock callbacks and the timer interrupt,
 # but makes the loops in the sources below longer, so those keep the default.
+# The SD card library's sector read loop gained a cycle for each byte (the
+# 0xFF it sends was loaded inside the loop), so the SD and display libraries
+# keep the default as well and compile exactly as before.
 env.Append(CCFLAGS=["-fno-move-loop-invariants", "-fmerge-all-constants"])
 _KEEP_LOOP_INVARIANTS = ("*/src/mcl/Midi/Midi.cpp",
                          "*/Sequencer/ArpSeqTrack.cpp",
-                         "*/Sequencer/ExtSeqTrack.cpp")
+                         "*/Sequencer/ExtSeqTrack.cpp",
+                         "*/SdFat/*", "*/Adafruit*/*")
 
 
 def _keep_loop_invariants(env, node):
