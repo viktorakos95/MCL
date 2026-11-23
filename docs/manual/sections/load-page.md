@@ -61,8 +61,8 @@ A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last 
 
 Hold **[Bank D]** to see and set the fade: the box at the top reads `FADE`, and the rows show `MODE` and `LEN`.
 
-- **[Up/Down]** step `MODE` through `-` (off), `AUT`, `IN` and `OUT`, **[Up]** towards `OUT`.
-- **[Trig]** 1 to 10 set `LEN` to 2 to 1024 steps, doubling with each trig, and turn the fade on; the trig matching the current length is lit. Pressing the lit trig again sets `LEN` back to `-`, the `QUANT` length.
+- **[Up/Down]** pick `MODE` or `LEN`; **[Left/Right]** change it. `MODE` steps through `-` (off), `AUT`, `IN` and `OUT`. `LEN` steps from `-` (the `QUANT` length) through 1 to 1024 steps.
+- **[Trig]** 1 to 10 set `LEN` to 2 to 1024 steps, doubling with each trig, and turn the fade on; the trig matching the current length is lit. Pressing the lit trig again sets `LEN` back to `-`.
 
 Let go of **[Bank D]** and the Load rows return.
 

@@ -1799,6 +1799,9 @@ static bool io_slide_used;
 // When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
 // so a tap goes from blank straight to the length it turns on.
 static uint16_t io_slide_clock;
+// The FADE page's picked row: 0 MODE, 1 LEN (UP/DOWN pick, LEFT/RIGHT
+// change, as in the row edit).
+static uint8_t io_fade_row;
 
 static bool io_fade_page() {
   return io_slide &&
@@ -2204,6 +2207,8 @@ void GridPage::io_display_panel() {
       } else {
         panel_row(24, mclstr_len, 0);
       }
+      // The picked row is inverted, as in the row edit.
+      oled_display.fillRect(0, 10 + 8 * io_fade_row, 37, 7, INVERT);
     } else {
       uint8_t quant = mcl_cfg.chain_load_quant;
       panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
@@ -2407,9 +2412,17 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return true;
       case MDX_KEY_LEFT:
       case MDX_KEY_RIGHT:
-        // Slide held: the arrows belong to the fade (UP/DOWN pick its
-        // direction), so LEFT/RIGHT do nothing.
+        // FADE held: LEFT/RIGHT change the FADE page's picked row: MODE
+        // steps -, AUT, IN, OUT; LEN steps QUANT's length, then 1 .. 1024.
         if (load && io_slide) {
+          const int8_t dir = key == MDX_KEY_RIGHT ? 1 : -1;
+          if (io_fade_row == 0) {
+            io_step_fade_mode(dir);
+          } else {
+            mcl_cfg.load_fade_len =
+                limit_value(mcl_cfg.load_fade_len, dir, 0, LOAD_FADE_MAX);
+          }
+          io_slide_used = true;
           return true;
         }
         // Editing: LEFT/RIGHT change the chosen row.
@@ -2431,9 +2444,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
-        // FADE held: UP/DOWN step its mode, UP towards OUT: -, AUT, IN, OUT.
+        // FADE held: UP/DOWN pick the FADE page's row, MODE or LEN.
         if (load && io_slide) {
-          io_step_fade_mode(key == MDX_KEY_UP ? 1 : -1);
+          io_fade_row = key == MDX_KEY_DOWN;
           io_slide_used = true;
           return true;
         }
