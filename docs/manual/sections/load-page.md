@@ -237,8 +237,8 @@ A row load waits for a chaining column in the same way as a Manual or Auto load.
 
 ## Track Levels During Load
 
-For Machinedrum tracks, MCL does not continuously transmit track `LEV` while the sequencer is running. This lets the performer use the Machinedrum level control for live fades during and after slot loads.
+When a slot loads while the sequencer is running, MCL does not send the track's `LEV` to the Machinedrum. Loads keep the mix levels as they are, and `LEV` stays free for fading tracks in and out by hand.
 
-Use `CONFIG > MACHINEDRUM > NORMALIZE` to keep saved track loudness predictable when loading between slots.
+Set each track's relative loudness with its `VOL` parameter instead. With `CONFIG > MACHINEDRUM > NORMALIZE` at `AUTO`, MCL does this when tracks are saved: it raises `LEV` to 127 and lowers `VOL` and its locks to keep the same loudness, so `LEV` at 127 is always the track's full level.
 
-`FADE` can fade the track levels for you when slots load. See Fade above.
+`FADE` is the exception: it moves the level of each loading track itself (see Fade).
