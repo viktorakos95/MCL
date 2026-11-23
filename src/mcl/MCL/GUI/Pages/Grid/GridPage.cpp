@@ -1766,6 +1766,19 @@ static MCLEncoder io_menu_line(IO_ROW_LEN_FADE, 0, ENCODER_RES_PAT);
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
+// FADE's mode as a filled 9 x 5 px graphic, the small font's height, at the
+// row's right edge (x 28 .. 36, baseline y): AUT a dip, IN a rising ramp,
+// OUT a falling one.
+static void draw_fade_mode(uint8_t y) {
+  const uint8_t mode = mcl_cfg.load_fade >> 1;
+  for (uint8_t i = 0; i < 9; i++) {
+    const uint8_t h = mode == LOAD_FADE_FORCE_IN    ? (i + 3) / 2
+                      : mode == LOAD_FADE_FORCE_OUT ? (11 - i) / 2
+                                                    : (i > 4 ? i - 4 : 4 - i) + 1;
+    oled_display.drawFastVLine(28 + i, y - h, h, WHITE);
+  }
+}
+
 // FADE's word: AUT lets each column pick its direction, IN and OUT force it.
 static const char *fade_word() {
   const uint8_t force = mcl_cfg.load_fade >> 1;
@@ -2218,9 +2231,8 @@ void GridPage::io_display_panel() {
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
         // FADE in the other modes: "FADE -" when off, else FADE and its
-        // mode: AUT (direction by column), IN or OUT (forced).
+        // mode's graphic: AUT (direction by column), IN or OUT (forced).
         uint8_t len = mcl_cfg.load_fade_len;
-        const char *word = fade_word();
         if (!(mcl_cfg.load_fade & 1)) {
           // Off, the row shows only in the row edit, where it can be turned
           // on (holding FADE shows the FADE page).
@@ -2238,7 +2250,7 @@ void GridPage::io_display_panel() {
               print_right(0, 37, 24);
             }
           } else {
-            text_at_P(37 - 4 * strlen_P(word), 24, word);
+            draw_fade_mode(24);
           }
         }
       }
