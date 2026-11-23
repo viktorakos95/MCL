@@ -1995,7 +1995,8 @@ void GridPage::io_loop() {
     if (row == IO_ROW_QUANT) {
       const uint8_t quant = mcl_cfg.chain_load_quant;
       leds = (quant & (quant - 1)) ? 0 : quant >> 1;
-    } else if (row != IO_ROW_MODE && mcl_cfg.load_mode != LOAD_QUEUE) {
+    } else if (row != IO_ROW_MODE &&
+               (io_slide || mcl_cfg.load_mode != LOAD_QUEUE)) {
       const uint8_t len = mcl_cfg.load_fade_len;
       leds = (mcl_cfg.load_fade & 1) && len >= 2 ? (uint16_t)1 << (len - 2) : 0;
     }
@@ -2306,7 +2307,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           // Trigs past 6 set QUANT's maximum, 64.
           gridio_param4.cur = track < 6 ? 2 << track : 64;
         } else if (row == IO_ROW_LEN_FADE &&
-                   mcl_cfg.load_mode != LOAD_QUEUE &&
+                   (io_slide || mcl_cfg.load_mode != LOAD_QUEUE) &&
                    track < LOAD_FADE_MAX - 1) {
           // Length code n is 2^(n-1) steps; the fade turns on. The lit
           // trig again: back to QUANT's length.
@@ -2384,12 +2385,12 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_end();
         return false;
       case MDX_KEY_BANKD:
-        // The Machinedrum's SLIDE key arrives as bank D: FADE. Outside
-        // Queue, held, it shows the FADE page, the trigs set its length and
-        // UP/DOWN its mode; a tap (on the release) turns FADE off or on again
-        // in its last mode.
-        if (load && !GridIOPage::show_offset &&
-            mcl_cfg.load_mode != LOAD_QUEUE) {
+        // The Machinedrum's SLIDE key arrives as bank D: FADE. Held, it
+        // shows the FADE page, the trigs set its length and the arrows its
+        // settings; a tap (on the release) turns FADE off or on again in its
+        // last mode. In Queue too, where FADE is set for the Manual and Auto
+        // loads (queue loads do not fade).
+        if (load && !GridIOPage::show_offset) {
           io_slide = true;
           io_slide_used = false;
           io_slide_clock = read_clock_ms();
