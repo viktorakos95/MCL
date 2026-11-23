@@ -22,15 +22,11 @@ void LoadProjectPage::init() {
 #ifdef MCL_HAS_FILE_MOVE
   if (!move_destination_mode) {
 #endif
-    show_dirs = true;
+    folder_browser_options();
+    // A project is a folder: [Yes] selects it.
     select_dirs = true;
-    show_save = true;
-    show_parent = true;
-    show_new_folder = true;
-    show_filemenu = true;
     show_copy = true;
     show_versions = false;
-    draw_dirs = true;
     strcpy(title, "PROJECT");
     strcpy(str_save, "[ NEW PROJECT ]");
     focus_current_project();

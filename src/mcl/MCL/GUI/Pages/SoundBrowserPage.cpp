@@ -26,13 +26,7 @@ void SoundBrowserPage::init() {
   key_interface.off();
 
   strcpy_P(title, mclstr_title_sound);
-  show_dirs = true;
-  select_dirs = false;
-  draw_dirs = true;
-  show_save = true;
-  show_filemenu = true;
-  show_new_folder = true;
-  show_parent = true;
+  folder_browser_options();
   strcpy_P(str_save, mclstr_action_save_bracket);
   query_filesystem();
 

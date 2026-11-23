@@ -252,6 +252,18 @@ void FileBrowserPage::reset_browser_options() {
   draw_dirs = false;
 }
 
+// A browser of folders and files: [Yes] opens a folder; the save row, "..",
+// NEW DIR and the file menu are shown.
+void FileBrowserPage::folder_browser_options() {
+  show_dirs = true;
+  select_dirs = false;
+  show_save = true;
+  show_parent = true;
+  show_new_folder = true;
+  show_filemenu = true;
+  draw_dirs = true;
+}
+
 void FileBrowserPage::init() {
   reset_browser_options();
   focus_match[0] = '\0';
@@ -260,13 +272,7 @@ void FileBrowserPage::init() {
   SD.chdir(lwd);
 #ifdef MCL_HAS_FILE_MOVE
   if (move_destination_mode) {
-    show_dirs = true;
-    select_dirs = false;
-    show_save = true;
-    show_parent = true;
-    show_new_folder = true;
-    show_filemenu = true;
-    draw_dirs = true;
+    folder_browser_options();
     strcpy(title, "DEST");
     strcpy(str_save, "[ MOVE ]");
   }

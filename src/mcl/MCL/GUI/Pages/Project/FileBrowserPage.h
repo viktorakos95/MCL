@@ -174,6 +174,7 @@ public:
   virtual void setup();
   virtual void init();
   static void reset_browser_options();
+  static void folder_browser_options();
 
   virtual void on_new() {
 #ifdef MCL_HAS_FILE_MOVE
