@@ -73,12 +73,12 @@ void PerfPage::set_led_mask() {
   PerfEncoder *e = cur_enc(this);
 
   if (show_menu) {
-    SET_BIT16(mask, perf_id);
+    bitfield_set(&mask, perf_id);
   } else {
     for (uint8_t i = 0; i < 2; i++) {
       uint8_t scene = (&e->active_scene_a)[i];
       if (scene < NUM_SCENES) {
-        SET_BIT16(mask, scene);
+        bitfield_set(&mask, scene);
       }
     }
   }

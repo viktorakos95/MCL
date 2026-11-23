@@ -55,9 +55,9 @@ SeqStepTrackRef active_step_track() { return seq_step_active_track(); }
 
 #ifdef MCL_HAS_EXTENDED_PANEL_INPUT
 void retain_shift_step_selection(SeqStepPage &page, uint8_t track) {
-  SET_BIT16(page.shift_select_latch, track);
-  SET_BIT32(note_interface.notes_on, track);
-  CLEAR_BIT32(note_interface.notes_off, track);
+  bitfield_set(&page.shift_select_latch, track);
+  bitfield_set(&note_interface.notes_on, track);
+  bitfield_clear(&note_interface.notes_off, track);
 }
 
 void clear_shift_step_selection(SeqStepPage &page) {
@@ -66,7 +66,7 @@ void clear_shift_step_selection(SeqStepPage &page) {
     return;
   }
   for (uint8_t n = 0; n < kStepPageVisibleSteps; ++n) {
-    if (IS_BIT_SET16(latch, n)) {
+    if (bitfield_test(&latch, n)) {
       note_interface.clear_note(n);
     }
   }
@@ -393,7 +393,7 @@ void SeqStepPage::display() {
       !(recording)) {
     uint64_t note_mask[2] = {};
     uint8_t note = seq_param4.cur; // + tuning->base;
-    SET_BIT64(note_mask, note);
+    bitfield_set(&note_mask, note);
     mcl_gui.draw_keyboard(32, 23, 6, 9, kStepPageKeyboardKeys, note_mask);
     SeqPage::display();
   }
@@ -658,20 +658,20 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           active_track.clear_mute(step);
         }
         active_track.set_step(step, mask_type, true);
-        SET_BIT16(ignore_release, track);
+        bitfield_set(&ignore_release, track);
       }
     } else if (event_mask == EVENT_BUTTON_RELEASED) {
 #ifdef MCL_HAS_EXTENDED_PANEL_INPUT
       if (step < length && key_interface.is_key_down(MDX_KEY_FUNC)) {
-        CLEAR_BIT16(ignore_release, track);
+        bitfield_clear(&ignore_release, track);
         retain_shift_step_selection(*this, track);
         return true;
       }
 #endif
       disable_microtiming_overlay();
       show_pitch = false;
-      if (IS_BIT_SET16(ignore_release, track)) {
-        CLEAR_BIT16(ignore_release, track);
+      if (bitfield_test(&ignore_release, track)) {
+        bitfield_clear(&ignore_release, track);
         return true;
       }
       if (step >= length) {

@@ -660,8 +660,8 @@ void MixerPage::toggle_or_solo(bool solo) {
       if (solo) {
         uint16_t bit = (uint16_t)(1u << i);
         if (((fill_mask & bit) != 0) != note_on) {
-          if (note_on) SET_BIT16(fill_mask, i);
-          else CLEAR_BIT16(fill_mask, i);
+          if (note_on) bitfield_set(&fill_mask, i);
+          else bitfield_clear(&fill_mask, i);
 #if defined(__AVR__)
           send_md_fill_track(mixer_target, i, note_on);
 #endif
@@ -776,7 +776,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
     }
 
     if (event->mask == EVENT_BUTTON_RELEASED) {
-      SET_BIT16(redraw_mask, track);
+      bitfield_set(&redraw_mask, track);
       if (note_interface.notes_count_on() == 0) {
         first_track = 255;
         note_interface.init_notes();

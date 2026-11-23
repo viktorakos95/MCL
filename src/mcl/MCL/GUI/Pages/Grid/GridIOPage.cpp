@@ -141,7 +141,7 @@ void GridIOPage::paint_track_select_leds() {
     for (uint8_t n = 0; n < GRID_WIDTH && n < 16; n++) {
       uint8_t type = grid_page.row_headers[grid_page.cur_row].track_type[n];
       if (type != EMPTY_TRACK_TYPE && type != NULL_TRACK_TYPE && type != 255) {
-        SET_BIT16(occupied_mask, n);
+        bitfield_set(&occupied_mask, n);
       }
     }
   }
@@ -149,14 +149,14 @@ void GridIOPage::paint_track_select_leds() {
   uint16_t active_mask = 0;
   if (show_offset) {
     if (offset < NUM_SLOTS && offset / GRID_WIDTH == old_grid) {
-      SET_BIT16(active_mask, offset % GRID_WIDTH);
+      bitfield_set(&active_mask, offset % GRID_WIDTH);
     }
   } else {
     for (uint8_t n = 0; n < GRID_WIDTH && n < 16; n++) {
       GridSlot slot = n + old_grid * GRID_WIDTH;
-      if (IS_BIT_SET32(track_select, slot) || note_interface.is_note(slot) ||
+      if (bitfield_test(&track_select, slot) || note_interface.is_note(slot) ||
           note_interface.is_note(n)) {
-        SET_BIT16(active_mask, n);
+        bitfield_set(&active_mask, n);
       }
     }
   }
@@ -176,9 +176,9 @@ void GridIOPage::paint_track_select_leds() {
 void GridIOPage::populate_track_select_from_notes(uint8_t *track_select_array) {
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
     if (note_interface.is_note(n)) {
-      SET_BIT32(track_select, slot_for_note(n));
+      bitfield_set(&track_select, slot_for_note(n));
     }
-    track_select_array[n] = IS_BIT_SET32(track_select, n) ? 1 : 0;
+    track_select_array[n] = bitfield_test(&track_select, n) ? 1 : 0;
   }
 }
 
@@ -200,7 +200,7 @@ bool GridIOPage::slot_matches_track_type_select(GridSlot slot) {
     break;
   }
 
-  return match != 255 && IS_BIT_SET16(mcl_cfg.track_type_select, match);
+  return match != 255 && bitfield_test(&mcl_cfg.track_type_select, match);
 }
 
 void GridIOPage::track_select_array_from_type_select(

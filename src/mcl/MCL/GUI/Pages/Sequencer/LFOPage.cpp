@@ -767,15 +767,15 @@ bool LFOPage::handleEvent(gui_event_t *event) {
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
-      if (!IS_BIT_SET64(lfo_track->pattern_mask, step)) {
+      if (!bitfield_test(&lfo_track->pattern_mask, step)) {
         reset_lfo_clear_undo(lfo_track);
-        SET_BIT64(lfo_track->pattern_mask, step);
+        bitfield_set(&lfo_track->pattern_mask, step);
       } else {
         DEBUG_PRINTLN(F("Trying to clear"));
         if (clock_diff(note_interface.note_hold[port], read_clock_ms()) <
             TRIG_HOLD_TIME) {
           reset_lfo_clear_undo(lfo_track);
-          CLEAR_BIT64(lfo_track->pattern_mask, step);
+          bitfield_clear(&lfo_track->pattern_mask, step);
         }
       }
     }

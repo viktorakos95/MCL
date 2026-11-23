@@ -133,7 +133,7 @@ void PolyPage::press_track(uint8_t i) {
     selected_group = editable_group_for_track(i);
     sync_channel_encoder(encoders[0], selected_group);
   }
-  SET_BIT16(selected_tracks, i);
+  bitfield_set(&selected_tracks, i);
   update_selection_leds(selected_tracks);
 }
 
@@ -147,7 +147,7 @@ void PolyPage::apply_selected_group() {
 }
 
 void PolyPage::release_track(uint8_t i) {
-  CLEAR_BIT16(selected_tracks, i);
+  bitfield_clear(&selected_tracks, i);
   if (selected_tracks == 0) {
     first_held_track = 255;
   } else if (i == first_held_track) {

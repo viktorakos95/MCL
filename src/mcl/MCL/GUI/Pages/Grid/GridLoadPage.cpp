@@ -162,7 +162,7 @@ void GridLoadPage::display_at(uint8_t y_offset) {
       mcl_print_P(mclstr_destination);
       trig_mask = 0;
       if (offset < NUM_SLOTS && offset / GRID_WIDTH == old_grid) {
-        SET_BIT16(trig_mask, offset % GRID_WIDTH);
+        bitfield_set(&trig_mask, offset % GRID_WIDTH);
       }
       // if (offset < 16) {
       //   oled_cursor(MCLGUI::s_menu_x + 4 + offset * MCLGUI::seq_w
