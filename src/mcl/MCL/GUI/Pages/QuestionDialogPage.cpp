@@ -3,19 +3,19 @@
 
 void QuestionDialogPage::init(const char* title_, const char* text_) {
   mcl_gui.draw_infobox(title_, text_, -1);
-  oled_display.drawFastHLine(MCLGUI::dlg_info_x1 + 1, MCLGUI::dlg_info_y2, MCLGUI::dlg_info_w - 2, BLACK);
+  oled_hline(MCLGUI::dlg_info_x1 + 1, MCLGUI::dlg_info_y2, MCLGUI::dlg_info_w - 2, BLACK);
 
   oled_font_small();
   oled_text_color(WHITE);
 
-  oled_display.setCursor(MCLGUI::dlg_info_x2 - 82, MCLGUI::dlg_info_y1 + 23);
+  oled_cursor(MCLGUI::dlg_info_x2 - 82, MCLGUI::dlg_info_y1 + 23);
   mcl_print_P(mclstr_no_option);
 
-  oled_display.setCursor(MCLGUI::dlg_info_x2 - 53, MCLGUI::dlg_info_y1 + 23);
+  oled_cursor(MCLGUI::dlg_info_x2 - 53, MCLGUI::dlg_info_y1 + 23);
   mcl_print_P(mclstr_yes_option);
 
-  oled_display.drawRect(MCLGUI::dlg_info_x2 - 88, MCLGUI::dlg_info_y1 + 16, 18, 9, WHITE);
-  oled_display.drawRect(MCLGUI::dlg_info_x2 - 57, MCLGUI::dlg_info_y1 + 16, 18, 9, WHITE);
+  oled_rect(MCLGUI::dlg_info_x2 - 88, MCLGUI::dlg_info_y1 + 16, 18, 9, WHITE);
+  oled_rect(MCLGUI::dlg_info_x2 - 57, MCLGUI::dlg_info_y1 + 16, 18, 9, WHITE);
 
 }
 

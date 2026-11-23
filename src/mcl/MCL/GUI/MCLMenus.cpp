@@ -204,7 +204,9 @@ const uint8_t *const menu_target_param[] PROGMEM = {
     // 73
     &opt_swing,
     // 74
-    &mcl_cfg.md_sample_bank
+    &mcl_cfg.md_sample_bank,
+    // 75
+    &mcl_cfg.io_stay
 };
 
 const menu_function_t menu_target_functions[] PROGMEM = {

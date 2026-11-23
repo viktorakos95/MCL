@@ -5,8 +5,8 @@
 #if defined(__AVR__)
 // The largest set a page loads together is the menu page's: short machine
 // names, knob icons, menu options, menu layouts and one option row for each
-// device, 5,585 bytes.
-#define RM_BUFSIZE 5600
+// device, 5,633 bytes.
+#define RM_BUFSIZE 5633
 #elif defined(PLATFORM_TBD)
 // Every rp2040 resource set loaded at once, plus one menu option row for each
 // device, is 14,344 + NUM_DEVS * sizeof(menu_option_t) bytes (checked in
@@ -47,7 +47,9 @@ private:
 
 public:
 	ResourceManager() = default;
-	void Clear();
+	// Out of line: every page's init() calls it, and a call is smaller than
+	// its body at each of them.
+	void Clear() NOINLINE();
 	void SetPersistent();
 	void Save(uint8_t* buf, size_t* sz);
 	void Restore(uint8_t* buf, size_t sz);

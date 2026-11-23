@@ -52,6 +52,21 @@ const char* getMDMachineNameShort(uint8_t machine, uint8_t type) {
       R.machine_names_short->countof_md_machine_names_short);
 }
 
+/// Caller is responsible to make sure machine_names_short is loaded in RM
+void copyMDTrackLabel(uint8_t model, char *out, uint8_t len) {
+  if (len >= 7) {
+    const char *name = md_usr.name(model);
+    if (name) {
+      memcpy(out, name, 7);
+      return;
+    }
+  }
+  copyMachineNameShort(getMDMachineNameShort(model, 1), out);
+  out[2] = '>';
+  copyMachineNameShort(getMDMachineNameShort(model, 2), out + 3);
+  out[5] = '\0';
+}
+
 /// Caller is responsible to make sure machine_names_long is loaded in RM
 const char* MDClass::getMachineName(uint8_t machine) {
   if (uint8_t(machine - MD_USR_FIRST) < MD_USR_SLOTS) return md_usr.name(machine);

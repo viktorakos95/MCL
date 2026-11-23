@@ -215,7 +215,15 @@ void GuiClass::loop() {
   MidiUartParent::handle_midi_lock = 0;
 
   if (!skip_display_once) {
+#if defined(__AVR__)
+    const uint16_t now = read_clock_ms();
+    if (clock_diff(frame_clock, now) >= FRAME_PERIOD_MS) {
+      frame_clock = now;
+      display();
+    }
+#else
     display();
+#endif
   }
   skip_display_once = false;
   MidiUartParent::handle_midi_lock = _midi_lock_tmp;

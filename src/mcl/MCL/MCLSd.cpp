@@ -119,7 +119,7 @@ void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
     entry.close();
     if (path[at] != '\0' && path[at] != '.') {
       oled_display.clearDisplay();
-      oled_display.setCursor(0, 8);
+      oled_cursor(0, 8);
       oled_display.println(F("UPGRADING"));
       oled_display.println(path);
       oled_display.display();
@@ -163,14 +163,14 @@ void upgrade_all_projects() {
   if (confirmed) {
     // Reading the free space of a large card takes a few seconds.
     oled_display.clearDisplay();
-    oled_display.setCursor(0, 8);
+    oled_cursor(0, 8);
     oled_display.println(F("CHECKING SD CARD"));
     oled_display.display();
     proj.upgrade_room = count_upgrade_room();
     upgrade_projects_in(path, 1, &upgraded);
   }
   oled_display.clearDisplay();
-  oled_display.setCursor(0, 8);
+  oled_cursor(0, 8);
   if (confirmed) {
     oled_display.print(upgraded);
     oled_display.println(F(" PROJECTS READY"));
@@ -190,7 +190,7 @@ void upgrade_all_projects() {
 
 } // namespace
 
-#ifdef MCL_PROJECT_UPGRADER
+#ifndef WAV_DESIGNER
 // The menu tables still name the WAV designer entry points.
 void wavdesign_menu_handler() {}
 void wav_render() {}
@@ -337,6 +337,23 @@ bool MCLSd::load_init() {
         }
         if (mcl_cfg.md_sample_bank_capture > 128) {
           mcl_cfg.md_sample_bank_capture = 0;
+        }
+        {
+          // FADE, its length and SYSTEM > LOAD/SAVE follow the persisted
+          // block, then their tag.
+          uint8_t *panel = (uint8_t *)&mcl_cfg.load_fade;
+          memset(panel, 0, 4);
+          mcl_cfg.cfgfile.read(panel, 4);
+          if (mcl_cfg.load_panel_tag != LOAD_PANEL_CFG_TAG ||
+              panel[0] > (1 | LOAD_FADE_FORCE_OUT << 1) ||
+              mcl_cfg.load_fade_len > LOAD_FADE_STORED_MAX ||
+              mcl_cfg.io_stay > LOAD_SAVE_STAY) {
+            memset(panel, 0, 3);
+          }
+          // A fade set longer than the longest now takes the longest.
+          if (mcl_cfg.load_fade_len > LOAD_FADE_MAX) {
+            mcl_cfg.load_fade_len = LOAD_FADE_MAX;
+          }
         }
         ptc_groups.load(mcl_cfg.ptc_group);
 

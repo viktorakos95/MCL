@@ -416,7 +416,7 @@ void MCL::setup() {
     oled_display.clearDisplay();
     oled_font_default();
     oled_text_color(WHITE, BLACK);
-    oled_display.setCursor(0, 0);
+    oled_cursor(0, 0);
     mcl_print_P(mclstr_sd_card_error);
     oled_display.display();
     delay(2000);
@@ -467,9 +467,18 @@ void MCL::loop() {
   platform_poll();
   md_usr.service();
   mcl_seq.service_fill();
-  if (md_usr.takeChanged() && isSeqPage() && SeqPage::active_device_is_md() &&
-      MD.currentTrack < 16 && uint8_t(MD.kit.get_model(MD.currentTrack) - MD_USR_FIRST) < MD_USR_SLOTS)
-    GUI.currentPage()->config();
+  if (md_usr.takeChanged()) {
+    // USR names or labels arrived, after peering or a machine change: the
+    // grid's slot labels showed "??" for USR machines until reloaded.
+    if (current_page == GRID_PAGE) {
+      grid_page.reload_slot_models = false;
+    } else if (isSeqPage() && SeqPage::active_device_is_md() &&
+               MD.currentTrack < 16 &&
+               uint8_t(MD.kit.get_model(MD.currentTrack) - MD_USR_FIRST) <
+                   MD_USR_SLOTS) {
+      GUI.currentPage()->config();
+    }
+  }
 
 #ifndef __AVR__
   MidiUartUSB.service_background();

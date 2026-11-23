@@ -82,6 +82,13 @@ public:
 
   void loop();
   void deferDisplayOnce() { skip_display_once = true; }
+#if defined(__AVR__)
+  // The page is drawn at most once every FRAME_PERIOD_MS, about 60 frames a
+  // second, and the loop keeps running between frames. A page that takes
+  // longer than that to draw is drawn on every pass.
+  static constexpr uint8_t FRAME_PERIOD_MS = 16;
+  uint16_t frame_clock; // when the last frame was started
+#endif
   void wake_screen_saver();
   void mirror();
   void display();

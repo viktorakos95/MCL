@@ -369,20 +369,15 @@ static volatile uint8_t *kit65_ptr(uint8_t at) {
   return reinterpret_cast<volatile uint8_t *>(uint16_t(BANK1_KIT65_START + at));
 }
 
+// One bank switch around the copy, not one for each byte.
 static void kit65_write(uint8_t at, const uint8_t *src, uint8_t count) NOINLINE();
 static void kit65_write(uint8_t at, const uint8_t *src, uint8_t count) {
-  volatile uint8_t *dst = kit65_ptr(at);
-  while (count--) {
-    put_byte_bank1(dst++, *src++);
-  }
+  memcpy_bank1(kit65_ptr(at), src, count);
 }
 
 static void kit65_read(uint8_t at, uint8_t *dst, uint8_t count) NOINLINE();
 static void kit65_read(uint8_t at, uint8_t *dst, uint8_t count) {
-  volatile uint8_t *src = kit65_ptr(at);
-  while (count--) {
-    *dst++ = get_byte_bank1(src++);
-  }
+  memcpy_bank1(dst, kit65_ptr(at), count);
 }
 #endif
 

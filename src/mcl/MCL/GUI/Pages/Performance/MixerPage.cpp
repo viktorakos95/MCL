@@ -11,7 +11,10 @@
 #include "../../../../Drivers/MD/MD.h"
 
 #define FADER_LEN 18
-#define FADE_RATE 8
+// How far a meter falls each frame. The page runs at about 62 frames a second;
+// it was 8 at the 53 (playing) to 63 (stopped) it ran at before the frame
+// rate was fixed.
+#define FADE_RATE 7
 
 namespace {
 
@@ -290,12 +293,12 @@ void MixerPage::oled_draw_mutes() {
             oled_display.drawFastVLine(fader_x + 3, 2, 5, WHITE);
           }
         } else {
-          oled_display.drawFastHLine(fader_x, 5, 6, WHITE);
+          oled_hline(fader_x, 5, 6, WHITE);
         }
       } else if (mute_state) {
-        oled_display.drawRect(fader_x, 2, 6, 6, WHITE);
+        oled_rect(fader_x, 2, 6, 6, WHITE);
       } else {
-        oled_display.drawFastHLine(fader_x, 5, 6, WHITE);
+        oled_hline(fader_x, 5, 6, WHITE);
       }
     }
     fader_x += 8;
@@ -420,7 +423,7 @@ void MixerPage::draw_encs() {
     uint8_t val = MixerPerf::display_value(encoders[n], perf_locks,
                                            preview_mute_set, n, highlight);
     mcl_gui.draw_encoder(24 + pos, fader_y + 4, val, highlight);
-    oled_display.setCursor(16 + pos, fader_y + 6);
+    oled_cursor(16 + pos, fader_y + 6);
     oled_display.write((uint8_t)('A' + n));
   }
 }
@@ -494,7 +497,7 @@ void MixerPage::display() {
     draw_encs();
     oled_font_small();
     if (load_perf_state != 255 && load_perf_state == preview_mute_set) {
-      oled_display.setCursor(111, 31);
+      oled_cursor(111, 31);
       mcl_print_P(mclstr_load);
     }
     oled_font_default();
@@ -525,7 +528,7 @@ void MixerPage::display() {
 
       if (redraw & 1) {
         oled_display.fillRect(fader_x, fader_y - 1, 6, FADER_LEN + 1, BLACK);
-        oled_display.drawRect(fader_x, fader_y + (FADER_LEN - fader_level), 6,
+        oled_rect(fader_x, fader_y + (FADER_LEN - fader_level), 6,
                               fader_level + 2, WHITE);
       }
       if (note_interface.is_note_on(i)) {
@@ -657,8 +660,8 @@ void MixerPage::toggle_or_solo(bool solo) {
       if (solo) {
         uint16_t bit = (uint16_t)(1u << i);
         if (((fill_mask & bit) != 0) != note_on) {
-          if (note_on) SET_BIT16(fill_mask, i);
-          else CLEAR_BIT16(fill_mask, i);
+          if (note_on) bitfield_set(&fill_mask, i);
+          else bitfield_clear(&fill_mask, i);
 #if defined(__AVR__)
           send_md_fill_track(mixer_target, i, note_on);
 #endif
@@ -773,7 +776,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
     }
 
     if (event->mask == EVENT_BUTTON_RELEASED) {
-      SET_BIT16(redraw_mask, track);
+      bitfield_set(&redraw_mask, track);
       if (note_interface.notes_count_on() == 0) {
         first_track = 255;
         note_interface.init_notes();

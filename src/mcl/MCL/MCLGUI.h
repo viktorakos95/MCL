@@ -231,6 +231,14 @@ extern MCLGUI mcl_gui;
 // font. The display state they set is unchanged.
 void oled_font_small();    // TomThumb
 void oled_font_default();  // the built-in 5x7 font
+// The text cursor, out of line: a call is smaller than the four stores at
+// every place that sets it. x may be left of the screen (the splash scrolls
+// text in from there).
+void oled_cursor(int8_t x, uint8_t y);
+// A rectangle's outline and a horizontal line, out of line with 8-bit
+// arguments: Adafruit_GFX takes 16-bit ones, loaded at every call.
+void oled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t color);
+void oled_hline(uint8_t x, uint8_t y, uint8_t w, uint8_t color);
 void oled_text_color(uint16_t c);
 void oled_text_color(uint16_t c, uint16_t bg);
 

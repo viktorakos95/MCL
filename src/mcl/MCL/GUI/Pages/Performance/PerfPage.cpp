@@ -73,12 +73,12 @@ void PerfPage::set_led_mask() {
   PerfEncoder *e = cur_enc(this);
 
   if (show_menu) {
-    SET_BIT16(mask, perf_id);
+    bitfield_set(&mask, perf_id);
   } else {
     for (uint8_t i = 0; i < 2; i++) {
       uint8_t scene = (&e->active_scene_a)[i];
       if (scene < NUM_SCENES) {
-        SET_BIT16(mask, scene);
+        bitfield_set(&mask, scene);
       }
     }
   }
@@ -308,8 +308,8 @@ void PerfPage::display() {
   // oled_display.fillCircle(6, 6, 6, WHITE);
   oled_display.fillRect(0, 0, 10, 12, WHITE);
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(2, 10);
-  // oled_display.setCursor(4, 10);
+  oled_cursor(2, 10);
+  // oled_cursor(4, 10);
   oled_text_color(BLACK, WHITE);
   oled_display.print((char)(0x3C + perf_id));
 
@@ -320,11 +320,11 @@ void PerfPage::display() {
   mcl_gui.draw_panel_labels(info1, info2);
 
   if (PerfPageTargetRef::pressed_scene() < NUM_SCENES) {
-    oled_display.setCursor(54, MCLGUI::pane_info2_y + 4);
+    oled_cursor(54, MCLGUI::pane_info2_y + 4);
     mcl_print_P(mclstr_select_label);
   }
 
-  oled_display.setCursor(80, MCLGUI::pane_info2_y + 4);
+  oled_cursor(80, MCLGUI::pane_info2_y + 4);
   static char scene_label[] = "SCENE: A    B";
   scene_label[7] = e->active_scene_a == 255 ? '-' : '1' + e->active_scene_a;
   scene_label[12] = e->active_scene_b == 255 ? '-' : '1' + e->active_scene_b;

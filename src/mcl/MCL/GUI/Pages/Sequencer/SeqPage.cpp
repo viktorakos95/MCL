@@ -991,7 +991,7 @@ bool SeqPage::display_mute_mask(MidiDevice *device, uint8_t offset) {
 
   // Hack to display last_ext_track
   if (offset > 0 && !is_md_device) {
-    SET_BIT16(mute_mask, last_ext_track);
+    bitfield_set(&mute_mask, last_ext_track);
   }
 
   SeqTrackUtil::for_each_seq_track(is_md_device,
@@ -999,7 +999,7 @@ bool SeqPage::display_mute_mask(MidiDevice *device, uint8_t offset) {
                                      if (seq_track.mute_state == SEQ_MUTE_OFF) {
                                        uint8_t d = offset + idx;
                                        if (d < kSeqPageTrackMaskWidth) {
-                                         SET_BIT16(mute_mask, d);
+                                         bitfield_set(&mute_mask, d);
                                        }
                                      }
                                    });
@@ -2007,15 +2007,15 @@ void SeqPage::draw_page_index(bool show_page_index, uint8_t _playing_idx) {
   uint8_t w = pidx_w;
 
   for (uint8_t i = 0; i < page_count; ++i) {
-    oled_display.drawRect(pidx_x, pidx_y, w, pidx_h, WHITE);
+    oled_rect(pidx_x, pidx_y, w, pidx_h, WHITE);
 
     // highlight page_select; blink playing_idx inverts it
     bool sel = (page_select == i) && show_page_index;
     bool play = (playing_idx == i) && blink;
     if (sel != play) {
-      oled_display.drawFastHLine(pidx_x + 1, pidx_y + 1, w - 2, WHITE);
+      oled_hline(pidx_x + 1, pidx_y + 1, w - 2, WHITE);
     } else if (sel) {
-      oled_display.drawFastHLine(pidx_x + 1, pidx_y + 1, w - 2, BLACK);
+      oled_hline(pidx_x + 1, pidx_y + 1, w - 2, BLACK);
     }
 
     pidx_x += w + 1;

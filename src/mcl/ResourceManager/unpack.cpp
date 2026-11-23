@@ -1,69 +1,65 @@
 #include "unpack.h"
 
-#define SHL_WITH_0(x) ((uint16_t)(x)*2)
-#define SHL_WITH_1(x) ((uint16_t)(x)*2 + 1)
-#define SHL32_WITH(y, x) ((int32_t)(x)*2 + (y))
-#define LO(x) ((unsigned char)x)
-#define HI(x) ((unsigned char)(x >> 8))
-#define HI_BIT0(x) (HI(x) & 1)
-#define COPY(dst, src) *dst = *src
+// Decodes an asset written by tools/platform/compress.py, which describes
+// the format. Bits come eight to a byte, first bit highest; a number is
+// pairs (0, bit) closed by a 1.
 
-static byte shift(uint16_t &state, byte *&src) {
-  state = SHL_WITH_0(state);
-  if (LO(state) == 0) {
-    state = SHL_WITH_1(pgm_read_byte(src));
-    ++src;
+struct Bits {
+  const uint8_t *src;
+  uint8_t buf;
+};
+
+static uint8_t next_bit(Bits &in) {
+  uint8_t b = in.buf;
+  in.buf = b << 1;
+  if (in.buf == 0) {
+    b = pgm_read_byte(in.src++);
+    in.buf = (b << 1) | 1;
   }
-  return HI_BIT0(state);
+  return b >> 7;
 }
 
-static int32_t shift_len(uint16_t &state, byte *&src) {
-  int32_t len = 1;
-  while (!HI_BIT0(state)) {
-    auto bit = shift(state, src);
-    len = SHL32_WITH(bit, len);
-    shift(state, src);
+// The number's first control bit may already have been read.
+static uint16_t number(Bits &in, uint8_t control) {
+  uint16_t v = 1;
+  while (!control) {
+    v = (v << 1) | next_bit(in);
+    control = next_bit(in);
   }
-  return len;
+  return v;
 }
 
-size_t unpack(uint8_t* src, uint8_t* dst) {
-  uint16_t state = 0;
-  uint16_t dst_lookback = 1;
-  uint8_t* orig_dst = dst;
+static uint8_t *copy(uint8_t *dst, uint16_t offset, uint16_t len) {
+  const uint8_t *from = dst - offset;
+  do {
+    *dst++ = *from++;
+  } while (--len);
+  return dst;
+}
 
-  while (true) {
-    shift(state, src);
-    while (!HI_BIT0(state)) {
-      auto idx = shift_len(state, src);
-      if (idx != 2) {
-        uint16_t v = pgm_read_byte(src);
-        ++src;
-        dst_lookback = (v - 0x300) + idx * 0x100 + 1;
-        if (dst_lookback == 0) {
-          size_t dst_len = dst - orig_dst;
-          return dst_len;
-        }
+size_t unpack(uint8_t *packed, uint8_t *dst) {
+  Bits in = {packed, 0x80};
+  uint8_t *start = dst;
+  uint16_t offset = 1;
+  for (;;) {
+    if (!next_bit(in)) {
+      // literal run, then a copy from the last offset or a new one
+      uint16_t len = number(in, next_bit(in));
+      do {
+        *dst++ = pgm_read_byte(in.src++);
+      } while (--len);
+      if (!next_bit(in)) {
+        dst = copy(dst, offset, number(in, next_bit(in)));
+        continue;
       }
-
-      auto bit1 = shift(state, src);
-      auto bit2 = shift(state, src);
-      // Copy runs are bounded by ResourceManager's <= 32768-byte output
-      // buffer. Keep idx/shift_len 32-bit: the end marker is 0x01000002.
-      uint16_t len = SHL_WITH_0(bit1) + bit2;
-      if (len == 0) {
-        len = (uint16_t)shift_len(state, src) + 2;
-      }
-      len = len + 1 + (0xd00 < dst_lookback);
-
-      // copy from lookback
-      for (byte *p = dst - dst_lookback; len != 0; len--) {
-        COPY(dst++, p++);
-      }
-
-      shift(state, src);
     }
-    *dst++ = pgm_read_byte(src);
-    ++src;
+    // copy from a new offset; a high part of 256 ends the stream
+    uint16_t high = number(in, next_bit(in));
+    if (high == 256) {
+      return dst - start;
+    }
+    uint8_t low = pgm_read_byte(in.src++);
+    offset = ((high - 1) << 7 | (low >> 1)) + 1;
+    dst = copy(dst, offset, number(in, low & 1) + 1);
   }
 }

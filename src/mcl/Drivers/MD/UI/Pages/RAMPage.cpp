@@ -523,7 +523,7 @@ void RAMPage::loop() {
 void RAMPage::display() {
 
   oled_display.clearDisplay();
-  oled_display.setCursor(28, 24);
+  oled_cursor(28, 24);
   switch (RAMPage::rec_states[page_id]) {
   case STATE_QUEUE:
     mcl_print_P(mclstr_queue_option);
@@ -536,19 +536,19 @@ void RAMPage::display() {
     break;
   }
   oled_font_small();
-  oled_display.setCursor(0, 32);
+  oled_cursor(0, 32);
 
   mcl_print_P(mclstr_ram_prefix);
   oled_display.print(page_id + 1);
 
-  oled_display.setCursor(105, 32);
+  oled_cursor(105, 32);
   if (mcl_cfg.ram_page_mode == 0) {
     mcl_print_P(mclstr_mono_option);
   } else {
     mcl_print_P(mclstr_link);
   }
   oled_font_default();
-  oled_display.setCursor(0, 24);
+  oled_cursor(0, 24);
 
   const char *source;
 

@@ -261,13 +261,27 @@ void close_slot_menu_from_mouse(GridPage &page) {
 
 } // namespace
 
-void GridPage::init() {
-  DEBUG_PRINTLN(F("Grid page init"));
 #if MCL_GRID_IO_PANEL
-  if (io_mode) {
-    io_end(false);
-  }
+// Load is armed and its rows are being edited (Load|Yes or the
+// Machinedrum's [Global] is held): the knobs edit them (io_handleEvent,
+// io_loop). Otherwise they are the Grid page's own.
+static bool io_editing;
+// FADE (Slide) is held past a tap, or used: the FADE page shows.
+static bool io_fade_page();
+// Load or Save was armed when Classic/Extended opened the mixer or REC
+// opened step edit: init() arms it again on the return from there.
+static uint8_t io_resume;
+#ifndef PLATFORM_TBD
+// The group popup's icons are loaded after the page's own resources (init()
+// loads those and clears this).
+static bool io_icons_loaded;
 #endif
+#endif
+
+// The Grid page's own knobs: the performance encoders when they are enabled,
+// else the cursor (knob 1 the column, knob 2 the row).
+static void grid_knobs(Encoder **encoders) NOINLINE();
+static void grid_knobs(Encoder **encoders) {
   if (mcl_cfg.grid_page_mode == PERF_ENC) {
     encoders[0] = &perf_param1;
     encoders[1] = &perf_param2;
@@ -280,6 +294,16 @@ void GridPage::init() {
     encoders[2] = &param3;
     encoders[3] = &param4;
   }
+}
+
+void GridPage::init() {
+  DEBUG_PRINTLN(F("Grid page init"));
+#if MCL_GRID_IO_PANEL
+  if (io_mode) {
+    io_end(false);
+  }
+#endif
+  grid_knobs(encoders);
   param1.max = getWidth() - 1;
   show_slot_menu = false;
   old_col = 255;
@@ -300,6 +324,19 @@ void GridPage::init() {
   RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
 #else
   RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob);
+#if MCL_GRID_IO_PANEL
+  io_icons_loaded = false;
+#endif
+#endif
+#if MCL_GRID_IO_PANEL
+  if (io_resume) {
+    const uint8_t mode = io_resume;
+    io_resume = GRID_IO_OFF;
+    if (mcl.previous_page == MIXER_PAGE ||
+        mcl.previous_page == SEQ_STEP_PAGE) {
+      io_begin(mode);
+    }
+  }
 #endif
 }
 
@@ -448,7 +485,8 @@ void GridPage::loop() {
   } else {
     if (mcl_cfg.grid_page_mode == PERF_ENC
 #if MCL_GRID_IO_PANEL
-        && io_mode != GRID_IO_LOAD
+        && !io_editing &&
+        !(io_mode == GRID_IO_LOAD && mcl_cfg.io_stay == LOAD_SAVE_LEGACY)
 #endif
     ) {
       if (encoders[0]->hasChanged() || encoders[1]->hasChanged() || encoders[2]->hasChanged() || encoders[3]->hasChanged()) {
@@ -495,6 +533,15 @@ void GridPage::loop() {
 
     write_cfg = true;
   }
+#if MCL_GRID_IO_PANEL
+  if (io_mode) {
+    // Load and Save hold the knobs, so the GUI does not mark the cursor's
+    // moves (the arrow keys) as seen; do it here, or each frame would move
+    // it again.
+    param1.old = param1.cur;
+    param2.old = param2.cur;
+  }
+#endif
   param3.cur = 1;
   param4.cur = 1;
   param4.max = GRID_LENGTH - getRow();
@@ -618,12 +665,12 @@ void GridPage::load_slot_models() {
 // Cursor + print in one out-of-line call: each inline pair costs ~30 bytes.
 static void text_at(uint8_t x, uint8_t y, const char *str) NOINLINE();
 static void text_at(uint8_t x, uint8_t y, const char *str) {
-  oled_display.setCursor(x, y);
+  oled_cursor(x, y);
   oled_display.print(str);
 }
 [[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) NOINLINE();
 [[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) {
-  oled_display.setCursor(x, y);
+  oled_cursor(x, y);
   mcl_print_P(str_P);
 }
 
@@ -680,7 +727,7 @@ void GridPage::display_grid_info() {
   uint8_t y_offset = 8;
 
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(0, 10);
+  oled_cursor(0, 10);
   oled_display.print((uint16_t)(MidiClock.get_tempo() + 0.5f));
 
   display_counters();
@@ -724,7 +771,7 @@ void GridPage::display_grid_info() {
 static void print_grid_column(uint8_t grid, uint8_t column, char *val)
     NOINLINE();
 static void print_grid_column(uint8_t grid, uint8_t column, char *val) {
-  oled_display.setCursor(10, 32);
+  oled_cursor(10, 32);
   oled_display.print((char)('X' + grid));
   oled_display.print(':');
   if (column) {
@@ -832,7 +879,7 @@ void GridPage::display_grid() {
 #endif
     for (uint8_t x = col_shift; x < MAX_VISIBLE_COLS + col_shift && x < w;
          x++) {
-      oled_display.setCursor(cur_posx, cur_posy);
+      oled_cursor(cur_posx, cur_posy);
 
       GridColumn track_idx = x + base_col;
       GridRow row_idx = y + base_row;
@@ -875,8 +922,9 @@ void GridPage::display_grid() {
         }
       }
 #if MCL_GRID_IO_PANEL
-      if (active_slot == SLOT_PENDING &&
-          mcl_actions.links[track_grid_idx].row == row_idx) {
+      if ((active_slot == SLOT_PENDING &&
+           mcl_actions.links[track_grid_idx].row == row_idx) ||
+          mcl_actions.deferred_rows[track_grid_idx] == row_idx) {
         // Neighbouring pending rings share a column (11 px rings, 10 px
         // pitch): only the left ring's side is drawn there. Each ring starts
         // its dots where the one to its left reached (10 px on, 2 mod 4), so
@@ -913,10 +961,12 @@ void GridPage::display_grid() {
 #if MCL_GRID_IO_PANEL
   if (io_mode) {
     // Load/Save armed: an arrow left of the armed row in place of the
-    // separator, and < / > at the grid's edges for selected slots in the
-    // hidden columns.
+    // separator (not while Load's rows are edited), and < / > at the grid's
+    // edges for selected slots in the hidden columns.
     uint8_t ty = y_offset + cur_row * 8;
-    oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
+    if (!io_editing && !io_fade_page()) {
+      oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
+    }
     if (io_mask & (first_bit - 1)) {
       text_at_P(41, ty, PSTR("<"));
     }
@@ -949,7 +999,7 @@ void GridPage::display_row_info() {
   for (uint8_t n = 0; n < MAX_VISIBLE_ROWS; n++) {
     GridRow row = base_row + n;
     if (row >= GRID_LENGTH) { return; }
-    oled_display.setCursor(27, (n + 1) * 8);
+    oled_cursor(27, (n + 1) * 8);
     draw_bank_row_label(row, val);
   }
 }
@@ -1021,16 +1071,16 @@ void GridPage::display() {
     oled_font_default();
     oled_display.setTextSize(1);
     oled_text_color(WHITE, BLACK);
-    oled_display.setCursor(0, 32);
+    oled_cursor(0, 32);
     snprintf(buf, sizeof(buf), "f:%02X d:%04X", dbg.f_btns, dbg.d_btns);
     oled_display.print(buf);
-    oled_display.setCursor(0, 40);
+    oled_cursor(0, 40);
     snprintf(buf, sizeof(buf), "m:%04X p:%02X%02X%02X%02X",
       dbg.mcl_btns,
       dbg.pot_states[0], dbg.pot_states[1],
       dbg.pot_states[2], dbg.pot_states[3]);
     oled_display.print(buf);
-    oled_display.setCursor(0, 48);
+    oled_cursor(0, 48);
     snprintf(buf, sizeof(buf), "fl:%02X ml:%04X", dbg.f_btns_long_press, dbg.mcl_btns_long_press);
     oled_display.print(buf);
   }
@@ -1287,12 +1337,13 @@ bool GridPage::handleEvent(gui_event_t *event) {
         bool has_load = loadmask != 0;
         bool single_load = has_load && ((loadmask & (loadmask - 1)) == 0);
 
+        // The first trig loads its row; a column that is chaining keeps
+        // chaining up to the load's point (MCLActions::load_tracks).
         if (!has_load) {
           grid_page.jump_to_row(row);
           if (load_mode_old != LOAD_AUTO) {
             mcl_cfg.load_mode = LOAD_MANUAL;
           }
-          mcl_actions.init_chains();
         }
         else {
           mcl_cfg.load_mode = LOAD_QUEUE;
@@ -1306,7 +1357,9 @@ bool GridPage::handleEvent(gui_event_t *event) {
           }
           uint8_t r = grid_page.bank * 16 + n;
           grid_page.bank_popup_loadmask = 0;
-          // Reload as queue.
+          // A second trig builds a queue: the chains start afresh, and the
+          // first trig's row goes in again as the queue's first entry.
+          mcl_actions.init_chains();
           grid_page.load_row(n, r);
         }
 
@@ -1574,7 +1627,14 @@ bool GridPage::handleEvent(gui_event_t *event) {
         return true;
       }
 
+#if MCL_GRID_IO_PANEL && !defined(PLATFORM_TBD)
+      // Load|Yes opens Load on the press. With Save|No held the press is the
+      // config chord below; with Load or Save armed the panel has the button.
+      if (EVENT_PRESSED(event, Buttons.BUTTON4) && !io_mode &&
+          !BUTTON_DOWN(Buttons.BUTTON1)) {
+#else
       if (EVENT_RELEASED(event, Buttons.BUTTON4)) {
+#endif
       load:
 #if MCL_GRID_IO_PANEL
         io_begin(GRID_IO_LOAD);
@@ -1679,18 +1739,207 @@ static void print_right(uint8_t value, uint8_t right, uint8_t y) {
   text_at(right - 4 * strlen(str), y, str);
 }
 
-// "LEN 8", "QUANT 16", "DEST 5": label on the left, value at the right edge.
+// "LEN 8", "QUANT 16": label on the left, value at the right edge. The label
+// starts at x 1 so the edit box (x 0 to 36) shows 1 px each side, as in menus.
 static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
-  text_at_P(0, y, label_P);
+  text_at_P(1, y, label_P);
   print_right(value, 37, y);
 }
 
-void GridPage::io_begin(uint8_t mode) {
-  io_mode = mode;
+// A fade length of 2^n steps, right-aligned like the panel's other values:
+// one digit up to 8, two to 64, three to 256.
+static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
+static void print_fade_steps(uint8_t n, uint8_t y) {
+  uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
+  oled_cursor(37 - 4 * digits, y);
+  oled_display.print(1u << n);
+}
+
+// While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
+// settings are edited with one cursor over its stops: the mode (the chip),
+// QUANT, then FADE and FLEN (the fade's mode and length; in Queue, LEN, the
+// queue's length, instead). Holding FADE runs the same edit on the fade's
+// two stops on the FADE screen, in Queue too. Knob 2 or UP/DOWN move the
+// cursor, the picked row is inverted; knob 1 or LEFT/RIGHT change it.
+// Otherwise the knobs stay the Grid page's own (grid_knobs).
+enum : uint8_t {
+  IO_ITEM_MODE,
+  IO_ITEM_QUANT,
+  IO_ITEM_QLEN,
+  IO_ITEM_FMODE,
+  IO_ITEM_FLEN
+};
+// Knob 2 during the edit; its value is the cursor's stop.
+static MCLEncoder io_menu_line(IO_ITEM_FLEN, 0, ENCODER_RES_PAT);
+// The first FADE stop: in Queue its LEN comes first.
+static uint8_t io_fade_stop() {
+  return mcl_cfg.load_mode == LOAD_QUEUE ? IO_ITEM_FMODE : IO_ITEM_QLEN;
+}
+// What the cursor's stop edits (outside Queue there is no QLEN stop).
+static uint8_t io_item() {
+  const uint8_t stop = io_menu_line.cur;
+  return stop < IO_ITEM_QLEN || mcl_cfg.load_mode == LOAD_QUEUE ? stop
+                                                                : stop + 1;
+}
+// Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
+static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
+
+// FADE's mode as a filled 9 x 5 px graphic, the small font's height, at the
+// row's right (x 27 .. 35, baseline y), 1 px inside the edit box's edge: AUT
+// a dip, IN a rising ramp, OUT a falling one.
+static void draw_fade_mode(uint8_t y) {
+  const uint8_t mode = mcl_cfg.load_fade >> 1;
+  for (uint8_t i = 0; i < 9; i++) {
+    const uint8_t h = mode == LOAD_FADE_FORCE_IN    ? (i + 3) / 2
+                      : mode == LOAD_FADE_FORCE_OUT ? (11 - i) / 2
+                                                    : (i > 4 ? i - 4 : 4 - i) + 1;
+    oled_display.drawFastVLine(27 + i, y - h, h, WHITE);
+  }
+}
+
+
+// The rows are edited while the Machinedrum's [Global] is held, or once
+// Load|Yes has been held this long (io_loop). Load|Yes released sooner was a
+// tap, which closes Load.
+constexpr uint16_t IO_EDIT_HOLD_MS = 200;
+// When Load|Yes went down, and whether it has been down long enough since.
+static uint16_t io_tap_clock;
+static bool io_held;
+// The press of Load|Yes that opened Load is still down: let go early, it
+// leaves Load open.
+static bool io_opening;
+
+// The trig LEDs last sent while a value is edited: one bit for its trig, 0
+// for none. IO_LEDS_SELECTION: the selection's LEDs are showing;
+// IO_LEDS_UNKNOWN: the group popup had them.
+constexpr uint16_t IO_LEDS_SELECTION = 0xFFFF;
+constexpr uint16_t IO_LEDS_UNKNOWN = 0xFFFE;
+static uint16_t io_edit_leds = IO_LEDS_SELECTION;
+// The Slide key (FADE) held on Load: once held past a tap, or used, the edit
+// runs on FADE's two stops (the FADE screen). Released with nothing used
+// before the hold time, it was a tap, which turns FADE on or off.
+static bool io_slide;
+static bool io_slide_used;
+// When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
+// so a tap goes from blank straight to the length it turns on.
+static uint16_t io_slide_clock;
+
+// The cursor's last stop: Queue's LEN in Queue, else FLEN (FLEN too with
+// FADE held, whose screen has the fade's stops in Queue as well).
+static uint8_t io_last_stop() {
+  return mcl_cfg.load_mode == LOAD_QUEUE && !io_slide ? IO_ITEM_QLEN
+                                                      : io_fade_stop() + 1;
+}
+
+static bool io_fade_page() {
+  return io_slide &&
+         (io_slide_used ||
+          clock_diff(io_slide_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS);
+}
+
+// One step of FADE's mode, in one order everywhere: - (off), AUT, IN, OUT.
+// Off keeps the direction, so a tap turns FADE back on in its last mode.
+static void io_step_fade_mode(int8_t dir) {
+  const uint8_t fade = mcl_cfg.load_fade;
+  uint8_t state = (fade & 1) ? 1 + (fade >> 1) : 0;
+  state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
+  mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
+}
+
+// SYSTEM > LOAD/SAVE LEGACY: while Load is open its knobs are its settings,
+// in the order of the released Load page (5.02): knob 1 the mode, knob 2
+// Queue's LEN, knobs 3 and 4 QUANT.
+static void io_load_knobs(Encoder **encoders) {
+  encoders[0] = &gridload_param1;
+  encoders[1] = &gridio_param2;
+  encoders[2] = &gridio_param4;
+  encoders[3] = &gridio_param4;
+}
+
+// Whether the arrows move the grid with the panel left armed: Load's in
+// CLOSE and STAY, Save's in STAY. In LEGACY they disarm and move the
+// cursor, as MCL always did.
+static bool io_arrows_scroll(bool load) {
+  return mcl_cfg.io_stay == LOAD_SAVE_STAY ||
+         (load && mcl_cfg.io_stay == LOAD_SAVE_CLOSE);
+}
+
+// Start or end editing the Load panel's rows: knob 1 changes the chosen
+// row and knob 2 picks it, or the knobs go back to the Grid page's (Load's
+// own in LEGACY).
+static void io_rows_edit(Encoder **encoders, bool on) {
+  io_editing = on;
+  if (on) {
+    io_menu_value.cur = 1;
+    // Knobs 3 and 4 get the Grid page's third and fourth encoders, which do
+    // nothing outside the slot menu.
+    encoders[0] = &io_menu_value;
+    encoders[1] = &io_menu_line;
+    encoders[2] = &param3;
+    encoders[3] = &param4;
+  } else if (mcl_cfg.io_stay == LOAD_SAVE_LEGACY) {
+    io_load_knobs(encoders);
+  } else {
+    grid_knobs(encoders);
+  }
+}
+
+// One step of the cursor's stop. pressed: knob 1 is pressed while turned.
+static void io_setting_step(int8_t dir, bool pressed) {
+  const uint8_t item = io_item();
+  if (item == IO_ITEM_FMODE) {
+    io_step_fade_mode(dir);
+    return;
+  }
+  if (item == IO_ITEM_FLEN) {
+    // QUANT's length (-), then 1 .. 256 steps.
+    mcl_cfg.load_fade_len =
+        limit_value(mcl_cfg.load_fade_len, dir, 0, LOAD_FADE_MAX);
+    return;
+  }
+  // The mode, QUANT or Queue's LEN: one click of the knob object that holds
+  // it (io_loop stores the result). Pressed, QUANT and LEN move by one and
+  // not to the next power of two.
+  Encoder *knob = item == IO_ITEM_QUANT  ? &gridio_param4
+                  : item == IO_ITEM_MODE ? &gridload_param1
+                                         : &gridio_param2;
+  encoder_t click = {};
+  click.normal = dir * (knob->rot_res * ENCODER_RES_MULTIPLIER + 1);
+  click.button = pressed && item != IO_ITEM_MODE;
+  knob->update(&click);
+}
+
+// Nothing selected: no slots, DEST or group popup, and the trig LEDs clear.
+static void io_clear_selection() {
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::track_select = 0;
   GridIOPage::offset = 255;
+  note_interface.init_notes();
+  GridIOPage::paint_track_select_leds();
+}
+
+// Save reads the Machinedrum's current pattern before saving.
+static void io_read_md_pattern() {
+#ifdef PLATFORM_TBD
+  // A TBD may run without an MD: ask only one that is connected and
+  // assigned to the grid, as TBD's Save page did.
+  if (MD.connected && (device_manager.primary_device() == &MD ||
+                       device_manager.secondary_device() == &MD))
+#endif
+    MD.getCurrentPattern(CALLBACK_TIMEOUT);
+}
+
+// Save has saved since it was armed (SYSTEM > LOAD/SAVE: STAY): read the
+// pattern again before the next save, as the MD may have moved on.
+static bool io_saved;
+
+void GridPage::io_begin(uint8_t mode) {
+  io_mode = mode;
+  io_editing = false;
+  io_edit_leds = IO_LEDS_SELECTION;
+  io_slide = false;
+  io_slide_used = false;
   GridIOPage::old_grid = cur_grid;
   io_saved_grid = cur_grid;
   draw_encoders = false;
@@ -1700,31 +1949,27 @@ void GridPage::io_begin(uint8_t mode) {
   // replaces it, as TBD's Load/Save overlay did.
   GUI.clearOverlay();
 #endif
-  note_interface.init_notes();
-  GridIOPage::paint_track_select_leds();
+  io_clear_selection();
   key_interface.on();
 
   if (mode == GRID_IO_LOAD) {
-    // The knobs follow the panel from the top, as the old Load page's
-    // followed its boxes: E1 QUANT (line 2), E2 LEN (line 3), E3/E4 mode
-    // (line 4).
-    encoders[0] = &gridio_param4;
-    encoders[1] = &gridio_param2;
-    encoders[2] = &gridload_param1;
-    encoders[3] = &gridload_param1;
-    // io_loop compares the knobs with mcl_cfg, not with their old values.
+    // The knobs stay the Grid page's own until the rows are edited. The
+    // settings live in these knob objects, which io_loop compares with
+    // mcl_cfg, not with their old values.
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
+    if (mcl_cfg.io_stay == LOAD_SAVE_LEGACY) {
+      io_load_knobs(encoders);
+    }
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+    // Opened by a Load|Yes press that is still down (Load opens on the press
+    // on AVR): it times the hold like a press inside Load.
+    io_opening = BUTTON_DOWN(Buttons.BUTTON4);
+    io_tap_clock = read_clock_ms();
   } else {
-#ifdef PLATFORM_TBD
-    // A TBD may run without an MD: ask only one that is connected and
-    // assigned to the grid, as TBD's Save page did.
-    if (MD.connected && (device_manager.primary_device() == &MD ||
-                         device_manager.secondary_device() == &MD))
-#endif
-      MD.getCurrentPattern(CALLBACK_TIMEOUT);
+    io_saved = false;
+    io_read_md_pattern();
     reload_slot_models = false;
     MD.popup_text_P(mclstr_save_slots, true);
   }
@@ -1732,6 +1977,7 @@ void GridPage::io_begin(uint8_t mode) {
 
 void GridPage::io_end(bool reinit) {
   io_mode = GRID_IO_OFF;
+  io_editing = false;
   GridIOPage::show_track_type = false;
   GridIOPage::show_offset = false;
   GridIOPage::offset = 255;
@@ -1747,15 +1993,66 @@ void GridPage::io_end(bool reinit) {
 }
 
 void GridPage::io_loop() {
+  // The rows are edited while Load|Yes has been held long enough or [Global]
+  // is held, and not while DEST is open.
+  io_held = BUTTON_DOWN(Buttons.BUTTON4) &&
+            clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS;
+  const bool edit = !GridIOPage::show_offset &&
+                    (io_held || key_interface.is_key_down(MDX_KEY_PATSONG) ||
+                     io_fade_page());
+  if (edit != io_editing) {
+    io_rows_edit(encoders, edit);
+  }
+  if (io_editing) {
+    // The stops follow the mode (BANK A-C may change it mid-edit); with FADE
+    // held only FADE's two.
+    io_menu_line.min = io_slide ? io_fade_stop() : 0;
+    io_menu_line.max = io_last_stop();
+    io_menu_line.cur =
+        constrain(io_menu_line.cur, io_menu_line.min, io_menu_line.max);
+    const int8_t dir = io_menu_value.cur - 1;
+    io_menu_value.cur = 1;
+    if (dir != 0 && !GridIOPage::show_offset) {
+      io_setting_step(dir, BUTTON_DOWN(Buttons.ENCODER1));
+    }
+  }
+  // While QUANT or FADE is edited the trig matching its value is lit: trig
+  // n is 2^n steps, so QUANT's LED bit is its step count halved (none for
+  // a count that is not a power of two) and a fade length code of n + 1
+  // lights trig n. Otherwise the selection's LEDs show.
+  uint16_t leds = IO_LEDS_SELECTION;
+  if ((io_editing || io_slide) && !GridIOPage::show_offset) {
+    const uint8_t item = io_item();
+    if (item == IO_ITEM_QUANT) {
+      const uint8_t quant = mcl_cfg.chain_load_quant;
+      leds = (quant & (quant - 1)) ? 0 : quant >> 1;
+    } else if (item >= IO_ITEM_FMODE) {
+      const uint8_t len = mcl_cfg.load_fade_len;
+      // LEN's trig, with FADE on or off (LEN shows either way).
+      leds = len >= 2 ? (uint16_t)1 << (len - 2) : 0;
+    }
+  }
+  if (GridIOPage::show_track_type) {
+    // The group popup has the LEDs; they are set again once it closes.
+    io_edit_leds = IO_LEDS_UNKNOWN;
+  } else if (leds != io_edit_leds) {
+    io_edit_leds = leds;
+    if (leds == IO_LEDS_SELECTION) {
+      GridIOPage::paint_track_select_leds();
+    } else {
+      mcl_gui.set_trigleds(leds, TRIGLED_EXCLUSIVE);
+    }
+  }
   if (GridIOPage::show_offset) {
-    // Picking a destination: the knobs leave the settings alone.
+    // Picking a destination: the settings stay as they are.
     gridload_param1.cur = mcl_cfg.load_mode;
     gridio_param2.cur = mcl_cfg.chain_queue_length;
     gridio_param4.cur = mcl_cfg.chain_load_quant;
     return;
   }
-  // The settings follow their knobs (io_begin set them equal): the mode with
-  // its MD popup, LEN only in Queue (elsewhere its knob stays put), QUANT.
+  // The mode, LEN and QUANT follow the knob objects that hold them (io_begin
+  // set them equal): the mode with its MD popup (the bank keys change it
+  // too), LEN in Queue, QUANT. FADE is set where it is changed.
   if ((uint8_t)gridload_param1.cur != mcl_cfg.load_mode) {
     mcl_cfg.load_mode = gridload_param1.cur;
     GridLoadPage::md_popup_title(mcl_cfg.load_mode);
@@ -1763,6 +2060,7 @@ void GridPage::io_loop() {
   if (mcl_cfg.load_mode == LOAD_QUEUE) {
     mcl_cfg.chain_queue_length = gridio_param2.cur;
   } else {
+    // Knob 2 is LEN only in Queue (LEGACY); elsewhere it stays put.
     gridio_param2.cur = mcl_cfg.chain_queue_length;
   }
   mcl_cfg.chain_load_quant = gridio_param4.cur;
@@ -1770,33 +2068,60 @@ void GridPage::io_loop() {
 
 void GridPage::io_action(bool groups) {
   uint8_t track_select_array[NUM_SLOTS];
+  const bool load = io_mode == GRID_IO_LOAD;
+  // SYSTEM > LOAD/SAVE: STAY keeps Load and Save armed for the next one;
+  // CLOSE closes them, as MCL always did.
+  const bool stay = mcl_cfg.io_stay == LOAD_SAVE_STAY;
   if (groups) {
-    key_interface.off();
+    if (!stay) {
+      key_interface.off();
+    }
     GridIOPage::track_select_array_from_type_select(track_select_array);
   } else {
     GridIOPage::populate_track_select_from_notes(track_select_array);
   }
-  if (io_mode == GRID_IO_LOAD) {
+  if (load) {
     if (groups) {
       mcl_actions.write_original = 1;
     }
     grid_task.load_queue.put(mcl_cfg.load_mode, getRow(), track_select_array,
                              GridIOPage::offset);
   } else {
+    if (io_saved) {
+      io_read_md_pattern();
+    }
     oled_display.textbox_P(mclstr_save, groups ? mclstr_groups : mclstr_tracks);
     oled_display.display();
     mcl_actions.save_tracks(getRow(), track_select_array, SAVE_SEQ);
+    io_saved = true;
   }
-  io_end();
+  if (!stay) {
+    io_end();
+    return;
+  }
+  // Armed for the next one (the arrows move the grid): the selection, DEST
+  // and the group popup clear, and the Machinedrum's popup returns. After a
+  // save the grid reloads the slot labels.
+  io_clear_selection();
+  if (load) {
+    GridLoadPage::md_popup_title(mcl_cfg.load_mode);
+  } else {
+    reload_slot_models = false;
+    MD.popup_text_P(mclstr_save_slots, true);
+  }
 }
 
 void GridPage::io_group_select() {
 #ifndef PLATFORM_TBD
-  if (!GridIOPage::show_track_type) {
-    // The popup draws the device icons; they fit beside the grid's resources
-    // (TBD's Grid page loads them already).
+  // The popup draws the device icons; they fit beside the grid's resources
+  // (TBD's Grid page loads them already). Load stays armed across loads, so
+  // load them once after each time init() loads the page's own: each copy
+  // took another 1,631 bytes, and the third ran past the end of the
+  // resource buffer.
+  if (!io_icons_loaded) {
     RM_REQUIRE(0, __T_machine_names_short, __T_icons_knob, __T_icons_logo);
     R.use_icons_logo();
+    io_icons_loaded = true;
   }
 #endif
   GridIOPage::show_track_type = true;
@@ -1829,6 +2154,12 @@ uint16_t GridPage::io_visible_mask() {
   }
   uint16_t mask = cur_grid ? (uint16_t)(GridIOPage::track_select >> 16)
                            : (uint16_t)GridIOPage::track_select;
+  // While the rows are edited the trigs set values, not slots: the note
+  // interface records a press before the panel drops it, so a frame drawn
+  // between would show it as selected.
+  if (io_editing || io_slide) {
+    return mask;
+  }
   uint16_t bit = 1;
   for (uint8_t n = 0; n < GRID_WIDTH; n++, bit <<= 1) {
     // Trigs map to the shown grid; notes 16-31 address grid Y directly.
@@ -1843,61 +2174,141 @@ uint16_t GridPage::io_visible_mask() {
 void GridPage::io_display_panel() {
   const bool load = io_mode == GRID_IO_LOAD;
 
-  // Line 1: the action in the 5x7 font, in an inverted chip.
-  oled_display.fillRect(0, 0, 25, 9, WHITE);
+  // Line 1: the action in the 5x7 font, in an inverted chip. On Load it is
+  // the mode: LOAD (Manual), AUTO or QUE. While the rows are edited it is the
+  // mode row, boxed only while that row is picked, so the picked row is the
+  // only box.
+  // With FADE held the panel is the FADE screen: the chip reads FADE and
+  // the rows are the fade's MODE and FLEN.
+  const uint8_t item = io_item();
+  const bool fade_page = load && io_editing && io_slide;
+  const bool boxed =
+      fade_page || !(io_editing && item != IO_ITEM_MODE);
+  // While the mode row is picked, the chip stands right of a filled arrow:
+  // >[LOAD]. Otherwise it is in its place.
+  const bool arrow = !fade_page && io_editing && item == IO_ITEM_MODE;
+  const uint8_t cx = arrow ? 4 : 0;
+  if (arrow) {
+    oled_display.fillTriangle_3px(0, 2, WHITE);
+  }
+  if (boxed) {
+    oled_display.fillRect(cx, 0, 25, 9, WHITE);
+  }
   oled_font_default();
-  oled_text_color(BLACK);
-  text_at_P(1, 1, load ? mclstr_load : mclstr_save);
+  oled_text_color(boxed ? BLACK : WHITE);
+  const char *chip = mclstr_save;
+  if (load) {
+    chip = mcl_cfg.load_mode == LOAD_AUTO    ? mclstr_auto
+           : mcl_cfg.load_mode == LOAD_QUEUE ? mclstr_queue_short
+                                             : mclstr_load;
+  }
+  text_at_P(cx + 1, 1, fade_page ? mclstr_fade : chip);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
   if (load) {
     // Line 1, beside the chip: the 16th-step count, for timing the trig
-    // release against the quantise boundary.
-    char str[7];
-    uint8_t step_count =
-        (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
-    mcl_gui.put_value_at(step_count, str);
-    text_at(37 - 4 * strlen(str), 8, str);
+    // release against the quantise boundary (not while the rows are edited
+    // or the FADE page shows).
+    if (!io_editing && !fade_page) {
+      char str[7];
+      uint8_t step_count =
+          (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
+      mcl_gui.put_value_at(step_count, str);
+      text_at(37 - 4 * strlen(str), 8, str);
+    }
     // Line 2: QUANT. Line 3: LEN, in Queue. A QUANT or LEN of 1 means "the
-    // slot's own length" and shows "-". Line 4: the load mode, before the
-    // row. While a destination is picked, DEST alone replaces them; the
+    // slot's own length" and shows "-". While a destination is picked, DEST
+    // alone replaces them; the
     // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
+    } else if (fade_page) {
+      // MODE: - (off), or AUT, IN or OUT as on the FADE row. LEN: - (QUANT's
+      // length) or steps.
+      if (mcl_cfg.load_fade & 1) {
+        text_at_P(1, 16, mclstr_mode);
+        draw_fade_mode(16);
+      } else {
+        panel_row(16, mclstr_mode, 0);
+      }
+      const uint8_t len = mcl_cfg.load_fade_len;
+      if (len) {
+        text_at_P(1, 24, mclstr_flen);
+        print_fade_steps(len - 1, 24);
+      } else {
+        panel_row(24, mclstr_flen, 0);
+      }
+      // The picked row is inverted.
+      oled_display.fillRect(0, 10 + 8 * (item - IO_ITEM_FMODE), 37, 7,
+                            INVERT);
     } else {
       uint8_t quant = mcl_cfg.chain_load_quant;
       panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
       if (mcl_cfg.load_mode == LOAD_QUEUE) {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
+      } else {
+        // FADE in the other modes: "FADE -" when off, else FADE and its
+        // mode's graphic: AUT (direction by column), IN or OUT (forced).
+        // Off, the row shows only in the edit. In the edit line 4 is FLEN,
+        // on the screen's last row (baseline 31, its box y 25 .. 31).
+        if (mcl_cfg.load_fade & 1) {
+          text_at_P(1, 24, mclstr_fade);
+          draw_fade_mode(24);
+        } else if (io_editing) {
+          panel_row(24, mclstr_fade, 0);
+        }
+        if (io_editing) {
+          const uint8_t len = mcl_cfg.load_fade_len;
+          if (len) {
+            text_at_P(1, 31, mclstr_flen);
+            print_fade_steps(len - 1, 31);
+          } else {
+            panel_row(31, mclstr_flen, 0);
+          }
+        }
       }
-      GridLoadPage::get_modestr(str);
-      text_at(0, 32, str);
+      if (io_editing && item != IO_ITEM_MODE) {
+        // Editing: the row the knobs edit is inverted, with 1 px of the box
+        // each side of the text, as in menus (the mode row is the chip).
+        oled_display.fillRect(0,
+                              item == IO_ITEM_QUANT  ? 10
+                              : item == IO_ITEM_FLEN ? 25
+                                                     : 18,
+                              37, 7, INVERT);
+      }
     }
   } else {
     // SND + SEQ -> GRID, as on the old Save page.
     text_at_P(0, 17, mclstr_name_snd);
     text_at_P(0, 25, mclstr_seq);
-    oled_display.drawFastHLine(12, 14, 2, WHITE);
-    oled_display.drawFastHLine(12, 22, 2, WHITE);
+    oled_hline(12, 14, 2, WHITE);
+    oled_hline(12, 22, 2, WHITE);
     oled_display.drawFastVLine(14, 14, 9, WHITE);
     mcl_gui.draw_horizontal_arrow(15, 18, 5);
     text_at_P(21, 21, mclstr_grid);
   }
   // Line 4, Load and Save alike: the armed row, where the Grid page prints
-  // it (after "X:01 "); on Load the mode stands before it. While DEST is
+  // it (after "X:01 "). While DEST is
   // open, the destination slot as grid:column ("Y:05") stands there instead,
   // where the Grid page prints the cursor's; "--" until a trig picks one.
+  // It follows the DEST offset (GridIOPage::offset): once a trig has picked
+  // the slot it stays there, after DEST closes, until the load that uses it
+  // clears the offset.
   char val[4];
-  if (load && GridIOPage::show_offset) {
-    GridSlot offset = GridIOPage::offset;
-    bool picked = offset < NUM_SLOTS;
+  const GridSlot offset = GridIOPage::offset;
+  const bool picked = offset < NUM_SLOTS;
+  // Not in the edit, where line 4 is FLEN.
+  if (load && !io_editing && (GridIOPage::show_offset || picked)) {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
-  oled_display.setCursor(26, 32);
-  draw_bank_row_label(param2.cur, val);
+  // Not while Load's rows are edited or the FADE page shows.
+  if (!io_editing && !fade_page) {
+    oled_cursor(26, 32);
+    draw_bank_row_label(param2.cur, val);
+  }
 }
 
 bool GridPage::io_handleEvent(gui_event_t *event) {
@@ -1905,6 +2316,45 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
   if (EVENT_NOTE(event)) {
     uint8_t track = event->source;
     if (track >= NUM_SLOTS) {
+      return true;
+    }
+    // Editing the rows, or Slide held: the trigs set values, not slots. Trig
+    // n sets QUANT, or the FADE length (turning FADE on), to 2^n steps, the
+    // knob's powers of two: QUANT to 64 on trigs 1-6 (trigs 7-16 set 64
+    // too), the fade to 256 on trigs 1-8 (trigs 9-16 set 256 too; either
+    // FADE stop). On the mode
+    // and Queue's LEN they do nothing.
+    if ((io_editing || io_slide) && !GridIOPage::show_track_type &&
+        track < 16) {
+      if (event->mask == EVENT_BUTTON_PRESSED) {
+        // With FADE held the cursor is on FADE's stops (set on its press).
+        const uint8_t item = io_item();
+        io_slide_used |= io_slide;
+        if (GridIOPage::show_offset) {
+          // Picking a destination: the settings stay as they are.
+        } else if (item == IO_ITEM_QUANT) {
+          // Trigs past 6 set QUANT's maximum, 64.
+          gridio_param4.cur = track < 6 ? 2 << track : 64;
+        } else if (item >= IO_ITEM_FMODE) {
+          // Length code n is 2^(n-1) steps; the fade turns on. The lit
+          // trig again: back to QUANT's length. Trigs past 8 set the
+          // longest, 256 steps.
+          const bool fits = track < LOAD_FADE_MAX - 1;
+          const uint8_t len = fits ? track + 2 : LOAD_FADE_MAX;
+          mcl_cfg.load_fade_len = fits && (mcl_cfg.load_fade & 1) &&
+                                          mcl_cfg.load_fade_len == len
+                                      ? 0
+                                      : len;
+          mcl_cfg.load_fade |= 1;
+        }
+        // Its release may come after the edit: it is ignored.
+        note_interface.ignoreNextEvent(track);
+      }
+      // Not a slot pick: the note interface recorded this press, or the
+      // release of a trig held from before the edit, and the grid and the
+      // LEDs show its notes as the selection, so drop the note again.
+      CLEAR_BIT32(note_interface.notes_on, track);
+      CLEAR_BIT32(note_interface.notes_off, track);
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
@@ -1955,7 +2405,30 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       case MDX_KEY_SCALE:
         io_toggle_grid();
         return true;
+      case MDX_KEY_STOP:
+      case MDX_KEY_PLAY:
+        // The transport keys do their job and Load stays armed: a fade
+        // loaded while stopped starts on PLAY. Save disarms, as below.
+        if (load) {
+          return false;
+        }
+        io_end();
+        return false;
       case MDX_KEY_BANKD:
+        // The Machinedrum's SLIDE key arrives as bank D: FADE. Held, the
+        // edit opens on FADE's stops (the FADE screen): the arrows and knobs
+        // pick and change MODE and LEN, the trigs set the length; a tap (on
+        // the release) turns FADE off or on again in its last mode. In Queue
+        // too, where FADE is set for the Manual and Auto loads (queue loads
+        // do not fade).
+        if (load && !GridIOPage::show_offset) {
+          io_slide = true;
+          io_slide_used = false;
+          io_slide_clock = read_clock_ms();
+          if (io_menu_line.cur < io_fade_stop()) {
+            io_menu_line.cur = io_fade_stop();
+          }
+        }
         return true;
       case MDX_KEY_FUNC:
         if (load && mcl_cfg.load_mode == LOAD_MANUAL) {
@@ -1975,12 +2448,66 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
           gridload_param1.cur = key - MDX_KEY_BANKA + 1;
         }
         return true;
-      default:
-        // Any other key, the arrows included, disarms and does its usual
-        // job.
+      case MDX_KEY_LEFT:
+      case MDX_KEY_RIGHT:
+        // Editing, or FADE held: LEFT/RIGHT change the cursor's stop.
+        if (load && (io_editing || io_slide)) {
+          io_setting_step(key == MDX_KEY_RIGHT ? 1 : -1, false);
+          io_slide_used |= io_slide;
+          return true;
+        }
+        // The trigs pick the columns, so where the arrows move the grid
+        // (io_arrows_scroll) LEFT/RIGHT scroll the columns shown by one
+        // straight away and the panel stays armed.
+        if (io_arrows_scroll(load)) {
+          int8_t base = param1.cur - cur_col + (key == MDX_KEY_RIGHT ? 1 : -1);
+          if (base >= 0 && base <= (int8_t)getWidth() - MAX_VISIBLE_COLS) {
+            io_set_view(base);
+          }
+          return true;
+        }
         io_end();
         return false;
+      case MDX_KEY_UP:
+      case MDX_KEY_DOWN:
+        // Editing, or FADE held: UP/DOWN move the cursor (with FADE held,
+        // between FADE's two stops).
+        if (load && (io_editing || io_slide)) {
+          io_menu_line.cur = limit_value(
+              io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1,
+              io_slide ? io_fade_stop() : 0, io_last_stop());
+          io_slide_used |= io_slide;
+          return true;
+        }
+        // Where the arrows move the grid, UP/DOWN move the armed row and the
+        // panel stays armed; otherwise they disarm, as below.
+        if (io_arrows_scroll(load)) {
+          return false;
+        }
+        io_end();
+        return false;
+      default: {
+        // Any other key disarms and does its usual job. The mixer
+        // (Classic/Extended while playing) and step edit (REC) come back to
+        // the panel: init() arms it again on the return.
+        const uint8_t mode = io_mode;
+        io_end();
+        if (key == MDX_KEY_REC ||
+            (key == MDX_KEY_EXTENDED && MidiClock.state == 2)) {
+          io_resume = mode;
+        }
+        return false;
       }
+      }
+    }
+    if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
+      // A tap: let go before the hold time with nothing used. A longer
+      // hold only looked at the FADE page.
+      if (io_slide && !io_fade_page()) {
+        mcl_cfg.load_fade ^= 1;
+      }
+      io_slide = false;
+      return true;
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_YES) {
       if (GridIOPage::show_track_type) {
@@ -1996,14 +2523,51 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       io_toggle_grid();
       return true;
     }
+    // Load|Yes on Load: a tap closes it, as it always did; held, the rows
+    // can be edited (io_loop). With Save|No held it is the config chord,
+    // which the Grid page takes once Load is disarmed.
+    if (load && event->source == Buttons.BUTTON4) {
+      if (EVENT_PRESSED(event, Buttons.BUTTON4)) {
+        if (BUTTON_DOWN(Buttons.BUTTON1)) {
+          io_end();
+          return false;
+        }
+        io_tap_clock = read_clock_ms();
+      } else {
+        // Let go before the hold time: a tap, unless it is the press that
+        // opened Load.
+        if (!io_held && !io_opening) {
+          io_end();
+        }
+        io_opening = false;
+      }
+      return true;
+    }
+#ifndef PLATFORM_TBD
+    // Save|No pressed with Load|Yes held (Load opens on that press) is the
+    // config chord, which the Grid page takes once the panel is disarmed.
+    if (EVENT_PRESSED(event, Buttons.BUTTON1) &&
+        BUTTON_DOWN(Buttons.BUTTON4)) {
+      io_end();
+      return false;
+    }
+#endif
+    // Shift|Menu: hold for the groups, release to load or save the row. The
+    // Machinedrum's [Global] arrives as Shift|Menu with its own key down: on
+    // Load it is the edit key (io_loop), not the row load.
     if (EVENT_PRESSED(event, Buttons.BUTTON3)) {
-      io_group_select();
+      if (!(load && key_interface.is_key_down(MDX_KEY_PATSONG))) {
+        io_group_select();
+      }
       return true;
     }
     if (EVENT_RELEASED(event, Buttons.BUTTON3)) {
-      io_action(true);
+      if (GridIOPage::show_track_type) {
+        io_action(true);
+      }
       return true;
     }
+    // Save|No closes; on Save, Load|Yes does too.
     if (EVENT_RELEASED(event, Buttons.BUTTON1) ||
         EVENT_RELEASED(event, Buttons.BUTTON4)) {
       io_end();

@@ -32,7 +32,7 @@ static bool resource_loaded = false;
 static void prepare_display() {
   oled_display.clearDisplay();
   oled_font_default();
-  oled_display.setCursor(60, 10);
+  oled_cursor(60, 10);
   mcl_println_P(mclstr_peering);
   if (!resource_loaded) {
     R.Clear();

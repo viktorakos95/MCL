@@ -50,7 +50,7 @@ void SampleBrowserPage::display() {
 
       if (is_wav) {
         if (!wav_file.open(temp_entry, false)) { goto end; }
-        oled_display.setCursor(0, 23);
+        oled_cursor(0, 23);
 
         uint16_t sample_rate_k10 = wav_file.header.fmt.sampleRate / 100;
         oled_display.print(sample_rate_k10 / 10);
@@ -83,7 +83,7 @@ void SampleBrowserPage::display() {
         tmp_file.close();
       }
       else { goto end; }
-      oled_display.setCursor(0, 30);
+      oled_cursor(0, 30);
       if (size < 1024) {
        oled_display.print(size);
        oled_display.print('B');

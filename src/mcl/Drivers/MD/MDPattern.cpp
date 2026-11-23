@@ -1156,11 +1156,7 @@ void MDPattern::recalculateLockPatterns() {
     lockPatterns[track] = 0;
     for (uint8_t param = 0; param < maxParams; param++) {
       if (paramLocks[track][param] != -1) {
-#if !defined(__AVR__)
-        SET_BIT64(lockPatterns[track], param);
-#else
-        SET_BIT32(lockPatterns[track], param);
-#endif
+        bitfield_set(&lockPatterns[track], param);
       }
     }
   }

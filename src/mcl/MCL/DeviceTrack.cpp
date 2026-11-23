@@ -218,7 +218,7 @@ bool DeviceTrackChunk::load_from_mem_chunk(GridSlot column, uint8_t chunk) {
                   (chunk_size * chunk);
   // 3. Convert the final integer address back to a pointer for the memory copy.
   volatile uint8_t *ptr = reinterpret_cast<volatile uint8_t *>(pos);
-  memcpy_bank1(seq_data_chunk, ptr, chunk_size);
+  track_mem_copy(seq_data_chunk, ptr, chunk_size);
   return true;
 }
 
@@ -241,6 +241,6 @@ bool DeviceTrackChunk::load_link_from_mem(GridSlot column) {
                   static_cast<uintptr_t>(get_region_size() * static_cast<uint32_t>(column)) + offset;
   // 3. Convert the final integer address back to a pointer.
   volatile uint8_t *ptr = reinterpret_cast<volatile uint8_t *>(pos);
-  memcpy_bank1(&this->link, ptr, sizeof(GridLink));
+  track_mem_copy(&this->link, ptr, sizeof(GridLink));
   return true;
 }

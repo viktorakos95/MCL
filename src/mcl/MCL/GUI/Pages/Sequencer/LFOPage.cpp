@@ -189,10 +189,10 @@ void draw_lfo_enable_info_label(bool enabled) {
                         MCLGUI::pane_info_h, WHITE);
 
   oled_text_color(enabled ? BLACK : WHITE);
-  oled_display.setCursor(3, MCLGUI::pane_info1_y + 6);
+  oled_cursor(3, MCLGUI::pane_info1_y + 6);
   mcl_print_P(mclstr_on);
   oled_text_color(enabled ? WHITE : BLACK);
-  oled_display.setCursor(split_x + 2, MCLGUI::pane_info1_y + 6);
+  oled_cursor(split_x + 2, MCLGUI::pane_info1_y + 6);
   mcl_print_P(mclstr_off);
   oled_text_color(WHITE);
 }
@@ -316,7 +316,7 @@ void draw_lfo_wave_preview(uint8_t knob, uint8_t wav_type) {
 
   oled_font_small();
   oled_text_color(WHITE);
-  oled_display.setCursor(knob_x + 5, mcl_gui.knob_y0 + 6);
+  oled_cursor(knob_x + 5, mcl_gui.knob_y0 + 6);
   mcl_print_P(mclstr_wav_label);
   oled_font_default();
 
@@ -767,15 +767,15 @@ bool LFOPage::handleEvent(gui_event_t *event) {
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
-      if (!IS_BIT_SET64(lfo_track->pattern_mask, step)) {
+      if (!bitfield_test(&lfo_track->pattern_mask, step)) {
         reset_lfo_clear_undo(lfo_track);
-        SET_BIT64(lfo_track->pattern_mask, step);
+        bitfield_set(&lfo_track->pattern_mask, step);
       } else {
         DEBUG_PRINTLN(F("Trying to clear"));
         if (clock_diff(note_interface.note_hold[port], read_clock_ms()) <
             TRIG_HOLD_TIME) {
           reset_lfo_clear_undo(lfo_track);
-          CLEAR_BIT64(lfo_track->pattern_mask, step);
+          bitfield_clear(&lfo_track->pattern_mask, step);
         }
       }
     }

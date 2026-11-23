@@ -10,7 +10,7 @@ Open it from the Grid Page with:
 
 ![save to a](../assets/images/save_to_a.png)
 
-On TBD, Save keeps the Grid Page visible. On MegaCommand and MegaCMD, it opens as a page.
+On MegaCommand, MegaCMD and TBD, Save keeps the Grid Page visible. Save closes after a save. With `CONFIG > SYSTEM > LOAD/SAVE` set to `STAY`, it stays open after a save, ready for the next one; **[Up/Down]** then move to another row and **[Left/Right]** scroll the columns shown, as on Load.
 
 ## Stored Data
 
@@ -31,8 +31,8 @@ The actual saved data depends on the selected device and slot type.
 | --- | --- |
 | **[Trig]** keys | Select the slots to save. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
-| **[Yes/Enter]** | Hold to open group selection; release to save selected groups. |
-| **[No/Exit]** | Cancel Save. |
+| **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to save selected groups. |
+| **[No/Exit]**, **`Save | No`**, **`Load | Yes`** | Cancel Save. |
 
 ## Saving Individual Slots
 

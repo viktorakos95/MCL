@@ -176,7 +176,7 @@ COLD_SMALL() void OscPage::display() {
 
   uint8_t c = 1;
   uint8_t i = 0;
-  oled_display.setCursor(0, 0);
+  oled_cursor(0, 0);
 
   switch (osc_waveform) {
   default:
@@ -276,7 +276,7 @@ void OscPage::draw_usr() {
     if (note_interface.is_note_on(i)) {
 
       // oled_display.fillRect(63 + i * 4, 0, 3, 32, BLACK);
-      oled_display.drawRect(63 + i * 4, pixel_y - 1, 3, 3, WHITE);
+      oled_rect(63 + i * 4, pixel_y - 1, 3, 3, WHITE);
     }
   }
 }
@@ -290,7 +290,7 @@ void OscPage::draw_levels() {
     if (note_interface.is_note_on(i)) {
       oled_display.fillRect(bx, by, 3, bh, WHITE);
     } else {
-      oled_display.drawRect(bx, by, 3, bh, WHITE);
+      oled_rect(bx, by, 3, bh, WHITE);
     }
   }
 }

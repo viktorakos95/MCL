@@ -114,7 +114,7 @@ void BankPopupPage::display() {
   constexpr uint8_t kGridY = kWinY + kPad;
 
   oled_display.fillRect(kWinX - 1, kWinY - 1, kWinW + 2, kWinH + 2, BLACK);
-  oled_display.drawRect(kWinX, kWinY, kWinW, kWinH, WHITE);
+  oled_rect(kWinX, kWinY, kWinW, kWinH, WHITE);
 
   for (uint8_t i = 0; i < 8; i++) {
     uint8_t row = i / 4;
@@ -222,12 +222,13 @@ bool BankPopupPage::handleEvent(gui_event_t *event) {
       bool has_load = loadmask != 0;
       bool single_load = has_load && ((loadmask & (loadmask - 1)) == 0);
 
+      // The first trig loads its row; a column that is chaining keeps
+      // chaining up to the load's point (MCLActions::load_tracks).
       if (!has_load) {
         grid_page.jump_to_row(row);
         if (load_mode_old != LOAD_AUTO) {
           mcl_cfg.load_mode = LOAD_MANUAL;
         }
-        mcl_actions.init_chains();
       }
       if (has_load) {
         mcl_cfg.load_mode = LOAD_QUEUE;
@@ -241,6 +242,9 @@ bool BankPopupPage::handleEvent(gui_event_t *event) {
         }
         uint8_t r = grid_page.bank * 16 + n;
         grid_page.bank_popup_loadmask = 0;
+        // A second trig builds a queue: the chains start afresh, and the
+        // first trig's row goes in again as the queue's first entry.
+        mcl_actions.init_chains();
         grid_page.load_row(n, r);
       }
 

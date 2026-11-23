@@ -5,9 +5,10 @@
 /*
  * MCL_PROJECT_UPGRADER builds the one-off firmware that converts every
  * project on the card to the current format. It leaves out the WAV designer
- * to make room for the conversion code.
+ * to make room for the conversion code. MCL_DISABLE_WAV_DESIGNER leaves it
+ * out of a size-constrained test build.
  */
-#ifndef MCL_PROJECT_UPGRADER
+#if !defined(MCL_PROJECT_UPGRADER) && !defined(MCL_DISABLE_WAV_DESIGNER)
 #define WAV_DESIGNER
 #endif
 #define SOUND_PAGE

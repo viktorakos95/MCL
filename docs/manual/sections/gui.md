@@ -20,6 +20,12 @@ Combined Button Presses:
 
 **`Save | No` + `Load | Yes`**: Opens the MCL Configuration menu.
 
+While Load or Save is open:
+
+**`Shift | Menu`**: Hold to open group selection; release to load or save the selected groups.
+**`Save | No`**: Closes Load or Save.
+**`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load settings: Encoder 2 chooses a row and Encoder 1 changes it. On Save, closes Save.
+
 
 ## Encoder Buttons
 
@@ -99,8 +105,12 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 
 - Hold **[Enter/Yes]** to open slot Group Select. Release **[Enter/Yes]** to load by group. Group selection is editable via **[Trig]** keys 1-5.
 - **[Trig]** keys are used to select and load sequencer tracks from slots of the current row.
-- **[Bank]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
+- **[Up/Down]** move to another row. **[Left/Right]** scroll the columns shown.
+- **[Bank A,B,C]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
+- **[Bank D]** (the Slide key) turns FADE on or off.
 - **[Function]** to specify a destination track offset for the next load.
+- Hold **[Global]** to edit the Load settings (QUANT, LEN or FADE, load mode). **[Up/Down]** choose a row and **[Left/Right]** change it.
+- **[Exit/No]** closes the Load Page. It stays open after a load.
 
 
 **[Function] + [Enter/Yes]** opens **Save Page**

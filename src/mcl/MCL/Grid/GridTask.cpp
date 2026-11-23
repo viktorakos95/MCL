@@ -36,6 +36,8 @@ inline void GridTask::pre_cache_ui_yield() {
   }
 
   last_pre_cache_ui_ms = pre_cache_ui_ms;
+  // No frame here: drawing a page takes 14-20 ms, and the tracks for the
+  // next transition are about to be read.
   GUI.deferDisplayOnce();
   mcl.loop();
 }
@@ -419,10 +421,7 @@ void GridTask::update_transition_details() {
 }
 
 void GridTask::wait_blocking(uint32_t go_step) {
-  uint16_t tempo_uint = (uint16_t)MidiClock.get_tempo();
-  uint32_t gui_threshold =
-      MidiClock.scale_legacy_div192_to_current(
-          ((uint32_t)tempo_uint * 64 + 999) / 1000);
+  uint32_t gui_threshold = MCLActions::ui_pass_margin();
   while (true) {
     // uint32_t counter = atomic_read(&MidiClock.div192th_counter);
     uint32_t counter = MidiClock.div192th_counter;
@@ -467,7 +466,13 @@ void GridTask::transition_handler() {
     //float div32th_per_second = MidiClock.get_tempo() * 0.133333333333f;
     //float div32th_time = 1.0f / div32th_per_second;
 
+    // A load handled here can move the next transition (OUTIN holds its
+    // slots back a whole fade): look again rather than wait for it here.
+    const uint16_t due_transition = mcl_actions.next_transition;
     load_queue_handler();
+    if (mcl_actions.next_transition != due_transition) {
+      continue;
+    }
 
     DEBUG_PRINTLN(F("Preparing for next transition:"));
     DEBUG_PRINTLN(MidiClock.div16th_counter);

@@ -1066,6 +1066,10 @@ MidiDeviceParamRange md_param_range(uint8_t param);
 extern const char *MDLFONames[8];
 
 extern const char* getMDMachineNameShort(uint8_t machine, uint8_t type);
+// A track's machine as the sequencer pages show it: a USR machine's full
+// name ("TXZ-LB") when len has room for it, else the two short-name parts
+// ("BD>EF"). out needs at least 6 bytes.
+void copyMDTrackLabel(uint8_t model, char *out, uint8_t len);
 extern const char* fx_param_name(uint8_t fx_type, uint8_t param);
 
 /** This structure stores the tuning information of a melodic machine on the

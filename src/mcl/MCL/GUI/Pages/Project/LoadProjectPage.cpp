@@ -8,6 +8,10 @@
 #include "KeyInterface.h"
 #include "GUI/MCLMenus.h"
 
+// The name of the last project loaded or tried, so the page opens on it
+// again, including straight after a failed load.
+static char last_project[PRJ_NAME_LEN + 1];
+
 void LoadProjectPage::init() {
 
   DEBUG_PRINTLN(F("load project page init"));
@@ -71,16 +75,30 @@ void LoadProjectPage::on_select(const char *entry) {
     gfx.alert_error("BAD PATH");
     return;
   }
+  strncpy(last_project, entry, PRJ_NAME_LEN);
   uint8_t count = 2;
   while (count--) {
     if (proj.load_project(proj_filename)) {
+      if (count == 0) {
+        // The current project is back after a failed load: stay here, on
+        // the project that failed, ready for the next one, once a message
+        // box has had its time (the list would redraw its highlight).
+        while (oled_display.textbox_enabled) {
+          oled_display.display();
+        }
+        init();
+        return;
+      }
       DEBUG_PRINTLN(F("loaded, setting grid"));
       mcl.setPage(GRID_PAGE);
       return;
     } else {
 #ifndef MCL_HAS_PROJECT_CONVERSION
       if (proj.version == PROJ_MIN_READABLE_VERSION) {
-        // A project from before MCL 5: this firmware cannot convert it.
+        // A project from before MCL 5: this firmware cannot convert it. The
+        // list's highlighted row (draw_filebrowser) is blanked first; its
+        // white bar showed around the box.
+        oled_display.fillRect(40, 2 + 8 * cur_row, MENU_WIDTH, 7, BLACK);
         oled_display.textbox_P(mclstr_upgrade, mclstr_project);
         oled_display.display();
       } else
@@ -497,6 +515,10 @@ bool LoadProjectPage::build_project_path(const char *entry, char *out,
 }
 
 void LoadProjectPage::focus_current_project() {
+  if (last_project[0] != '\0') {
+    strcpy(focus_match, last_project);
+    return;
+  }
   focus_match[0] = '\0';
 
   const char *parent = nullptr;
