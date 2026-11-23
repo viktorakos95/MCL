@@ -321,6 +321,31 @@ def table_html(lines: list[str]) -> str:
     return "\n".join(out)
 
 
+def nested_list_html(items: list[tuple[int, str]], tag: str) -> str:
+    """A list from (indent, text) items: an item indented more than the one
+    before it starts a list inside that item."""
+    parts: list[str] = []
+    indents: list[int] = []
+    for indent, text in items:
+        if not indents:
+            parts.append(f"<{tag}>")
+            indents.append(indent)
+        elif indent > indents[-1]:
+            parts[-1] = parts[-1][: -len("</li>")]
+            parts.append(f"<{tag}>")
+            indents.append(indent)
+        else:
+            while len(indents) > 1 and indent < indents[-1]:
+                parts.append(f"</{tag}></li>")
+                indents.pop()
+        parts.append(f"<li>{parse_inline(text)}</li>")
+    while len(indents) > 1:
+        parts.append(f"</{tag}></li>")
+        indents.pop()
+    parts.append(f"</{tag}>")
+    return "".join(parts)
+
+
 def render_markdown(
     markdown: str, source_dir: Path | None = None
 ) -> tuple[str, list[tuple[int, str, str]]]:
@@ -397,20 +422,20 @@ def render_markdown(
             out.append(table_html(table_lines))
             continue
 
-        if re.match(r"^\s*[-*]\s+", line):
+        list_kind = None
+        for marker, tag in ((r"[-*]", "ul"), (r"\d+\.", "ol")):
+            item_re = re.compile(r"^(\s*)" + marker + r"\s+(.*)$")
+            if item_re.match(line):
+                list_kind = (item_re, tag)
+                break
+        if list_kind:
+            item_re, tag = list_kind
             items = []
-            while i < len(lines) and re.match(r"^\s*[-*]\s+", lines[i]):
-                items.append(re.sub(r"^\s*[-*]\s+", "", lines[i]))
+            while i < len(lines) and item_re.match(lines[i]):
+                m = item_re.match(lines[i])
+                items.append((len(m.group(1).expandtabs(4)), m.group(2)))
                 i += 1
-            out.append("<ul>" + "".join(f"<li>{parse_inline(item)}</li>" for item in items) + "</ul>")
-            continue
-
-        if re.match(r"^\s*\d+\.\s+", line):
-            items = []
-            while i < len(lines) and re.match(r"^\s*\d+\.\s+", lines[i]):
-                items.append(re.sub(r"^\s*\d+\.\s+", "", lines[i]))
-                i += 1
-            out.append("<ol>" + "".join(f"<li>{parse_inline(item)}</li>" for item in items) + "</ol>")
+            out.append(nested_list_html(items, tag))
             continue
 
         paragraph = [line.strip()]

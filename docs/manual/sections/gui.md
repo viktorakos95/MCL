@@ -9,22 +9,22 @@
 From the Grid Page the MC's function buttons perform the following actions:
 
 
-**`Save | No`**: Enters the Save Page.
-**`Load | Yes`**: Enters the Load page.
-**`Page`**: Enters the PageSelect page.
-**`Shift | Menu`**: Opens the slot Menu.
+- **`Save | No`**: Enters the Save Page.
+- **`Load | Yes`**: Enters the Load page.
+- **`Page`**: Enters the PageSelect page.
+- **`Shift | Menu`**: Opens the slot Menu.
 
 
 Combined Button Presses:
 
 
-**`Save | No` + `Load | Yes`**: Opens the MCL Configuration menu.
+- **`Save | No` + `Load | Yes`**: Opens the MCL Configuration menu.
 
 While Load or Save is open:
 
-**`Shift | Menu`**: Hold to open group selection; release to load or save the selected groups.
-**`Save | No`**: Closes Load or Save.
-**`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load settings: Encoder 2 moves the cursor and Encoder 1 changes the setting under it. On Save, closes Save.
+- **`Shift | Menu`**: Hold to open group selection; release to load or save the selected groups.
+- **`Save | No`**: Closes Load or Save.
+- **`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load settings: Encoder 2 moves the cursor and Encoder 1 changes the setting under it. On Save, closes Save.
 
 
 ## Encoder Buttons
@@ -63,8 +63,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 **General**
 
 
-- **[Classic/Extended]** toggle between Classic, Extended and Enhanced Modes.
-(When in Enhanced mode, the sequencer must be stopped to switch modes.)
+- **[Classic/Extended]** toggle between Classic, Extended and Enhanced Modes. (When in Enhanced mode, the sequencer must be stopped to switch modes.)
 - **[Function] + [Bank Group]** toggle Bank Group selection.
 - **[Rec]** Enter Step edit mode.
 - **[Global]** Open the current Page's shift menu.
@@ -72,7 +71,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Bank Group]** Hold to Open the Page Select menu.
 - **[Bank Group] + [Trig]** MCL Page Select.
 - **[Bank Group] + [Global]** MCL Config Menu.
-- **[Bank Group] + [No/Exit]** Return to Grid page
+- **[Bank Group] + [No/Exit]** Return to Grid page.
 - **[Function] + [Encoder]** Simultaneously modify parameters across all tracks.
 - **[Function] + [Classic/Extended]** Simultaneously reset parameters to last load value across all tracks.
 
@@ -101,13 +100,11 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Function] + [Up/Down/Left/Right]** grid cursor position fast travel.
 - **[Scale]** Toggle active grid X or Y.
 - **[Function] + [Clear/Copy/Paste]** Clear/Copy/Paste the MD tracks, EXT MIDI tracks and Machinedrum master FX currently loaded in the sequencer.
-- Hold **[No/Exit]** key to open Slot Menu.
-
-
-- **[Bank A,B,C]** keys can be used to select load mode: MAN, AUT, QUE.
-- **[Up/Down/Left/Right]** to select multiple slots in the grid.
-- **[Clear/Copy/Paste]** to clear/copy/paste selected slot(s).
-- **[Yes/Enter]** load selected slots. Slots are loaded according to the current load MODE setting. If more than one row is selected, the MODE is automatically set to QUE, and the loaded slots are added to each column's playback queue.
+- Hold **[No/Exit]** key to open Slot Menu:
+  - **[Bank A,B,C]** keys can be used to select load mode: MAN, AUT, QUE.
+  - **[Up/Down/Left/Right]** to select multiple slots in the grid.
+  - **[Clear/Copy/Paste]** to clear/copy/paste selected slot(s).
+  - **[Yes/Enter]** load selected slots. Slots are loaded according to the current load MODE setting. If more than one row is selected, the MODE is automatically set to QUE, and the loaded slots are added to each column's playback queue.
 
 
 **[Yes/Enter]** opens **Load Page**
@@ -136,7 +133,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Classic/Extended]** Open/Close the Mixer Page.
 - **[Classic/Extended]** + **[Trig]** Mute/Unmute selected track(s).
 - **[Scale]** Switch Grid X Y tracks.
-- **[Trig]** Select track
+- **[Trig]** Select track.
 - **[Trigs] + [Encoder]** Simultaneously modify parameters across selected tracks.
 - **[Trigs] + [Classic/Extended]** Simultaneously reset parameters to last load value across selected tracks.
 - **[Trig]** + **[Yes/Enter]** Mute/Unmute selected track(s).
@@ -152,7 +149,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Up/Down/Left/Right] + [No/Exit] + `Encoders1-4`** Set performance controller lock to mute set.
 - **[Function] + `Encoders1-4`** Hard pan performance controller left or right.
 - **[Trig]** + **[Global]** Sequencer mute record for selected tracks.
-- **[Trig]** + **[Kit]** Clear sequencer mute record for selected tracks
+- **[Trig]** + **[Kit]** Clear sequencer mute record for selected tracks.
 - **[Global]** + **[Kit]** Clear all active sequencer mute recordings.
 - **[No/Exit] + [Left]** Toggle DELAY pages.
 - **[No/Exit] + [Down]** Toggle REVERB pages.
@@ -166,7 +163,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Left] + [Trig1-8]** Set active controller LEFT scene 1-8.
 - **[Right] + [Trig1-8]** Set active controller RIGHT scene 1-8.
 - **[Trig] + [MD Encoder] Or Ext Midi Controller** Assign lock to scene.
-- **[Trig] + [Clear/Copy/Paste]**Clear, Copy, Paste scenes (repeat to UNDO).
+- **[Trig] + [Clear/Copy/Paste]** Clear, Copy, Paste scenes (repeat to UNDO).
 - **[Trig] + [Yes/Enter]** Scene preview.
 - **[Trig] + [Up/Down]** View and edit 16 active scene locks.
 
@@ -174,7 +171,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 **Route Page:**
 
 
-- **[Trigs]**Toggle between Main output (--) and selected Route output on chosen tracks.
+- **[Trigs]** Toggle between Main output (--) and selected Route output on chosen tracks.
 - **`Encoder 1`** Set Route output (C/D/E/F).
 - **`Encoder 2`** Set quantize amount.
 
@@ -230,11 +227,11 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 **Chromatic Page**
 
 
-- **[Global]**Toggle shift menu for access to Arpeggiator, Poly tracks etc
+- **[Global]** Toggle shift menu for access to Arpeggiator, Poly tracks etc.
 - **[Function]** + **[Clear/Copy/Paste]** Clear/copy/paste track.
 - **[Left/Right]** Move focus between `OCT`, `DET`, `LEN`/`PLEN` and `SCA`.
 - **[Up/Down]** Adjust the focused parameter. To transpose the scale root, hold **[Global]** and use Track Menu `KEY`.
-- **[Scale]** Switch input device MD/Midi .
+- **[Scale]** Switch input device MD/Midi.
 - **`Encoder 1`** Octave.
 - **`Encoder 2`** Detune.
 - **`Encoder 3`** Track length.
@@ -244,28 +241,26 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 **Sample Manager Page**
 
 
-- **[Up/Down]**Navigate menu
+- **[Up/Down]** Navigate menu.
 - **[Yes/Enter]** Enter a folder, start receive, or send the selected sample to a Machinedrum sample slot.
 - **[No/Exit]** Exit/back/cancel.
-- **[Global]**File options menu (New directory/rename/delete).
+- **[Global]** File options menu (New directory/rename/delete).
 
 
 **WAV Designer**
 
 
-- **[Global] + [Left/Right]**Shift menu select OSC1-3 and Mixer pages.
+- **[Global] + [Left/Right]** Shift menu select OSC1-3 and Mixer pages.
 - **[Left/Right]** Pitch, note increments.
 - **[Up/Down]** Fine tune.
-- **[No/Exit]**Display corresponding frequency.
+- **[No/Exit]** Display corresponding frequency.
 - **`Encoder 3`** Pulsewidth for TRI, PUL and SAW.
 - **[Trigs] + `Encoder 4`** SIN add overtones/USR modify sample values.
 - Mixer Page:
--
-
-- **`Encoder 1`** OSC1 Level.
-- **`Encoder 2`** OSC2 Level.
-- **`Encoder 3`** OSC3 Level.
-- **[Global]** Oscillator mixer page menu for TRANSFER.
+  - **`Encoder 1`** OSC1 Level.
+  - **`Encoder 2`** OSC2 Level.
+  - **`Encoder 3`** OSC3 Level.
+  - **[Global]** Oscillator mixer page menu for TRANSFER.
 
 
 **FX Delay Page**
