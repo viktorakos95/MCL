@@ -212,8 +212,8 @@ In Manual mode, a selection can load into other slots than its own. Pick the des
 ![load destination](../assets/images/load_destination.png)
 
 1. Press **[Function]**. Line 2 shows `DEST`.
-2. Press the **[Trig]** for the destination slot; press **[Scale]** first for a slot on the other grid. Line 4 shows it as grid and column, for example `X:05`, and `--` until a trig picks one.
-3. Release the trig. `DEST` closes and the destination stays on line 4.
+2. Press the **[Trig]** for the destination slot; press **[Scale]** first for a slot on the other grid. Line 4 shows the slot as grid and column in front of the row, for example `X:05 A01` (`X:--` until a trig is pressed).
+3. Release the trig. This ends the choice: line 2 shows `QUANT` again, and the destination (`X:05`) stays on line 4 to show where the next load goes.
 4. Select the source slots (**[Scale]** again if they are on the other grid) and release them. The first selected slot loads into the destination and the rest follow in order.
 
 Press **[Function]** again to close `DEST` without choosing; pressing it twice clears a destination already chosen. The destination is used by the next load, then cleared. Closing Load clears it too.
