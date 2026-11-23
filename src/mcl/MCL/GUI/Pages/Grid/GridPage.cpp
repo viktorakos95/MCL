@@ -1785,9 +1785,8 @@ static uint8_t io_item() {
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
 // FADE's mode row: the label, then "-" when FADE is off, else the mode as a
-// filled 9 x 5 px graphic, the small font's height, at the row's right
-// (x 27 .. 35, baseline y), 1 px inside the edit box's edge: AUT a dip, IN a
-// rising ramp, OUT a falling one (IN's mirror image).
+// 9 x 5 px line graphic, the small font's height, at the row's right
+// (x 27 .. 35, baseline y), 1 px inside the edit box's edge.
 static void fade_mode_row(uint8_t y, const char *label_P) NOINLINE();
 static void fade_mode_row(uint8_t y, const char *label_P) {
   text_at_P(1, y, label_P);
@@ -1796,11 +1795,18 @@ static void fade_mode_row(uint8_t y, const char *label_P) {
     print_right(0, 37, y);
     return;
   }
+  // Lines: OUT the falling slope, IN the rising one, AUT both (a crossfade
+  // cross). The falling slope's row from the top is 0 0 1 1 2 3 3 4 4; the
+  // rising one is its mirror, from the bottom.
   const uint8_t mode = fade >> 1;
   for (uint8_t i = 0; i < 9; i++) {
-    const uint8_t h = mode ? (i + 3) / 2 : (i > 4 ? i - 4 : 4 - i) + 1;
-    const uint8_t x = mode == LOAD_FADE_FORCE_OUT ? 35 - i : 27 + i;
-    oled_display.drawFastVLine(x, y - h, h, WHITE);
+    const uint8_t row = (uint8_t)(i + (i > 4)) >> 1;
+    if (mode != LOAD_FADE_FORCE_IN) {
+      oled_display.drawPixel(27 + i, y - 5 + row, WHITE);
+    }
+    if (mode != LOAD_FADE_FORCE_OUT) {
+      oled_display.drawPixel(27 + i, y - 1 - row, WHITE);
+    }
   }
 }
 

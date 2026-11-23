@@ -56,7 +56,7 @@ While it is released, the encoders work as on the Grid Page, or in `LEGACY` set 
 
 `FADE` fades the level of Machinedrum tracks when their slots load. It applies in Manual and Auto mode. Queue loads do not fade, but **[Bank D]** sets `FADE` in Queue mode too.
 
-A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode (`AUT` at first). When it is on, the left column shows `FADE` and a small graphic for its mode: a dip for `AUT`, a rising ramp for `IN`, a falling ramp for `OUT`. When it is off the row is blank, and shows `FADE -` while the Load settings are edited.
+A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode (`AUT` at first). When it is on, the left column shows `FADE` and a small graphic for its mode: a cross for `AUT`, a rising line for `IN`, a falling line for `OUT`. When it is off the row is blank, and shows `FADE -` while the Load settings are edited.
 
 Hold **[Bank D]** to see and set the fade, in any mode: the box at the top reads `FADE`, and the rows show `MODE` and, while the fade is on, `FLEN`.
 
