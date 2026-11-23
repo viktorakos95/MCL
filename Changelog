@@ -178,8 +178,11 @@ Configuration Menu page.
   Folders inside /Sounds can be opened, and .. returns to the folder above.
   The browser stays inside /Sounds. Sounds are saved to the folder shown.
 
-  NEW DIR can be chosen on any row, including in an empty folder. RENAME and
-  DELETE are not offered on [SAVE] or on the .. row.
+  MOVE in the file menu moves a sound or folder to another folder, as on
+  the Load Project page.
+
+  NEW DIR can be chosen on any row, including in an empty folder. RENAME,
+  MOVE and DELETE are not offered on [SAVE] or on the .. row.
 
   Sound names are shown without the .snd extension.
 

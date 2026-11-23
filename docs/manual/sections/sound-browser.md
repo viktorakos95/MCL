@@ -52,6 +52,18 @@ If the sound contains a linked Trig Group pair and the destination has a followi
 
 ## File Menu
 
-Hold **[Global]** to create a folder (NEW DIR), or to rename (RENAME) or delete (DELETE) the selected sound or folder. NEW DIR can be chosen on any row, including in an empty folder; RENAME and DELETE are not offered on `[SAVE]` or `..`. Deleting a folder also deletes everything in it.
+Hold **[Global]** to open the file menu.
 
 ![file menu](../assets/images/file_menu.png)
+
+| Entry | Function |
+| --- | --- |
+| `CANCEL` | Close the file menu without action. |
+| `NEW DIR` | Create a folder in the current folder. Offered on every row, including in an empty folder. |
+| `RENAME` | Rename the selected sound or folder. |
+| `MOVE` | Move the selected sound or folder to another folder. |
+| `DELETE` | Delete the selected sound or folder. Deleting a folder also deletes everything in it. |
+
+`RENAME`, `MOVE` and `DELETE` are not offered on `[SAVE]` or `..`.
+
+`MOVE` opens the `DEST` view, which lists folders only. Open the destination folder and select `[ MOVE ]`; **[No]** cancels the move.
