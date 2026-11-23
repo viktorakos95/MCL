@@ -87,8 +87,7 @@ void GridIOPage::draw_tbd_panel_header(const char *title, uint8_t y_offset) {
 
   oled_display.fillRect(title_x, title_y, title_w, title_h, WHITE);
   oled_text_color(BLACK, WHITE);
-  oled_cursor(title_x + 2, title_y + 2);
-  oled_display.print(title);
+  text_at(title_x + 2, title_y + 2, title);
 
   oled_text_color(WHITE, BLACK);
   char val[3];

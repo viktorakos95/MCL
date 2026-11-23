@@ -497,8 +497,7 @@ void MixerPage::display() {
     draw_encs();
     oled_font_small();
     if (load_perf_state != 255 && load_perf_state == preview_mute_set) {
-      oled_cursor(111, 31);
-      mcl_print_P(mclstr_load);
+      text_at_P(111, 31, mclstr_load);
     }
     oled_font_default();
   } else {

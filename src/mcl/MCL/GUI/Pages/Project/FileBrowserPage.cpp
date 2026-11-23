@@ -308,8 +308,7 @@ void FileBrowserPage::draw_filebrowser() {
     }
     uint16_t entry_num = first_entry + n;
     if (entry_num == cur_file) {
-      oled_cursor(x_offset - 4, y_pos);
-      mcl_print_P(mclstr_arrow_right);
+      text_at_P(x_offset - 4, y_pos, mclstr_arrow_right);
     }
     if (entry_num < (uint16_t)numEntries) {
       uint8_t type;

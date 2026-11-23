@@ -230,10 +230,8 @@ void SeqTrackSelectPage::display() {
 
   oled_font_default();
   oled_text_color(WHITE, BLACK);
-  oled_cursor(34, kOverlayY + 4);
-  oled_display.print("TRACK SELECT");
-  oled_cursor(34, kOverlayY + 17);
-  oled_display.print(SeqPage::device_idx_name(device_idx_));
+  text_at(34, kOverlayY + 4, "TRACK SELECT");
+  text_at(34, kOverlayY + 17, SeqPage::device_idx_name(device_idx_));
 }
 
 #endif // PLATFORM_TBD

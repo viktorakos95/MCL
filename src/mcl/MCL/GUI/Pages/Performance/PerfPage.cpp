@@ -320,8 +320,7 @@ void PerfPage::display() {
   mcl_gui.draw_panel_labels(info1, info2);
 
   if (PerfPageTargetRef::pressed_scene() < NUM_SCENES) {
-    oled_cursor(54, MCLGUI::pane_info2_y + 4);
-    mcl_print_P(mclstr_select_label);
+    text_at_P(54, MCLGUI::pane_info2_y + 4, mclstr_select_label);
   }
 
   oled_cursor(80, MCLGUI::pane_info2_y + 4);

@@ -245,8 +245,7 @@ void PageSelectPage::display() {
   oled_display.fillRect(0, 0, 128, 7, WHITE);
   oled_font_small();
   oled_text_color(BLACK);
-  oled_cursor(47, 6);
-  mcl_print_P(mclstr_page_select);
+  text_at_P(47, 6, mclstr_page_select);
   oled_display.fillRect(0, 7, 128, 25, BLACK);
   oled_text_color(WHITE);
   for (uint8_t i = 0; i < 4; ++i) {
@@ -303,8 +302,7 @@ void PageSelectPage::display() {
   }
 
   oled_font_default();
-  oled_cursor(29, 9);
-  mcl_print_P(name_P);
+  text_at_P(29, 9, name_P);
 
   if (icon != nullptr) {
     oled_display.drawBitmap(12 - kPageIconWidth / 2, 19 - iconh / 2, icon,

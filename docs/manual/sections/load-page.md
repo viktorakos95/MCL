@@ -44,7 +44,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Scale]**, **`Page`** | Toggle Grid X / Grid Y while selecting. |
 | **[Bank A/B/C]** | Set the load mode: Manual, Auto or Queue. |
 | **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on. Hold for the FADE screen (see Fade). |
-| **[Function]** | In Manual mode, open `DEST` to choose a destination (see Destination Offset). |
+| **[Function]** | In Manual mode, open `DEST` to choose a destination (see Destination). |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold for group selection; release to load the selected groups. |
 | **[Global]**, **`Load | Yes`** | Hold to edit the Load settings (see Load Settings). |
 | **[No/Exit]**, **`Save | No`**, a tap of **`Load | Yes`** | Close Load. |
@@ -74,7 +74,7 @@ While it is held, a cursor moves over the settings:
 
 | Load mode | Settings, top to bottom |
 | --- | --- |
-| Manual, Auto | The load mode (the box at the top), `QUANT`, `FADE` and `FLEN`. |
+| Manual, Auto | The load mode (the box at the top), `QUANT`, `FADE` and, while the fade is on, `FLEN`. |
 | Queue | The load mode, `QUANT` and `LEN`. |
 
 - Encoder 2 or **[Up/Down]** move the cursor. The setting under it is inverted.
@@ -100,15 +100,15 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
-| `AUT` | A dip | Each track fades by what it was playing (see below). |
-| `IN` | A rising ramp | Every loaded track fades in. |
-| `OUT` | A falling ramp | Every loaded track fades out. |
+| `AUT` | A cross | Each track fades by what it was playing (see below). |
+| `IN` | A rising line | Every loaded track fades in. |
+| `OUT` | A falling line | Every loaded track fades out. |
 
 While the fade is off, line 3 is blank. It shows `FADE -` while the Load settings are edited.
 
 ### The FADE Screen
 
-Hold **[Bank D]** to see and set the fade, in any load mode. The box at the top reads `FADE`, and the rows show `MODE` and `FLEN`.
+Hold **[Bank D]** to see and set the fade, in any load mode. The box at the top reads `FADE`, and the rows show `MODE` and, while the fade is on, `FLEN`.
 
 ![load fade screen](../assets/images/load_fade_screen.png)
 
@@ -175,7 +175,7 @@ Group selection is also used by bank/trig row loading and program-change row loa
 
 ![load queue](../assets/images/load_queue.png)
 
-A `MAN` or `AUT` load on a column that is chaining waits for the chain: the chain keeps going until it would next move at or after the load's `QUANT` point, and the load goes in there. With `QUANT` at `-`, or with a destination offset, the load does not wait.
+A `MAN` or `AUT` load on a column that is chaining waits for the chain: the chain keeps going until it would next move at or after the load's `QUANT` point, and the load goes in there. With `QUANT` at `-`, or with a destination, the load does not wait.
 
 Each slot/column has its own chain state. One track can follow an automatic chain while another plays a queued set of rows and another stays where it is.
 
@@ -205,20 +205,22 @@ Turning the encoder that sets `QUANT` steps through powers of two. Hold the enco
 
 Use quantization to keep manual, auto and queue loads aligned with the phrase length.
 
-## Destination Offset
+## Destination
 
-In Manual mode, a selection can load into other slots than its own.
+In Manual mode, a selection can load into other slots than its own. Pick the destination first, then the source.
 
 ![load destination](../assets/images/load_destination.png)
 
 1. Press **[Function]**. Line 2 shows `DEST`.
-2. Press the **[Trig]** for the destination slot. Line 4 shows it as grid and column, for example `X:05`, and `--` until a trig picks one.
+2. Press the **[Trig]** for the destination slot; press **[Scale]** first for a slot on the other grid. Line 4 shows it as grid and column, for example `X:05`, and `--` until a trig picks one.
 3. Release the trig. `DEST` closes and the destination stays on line 4.
-4. Select the source slots and release them. They load into the destination area.
+4. Select the source slots (**[Scale]** again if they are on the other grid) and release them. The first selected slot loads into the destination and the rest follow in order.
 
-Press **[Function]** again to close `DEST` without choosing. The destination is used by the next load, then cleared.
+Press **[Function]** again to close `DEST` without choosing; pressing it twice clears a destination already chosen. The destination is used by the next load, then cleared. Closing Load clears it too.
 
-Destination offset is ignored outside Manual mode.
+A range that runs past the last column of Grid X continues on Grid Y; slots that would land past the last column of Grid Y are not loaded.
+
+The destination applies only in Manual mode: **[Function]** does nothing in Auto and Queue, and loads in those modes ignore a destination picked earlier.
 
 ## Bank And Trig Row Loading
 

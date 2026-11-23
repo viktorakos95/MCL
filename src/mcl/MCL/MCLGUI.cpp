@@ -80,14 +80,12 @@ static void draw_track_type_text_icon(uint8_t x, uint8_t y,
   }
 
   oled_font_small();
-  oled_cursor(x + 12 - (len * 2), y + 14);
-  oled_display.print(text);
+  text_at(x + 12 - (len * 2), y + 14, text);
 }
 
 static void draw_tbd_track_type_icon(uint8_t x, uint8_t y_base) {
   oled_font_default();
-  oled_cursor(x + 3, y_base + 16);
-  oled_display.print("TBD");
+  text_at(x + 3, y_base + 16, "TBD");
 }
 #endif
 
@@ -617,8 +615,7 @@ void MCLGUI::draw_md_encoder(uint8_t x, uint8_t y, uint8_t value,
   if (strlen(label) == 2) {
     x_offset += 2;
   }
-  oled_cursor(x_offset, y);
-  oled_display.print(label);
+  text_at(x_offset, y, label);
 
   y += 5;
 
@@ -666,8 +663,7 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
     if (strlen(label) == 2) {
       x_offset += 2;
     }
-    oled_cursor(x_offset, y);
-    oled_display.print(label);
+    text_at(x_offset, y, label);
   }
   y += 2;
 
@@ -684,11 +680,9 @@ static const char kUtimLabel[] PROGMEM = "uTIM: ";  // 20 px in TomThumb
 static const char kCondLabel[] PROGMEM = "COND: ";
 static void print_timing_label(const char *offset, const char *condition,
                                uint8_t offset_chars) {
-  oled_cursor(61 - 20 - 4 * offset_chars, 10);
-  mcl_print_P(kUtimLabel);
+  text_at_P(61 - 20 - 4 * offset_chars, 10, kUtimLabel);
   oled_display.print(offset);
-  oled_cursor(68, 10);
-  mcl_print_P(kCondLabel);
+  text_at_P(68, 10, kCondLabel);
   oled_display.print(condition);
 }
 
@@ -1167,13 +1161,11 @@ void MCLGUI::draw_panel_toggle(const char *s1, const char *s2, bool s1_active) {
   oled_display.fillRect(pane_label_x, active_y, pane_label_w, pane_label_h,
                         WHITE);
 
-  oled_cursor(pane_label_x + 1, pane_label_md_y + 6);
   oled_text_color(s1_active ? BLACK : WHITE);
-  oled_display.print(s1);
+  text_at(pane_label_x + 1, pane_label_md_y + 6, s1);
 
-  oled_cursor(pane_label_x + 1, pane_label_ex_y + 6);
   oled_text_color(s1_active ? WHITE : BLACK);
-  oled_display.print(s2);
+  text_at(pane_label_x + 1, pane_label_ex_y + 6, s2);
   oled_text_color(WHITE);
 }
 
@@ -1181,12 +1173,10 @@ void MCLGUI::draw_panel_labels(const char *info1, const char *info2) {
   oled_font_small();
   oled_display.fillRect(0, pane_info1_y, pane_w, pane_info_h, WHITE);
   oled_text_color(BLACK);
-  oled_cursor(1, pane_info1_y + 6);
-  oled_display.print(info1);
+  text_at(1, pane_info1_y + 6, info1);
   oled_display.fillRect(0, pane_info2_y, pane_w, pane_info_h, BLACK);
   oled_text_color(WHITE);
-  oled_cursor(1, pane_info2_y + 6);
-  oled_display.print(info2);
+  text_at(1, pane_info2_y + 6, info2);
 }
 
 void MCLGUI::draw_panel_status(bool recording, bool playing) {
@@ -1291,13 +1281,22 @@ __attribute__((noinline)) void oled_rect(uint8_t x, uint8_t y, uint8_t w,
   oled_display.drawFastVLine(x, y, h, color);
   oled_display.drawFastVLine(x + w - 1, y, h, color);
 }
+__attribute__((noinline)) void text_at(int8_t x, uint8_t y, const char *str) {
+  oled_cursor(x, y);
+  oled_display.print(str);
+}
+__attribute__((noinline)) void text_at_P(int8_t x, uint8_t y,
+                                         const char *str_P) {
+  oled_cursor(x, y);
+  mcl_print_P(str_P);
+}
 __attribute__((noinline)) void oled_hline(uint8_t x, uint8_t y, uint8_t w,
                                           uint8_t color) {
   oled_display.drawFastHLine(x, y, w, color);
 }
-__attribute__((noinline)) void oled_text_color(uint16_t c) {
+__attribute__((noinline)) void oled_text_color(uint8_t c) {
   oled_display.setTextColor(c);
 }
-__attribute__((noinline)) void oled_text_color(uint16_t c, uint16_t bg) {
+__attribute__((noinline)) void oled_text_color(uint8_t c, uint8_t bg) {
   oled_display.setTextColor(c, bg);
 }
