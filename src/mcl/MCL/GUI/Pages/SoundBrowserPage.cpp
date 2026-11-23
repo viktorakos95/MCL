@@ -21,13 +21,20 @@ void SoundBrowserPage::init() {
   // folders instead of opening them).
   FileBrowserPage::init();
   FileBrowserPage::selection_change = true;
-  file_types.add(c_snd_suffix);
 
   key_interface.off();
 
-  strcpy_P(title, mclstr_title_sound);
   folder_browser_options();
-  strcpy_P(str_save, mclstr_action_save_bracket);
+#ifdef MCL_HAS_FILE_MOVE
+  // While a move waits for its destination, the base page has set up the
+  // DEST view, which lists folders only.
+  if (!move_destination_mode)
+#endif
+  {
+    file_types.add(c_snd_suffix);
+    strcpy_P(title, mclstr_title_sound);
+    strcpy_P(str_save, mclstr_action_save_bracket);
+  }
   query_filesystem();
 
   R.Clear();
@@ -105,8 +112,32 @@ void SoundBrowserPage::load_sound() {
 
 
 void SoundBrowserPage::on_new() {
+#ifdef MCL_HAS_FILE_MOVE
+  if (move_destination_mode) {
+    move_to_current_folder();
+    return;
+  }
+#endif
  save_sound();
  init();
+}
+
+void SoundBrowserPage::on_cancel() {
+#ifdef MCL_HAS_FILE_MOVE
+  if (move_destination_mode) {
+    cancel_move_destination();
+    return;
+  }
+#endif
+  mcl.popPage();
+}
+
+void SoundBrowserPage::cleanup() {
+#ifdef MCL_HAS_FILE_MOVE
+  // The browser pages share the move state: a move not finished here must
+  // not carry over to the next one.
+  move_destination_mode = false;
+#endif
 }
 
 void SoundBrowserPage::on_select(const char *__) {
@@ -115,16 +146,20 @@ void SoundBrowserPage::on_select(const char *__) {
 
 bool SoundBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
-    if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
-      // A new folder can be made from any row; delete and rename act on a
-      // sound or folder, not on the save row or "..".
+    // While a move waits for its destination, the base page's menu applies.
+    if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu &&
+        !move_destination_mode) {
+      // A new folder can be made from any row; delete, rename and move act
+      // on a sound or folder, not on the save row or "..".
       char entry[FILE_ENTRY_SIZE];
       uint8_t entry_type;
-      uint16_t disabled = FM_MASK(FM_DUPLICATE) | FM_MASK(FM_MOVE) |
-                          FM_MASK(FM_VERSIONS) | FM_MASK(FM_RECVALL) |
-                          FM_MASK(FM_SENDALL);
+      uint16_t disabled = FM_MASK(FM_DUPLICATE) | FM_MASK(FM_VERSIONS) |
+                          FM_MASK(FM_RECVALL) | FM_MASK(FM_SENDALL);
+#ifndef MCL_HAS_FILE_MOVE
+      disabled |= FM_MASK(FM_MOVE);
+#endif
       if (!get_selected_entry(entry, entry_type)) {
-        disabled |= FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME);
+        disabled |= FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME) | FM_MASK(FM_MOVE);
       }
       open_filemenu(disabled);
       return true;
