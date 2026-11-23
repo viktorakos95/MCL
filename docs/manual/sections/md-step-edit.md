@@ -93,7 +93,7 @@ Hold a step and use Encoder 1 or **[Up]** / **[Down]** to change its condition.
 
 Hold **[Function]** while pressing **[Up]** or **[Down]** on a held step to toggle the condition marker. A marked condition also applies to related lock/slide behavior.
 
-On a Machinedrum running MDX X.20 or later, the condition also shows in the Machinedrum's microtiming popup. There, **[Up]** / **[Down]** and the LEV encoder step through the conditions in the Octatrack's order: `---`, `FIL`, `!FL`, `PRE`, `!PR`, `NEI`, `!NE`, `1ST`, `!1S`, `1SH`, the probabilities from `10%` to `90%`, then `1:2` to `8:8`. **[Up]** and LEV to the right step forward. **[Function]** with **[Up]** / **[Down]** or LEV jumps between groups: `---`, `FIL`, `10%` and `1:2`. **[Page]** sets the condition mode. The Machinedrum's track-select wheel moves the step's microtiming, as **[Left]** / **[Right]** do.
+On a Machinedrum running MDX X.20 or later, the condition also shows in the Machinedrum's microtiming popup. There, **[Up]** / **[Down]** and the LEV encoder step through the conditions in this order: `-`, `FIL`, `!FL`, `PRE`, `!PR`, `NEI`, `!NE`, `1ST`, `!1S`, `1SH`, the probabilities from `10%` to `90%`, then `1:2` to `8:8`. **[Up]** and LEV to the right step forward. **[Function]** with **[Up]** / **[Down]** or LEV jumps between groups: `-`, `FIL`, `10%` and `1:2`. **[Page]** sets the condition mode. The Machinedrum's track-select wheel moves the step's microtiming, as **[Left]** / **[Right]** do.
 
 ## Microtiming
 

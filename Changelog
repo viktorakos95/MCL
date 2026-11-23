@@ -16,9 +16,9 @@ Configuration Menu page.
 
 - Machinedrum MDX X.20
 
-  With a Machinedrum running MDX X.20 or later, MCL supports all 38 track
-  parameters. Parameters 24 to 37 (envelope, second LFO, retrig, bus sends
-  and envelope destination) are named and shown as on the Machinedrum.
+  MCL supports all 38 track parameters. Parameters 24 to 37 (envelope,
+  second LFO, retrig, bus sends and envelope destination) are named and
+  shown as on the Machinedrum.
 
   They can be locked in the Step Editor, and used by performance
   controllers, scene locks and scene autofill.
@@ -44,19 +44,20 @@ Configuration Menu page.
   The Step Editor's microtiming popup shows the step's offset (uTIM) and its
   condition (COND).
 
-  With MDX X.20 or later, the Machinedrum's own microtiming popup shows the
-  step's condition and condition mode as well. The first press of an arrow
-  key on a held step opens it; later presses edit the step.
+  The Machinedrum's own microtiming popup shows the step's condition and
+  condition mode as well. The first press of an arrow key on a held step
+  opens it; later presses edit the step.
 
   On the Machinedrum's popup, [ Up ] / [ Down ] and the LEV encoder step
-  through the conditions in the Octatrack's order. [ Function ] jumps
-  between condition groups, [ Page ] sets the condition mode and the
-  track-select wheel moves the microtiming.
+  through the conditions in this order: "-", FIL, !FL, PRE, !PR, NEI, !NE,
+  1ST, !1S, 1SH, the probabilities from 10% to 90%, then 1:2 to 8:8.
+  [ Function ] jumps between condition groups ("-", FIL, 10%, 1:2),
+  [ Page ] sets the condition mode and the track-select wheel moves the
+  microtiming.
 
 - Fill
 
-  With MDX X.20 or later, fill is played from the Machinedrum's keys, on any
-  page:
+  Fill is played from the Machinedrum's keys, on any page:
 
    [ Scale ] + [ Up ] = fill while held, or end a latched fill.
    [ Scale ] + [ Up ] + [ Down ] = latch fill.
@@ -67,19 +68,18 @@ Configuration Menu page.
   Fill mode on the Mixer Page, and the Machinedrum's FILL view, choose the
   tracks a fill plays on.
 
-  With MDX X.20 or later, [ Scale ] alone acts when it is released.
+  [ Scale ] alone acts when it is released.
 
 - Swing and Slide
 
   New tracks, and tracks built for empty slots, start with the default swing
   steps.
 
-  With MDX X.20 or later, when the Machinedrum's Swing or Slide window is
-  set to ALL, an edit of the track's steps is copied to every Machinedrum
-  track.
+  When the Machinedrum's Swing or Slide window is set to ALL, an edit of the
+  track's steps is copied to every Machinedrum track.
 
-  With MDX X.20 or later, a length or speed change on the Machinedrum's
-  SCALE page goes to the track or to all tracks, as chosen there.
+  A length or speed change on the Machinedrum's SCALE page goes to the track
+  or to all tracks, as chosen there.
 
 - Pattern Import
 
@@ -87,7 +87,7 @@ Configuration Menu page.
   length and speed, now import. Each track keeps the length and speed it
   plays on the Machinedrum.
 
-  From MDX X.20 or later, locks on steps without a trig are imported.
+  Locks on steps without a trig are imported.
 
   Microtiming keeps its timing when MDX patterns are imported.
 
