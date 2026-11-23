@@ -79,16 +79,16 @@ Hold a step and use Encoder 1 or **[Up]** / **[Down]** to change its condition.
 | Label | Meaning |
 | --- | --- |
 | `---` | Always play. |
-| `10%`, `25%`, `33%`, `50%`, `66%`, `75%`, `90%` | Probability that the step plays. |
-| `1SH` | One-shot; plays once, then waits to be rearmed. |
-| `1ST` | First cycle/pass only. |
-| `!1S` | Not first cycle/pass. |
 | `FIL` | Plays when fill is active for the track. |
 | `!FL` | Plays when fill is not active. |
 | `PRE` | Plays when the previous trig condition fired. |
 | `!PR` | Plays when the previous trig condition did not fire. |
 | `NEI` | Plays when the neighbouring previous track fired. |
 | `!NE` | Plays when the neighbouring previous track did not fire. |
+| `1ST` | First cycle/pass only. |
+| `!1S` | Not first cycle/pass. |
+| `1SH` | One-shot; plays once, then waits to be rearmed. |
+| `10%`, `25%`, `33%`, `50%`, `66%`, `75%`, `90%` | Probability that the step plays. |
 | `x:y` | Plays on pass `x` of a `y`-pass cycle. |
 
 Hold **[Function]** while pressing **[Up]** or **[Down]** on a held step to toggle the condition marker. A marked condition also applies to related lock/slide behavior.
