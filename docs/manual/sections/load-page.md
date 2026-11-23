@@ -35,11 +35,11 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Up/Down]** | Move to another row. In `LEGACY`, close Load and move the Grid Page cursor. |
 | **[Left/Right]** | Scroll the columns shown. In `LEGACY`, close Load and move the Grid Page cursor. |
 | **[Scale]** | Toggle Grid X / Grid Y while selecting. |
-| **[Function]** | In Manual mode, select a destination offset. |
+| **[Function]** | In Manual mode, pick a destination slot (see Destination). |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to load selected groups. |
 | **[No/Exit]**, **`Save | No`**, a tap of **`Load | Yes`** | Close Load. |
 | **[Bank A/B/C]** | Shortcut to Manual, Auto or Queue mode. |
-| **[Bank D]** (the Slide key) | Tap to turn `FADE` on or off. Hold to set the fade with the trigs and **[Up/Down]**. |
+| **[Bank D]** (the Slide key) | Tap to turn `FADE` on or off. Hold for the FADE screen (see Fade). |
 | **[Play]**, **[Stop]** | Start and stop the sequencer. Load stays open. |
 
 ## Load Settings
@@ -114,7 +114,7 @@ Group selection is also used by bank/trig row loading and program-change row loa
 | `AUT` | Load the selected slots, then follow each slot's `LOOP` and `JUMP` settings when its loop count is reached. |
 | `QUE` | Add the selected row or slot to that column's queue. Queued entries repeat in order. |
 
-A `MAN` or `AUT` load for a column that is chaining waits until the chain would next move at or after the load's `QUANT` point: the chain keeps going until then, and the load goes in at that point. With `QUANT` at `-`, or with a destination offset, it loads as before.
+A `MAN` or `AUT` load for a column that is chaining waits until the chain would next move at or after the load's `QUANT` point: the chain keeps going until then, and the load goes in at that point. With `QUANT` at `-`, or with a destination, it loads as before.
 
 Each slot/column has its own chain state. This allows one track to follow an automatic chain, another to play a queued set of rows, and another to remain static.
 
@@ -140,17 +140,17 @@ Load quantization sets the transition interval for the selected load.
 
 Use quantization to keep manual, auto and queue loads aligned with the phrase length.
 
-## Destination Offset
+## Destination
 
-In Manual mode, hold **[Function]** from Load to choose a destination offset.
+In Manual mode, a selection can load into other slots than its own. Pick the destination first, then the source:
 
-![load destination](../assets/images/load_destination.png)
+1. Press **[Function]**. The left column shows `DEST`.
+2. Press the **[Trig]** key of the destination slot; press **[Scale]** first for a slot on the other grid. Release it: `DEST` closes, and the destination stays on the bottom line as grid and column, for example `Y:05`.
+3. Select the source slot or range with the **[Trig]** keys (**[Scale]** again if it is on the other grid) and release them. The first selected slot loads into the destination and the rest follow in order.
 
-1. Hold **[Function]**.
-2. Press a **[Trig]** key to choose the destination slot.
-3. Release the selection to load the selected source slot or range into the chosen destination area.
+A range that runs past the last column of Grid X continues on Grid Y; slots that would land past the last column of Grid Y are not loaded.
 
-Destination offset is ignored outside Manual mode.
+The destination is cleared by the load, by closing Load, or by pressing **[Function]** twice. It applies only in Manual mode: **[Function]** does nothing in Auto and Queue, and loads in those modes ignore a destination picked earlier.
 
 ## Bank And Trig Row Loading
 
