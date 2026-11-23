@@ -18,6 +18,12 @@ Sound files use the `.snd` extension and are stored in the logical folder:
 
 If your SD card uses an `/MCL` folder, sounds are stored under `/MCL/Sounds`.
 
+## Folders
+
+Sounds can be kept in folders inside `/Sounds`. Select a folder and press **[Yes]** to open it; `..` returns to the folder above. The browser stays inside `/Sounds`, so `..` is not shown there.
+
+Until MCL is restarted, the browser reopens in the folder last used.
+
 ## Browser Controls
 
 | Control | Action |
@@ -27,7 +33,7 @@ If your SD card uses an `/MCL` folder, sounds are stored under `/MCL/Sounds`.
 | **[No]** | Cancel or return from the browser. |
 | Hold **[Global]** | Open the file menu. |
 
-The Sound Manager filters the file list to `.snd` files and folders.
+The Sound Manager lists folders and `.snd` files only, and shows sound names without the `.snd` extension.
 
 ## Saving A Sound
 
@@ -36,16 +42,16 @@ The Sound Manager filters the file list to `.snd` files and folders.
 3. Select `[SAVE]`.
 4. Enter a sound name.
 
-MCL suggests a short name from the kit name and machine type. The sound is written to the current `/Sounds` folder.
+MCL suggests a short name from the kit name and machine type. The sound is written to the folder shown.
 
 ## Loading A Sound
 
-Select a `.snd` file and press **[Yes]**. MCL loads the sound into the current Machinedrum track.
+Select a sound and press **[Yes]**. MCL loads the sound into the current Machinedrum track.
 
 If the sound contains a linked Trig Group pair and the destination has a following track available, MCL also loads the linked track data so the paired sound is restored together. Loading a paired sound onto track 16 cannot restore the linked second track.
 
 ## File Menu
 
-Hold **[Global]** to create folders, rename sounds or delete entries.
+Hold **[Global]** to create a folder (NEW DIR), or to rename (RENAME) or delete (DELETE) the selected sound or folder. NEW DIR can be chosen on any row, including in an empty folder; RENAME and DELETE are not offered on `[SAVE]` or `..`. Deleting a folder also deletes everything in it.
 
 ![file menu](../assets/images/file_menu.png)
