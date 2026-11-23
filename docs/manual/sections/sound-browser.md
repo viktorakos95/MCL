@@ -24,11 +24,13 @@ Sounds can be kept in folders inside `/Sounds`. Select a folder and press **[Yes
 
 Until MCL is restarted, the browser reopens in the folder last used.
 
+When the browser or a folder opens, the cursor is on the row under `[SAVE]`, with `[SAVE]` in view.
+
 ## Browser Controls
 
 | Control | Action |
 | --- | --- |
-| **[Up]** / **[Down]** | Move through folders and `.snd` files. |
+| **[Up]** / **[Down]** | Move through folders and sounds. |
 | **[Yes]** / **`Load | Yes`** | Enter a folder, save from `[SAVE]`, or load the selected sound. |
 | **[No]** | Cancel or return from the browser. |
 | Hold **[Global]** | Open the file menu. |
@@ -54,7 +56,7 @@ If the sound contains a linked Trig Group pair and the destination has a followi
 
 Hold **[Global]** to open the file menu.
 
-![file menu](../assets/images/file_menu.png)
+![sound file menu](../assets/images/sound_file_menu.png)
 
 | Entry | Function |
 | --- | --- |
@@ -66,4 +68,6 @@ Hold **[Global]** to open the file menu.
 
 `RENAME`, `MOVE` and `DELETE` are not offered on `[SAVE]` or `..`.
 
-`MOVE` opens the `DEST` view, which lists folders only. Open the destination folder and select `[ MOVE ]`; **[No]** cancels the move.
+`MOVE` opens the `DEST` view, which lists folders only, with the cursor under `[ MOVE ]`. Open the destination folder and select `[ MOVE ]`; **[No]** cancels the move.
+
+![sound move](../assets/images/sound_move.png)

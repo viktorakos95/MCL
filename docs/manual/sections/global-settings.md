@@ -57,7 +57,7 @@ Hold **[Global]** from the project browser to open the file menu.
 | `CANCEL` | Close the file menu without action. |
 | `NEW DIR` | Create a folder in the current location. |
 | `RENAME` | Rename the selected project or folder where allowed. |
-| `MOVE` | Move the selected project or folder to another folder. |
+| `MOVE` | Move the selected project or folder to another folder: the `DEST` view lists folders; open the destination and select `[ MOVE ]`. The loaded project, or a folder holding it, cannot be moved. |
 | `CLONE` | Duplicate the selected project or folder. |
 | `VERS` | Open project versions for the selected project. |
 | `DELETE` | Delete the selected project or folder where allowed. |
