@@ -9,6 +9,8 @@ import json
 import posixpath
 import re
 import shutil
+import struct
+import zlib
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -20,6 +22,16 @@ DEFAULT_SITE_ROOT = REPO_ROOT / "docs" / "site"
 
 SUMMARY_RE = re.compile(r"^\s*-\s+\[([^\]]+)\]\(([^)]+)\)")
 PNG_SIGNATURE = b"\x89PNG\r\n\x1a\n"
+
+# Screen captures (128 x 32 or 128 x 64, lit pixels dark on light) are drawn
+# for the site as an OLED: each pixel a SCREEN_SCALE square in SCREEN_PIXEL,
+# SCREEN_GAP of SCREEN_BEZEL between pixels. The page shows them at half
+# this size, so a high-density display gets one device pixel of gap.
+SCREEN_SIZES = ((128, 32), (128, 64))
+SCREEN_SCALE = 8
+SCREEN_GAP = 1
+SCREEN_BEZEL = (0x0D, 0x11, 0x16)
+SCREEN_PIXEL = (0xE8, 0xF2, 0xFF)
 
 
 @dataclass(frozen=True)
@@ -102,6 +114,125 @@ def png_dimensions(path: Path) -> tuple[int, int] | None:
     return int.from_bytes(data[16:20], "big"), int.from_bytes(data[20:24], "big")
 
 
+def png_chunks(data: bytes):
+    pos = len(PNG_SIGNATURE)
+    while pos + 8 <= len(data):
+        length, kind = struct.unpack(">I4s", data[pos:pos + 8])
+        yield kind, data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+
+
+def read_png_lit(path: Path) -> tuple[int, int, list[list[bool]]] | None:
+    """The pixels of an 8-bit PNG as lit (dark) or not, or None if the file
+    is not a plain 8-bit PNG."""
+    data = path.read_bytes()
+    if data[:8] != PNG_SIGNATURE:
+        return None
+    header = None
+    palette = b""
+    idat = bytearray()
+    for kind, body in png_chunks(data):
+        if kind == b"IHDR":
+            header = struct.unpack(">IIBBBBB", body)
+        elif kind == b"PLTE":
+            palette = body
+        elif kind == b"IDAT":
+            idat += body
+    if header is None:
+        return None
+    width, height, depth, colour, _, _, interlace = header
+    channels = {0: 1, 2: 3, 3: 1, 4: 2, 6: 4}.get(colour)
+    if depth != 8 or interlace or channels is None:
+        return None
+    raw = zlib.decompress(bytes(idat))
+    stride = width * channels
+    rows: list[bytearray] = []
+    previous = bytearray(stride)
+    pos = 0
+    for _ in range(height):
+        kind = raw[pos]
+        line = bytearray(raw[pos + 1:pos + 1 + stride])
+        pos += 1 + stride
+        for i in range(stride):
+            left = line[i - channels] if i >= channels else 0
+            up = previous[i]
+            corner = previous[i - channels] if i >= channels else 0
+            if kind == 1:
+                line[i] = (line[i] + left) & 0xFF
+            elif kind == 2:
+                line[i] = (line[i] + up) & 0xFF
+            elif kind == 3:
+                line[i] = (line[i] + ((left + up) >> 1)) & 0xFF
+            elif kind == 4:
+                guess = left + up - corner
+                pa, pb, pc = abs(guess - left), abs(guess - up), abs(guess - corner)
+                pred = left if pa <= pb and pa <= pc else up if pb <= pc else corner
+                line[i] = (line[i] + pred) & 0xFF
+        rows.append(line)
+        previous = line
+    lit: list[list[bool]] = []
+    for line in rows:
+        out = []
+        for x in range(width):
+            px = line[x * channels:(x + 1) * channels]
+            if colour == 3:
+                px = palette[px[0] * 3:px[0] * 3 + 3]
+            if colour in (0, 4):
+                level = px[0]
+            else:
+                level = (299 * px[0] + 587 * px[1] + 114 * px[2]) // 1000
+            out.append(level < 128)
+        lit.append(out)
+    return width, height, lit
+
+
+def write_screen_png(path: Path, width: int, height: int, lit: list[list[bool]]) -> None:
+    """A two-colour PNG of the screen drawn as OLED pixels."""
+    scale, gap = SCREEN_SCALE, SCREEN_GAP
+    out_width = width * scale
+    cell_on = [1] * (scale - gap) + [0] * gap
+    blank = bytes((out_width + 7) // 8)
+    rows = []
+    for line in lit:
+        bits: list[int] = []
+        for on in line:
+            bits += cell_on if on else [0] * scale
+        packed = bytearray()
+        for i in range(0, out_width, 8):
+            byte = 0
+            for b in bits[i:i + 8]:
+                byte = (byte << 1) | b
+            packed.append(byte << (8 - len(bits[i:i + 8])))
+        rows += [bytes(packed)] * (scale - gap) + [blank] * gap
+    raw = b"".join(b"\x00" + row for row in rows)
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        crc = zlib.crc32(kind + body) & 0xFFFFFFFF
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", crc)
+
+    path.write_bytes(
+        PNG_SIGNATURE
+        + chunk(b"IHDR", struct.pack(">IIBBBBB", out_width, height * scale, 1, 3, 0, 0, 0))
+        + chunk(b"PLTE", bytes(SCREEN_BEZEL) + bytes(SCREEN_PIXEL))
+        + chunk(b"IDAT", zlib.compress(raw, 9))
+        + chunk(b"IEND", b"")
+    )
+
+
+def style_screen_images(images_dir: Path) -> int:
+    """Redraw every screen capture under images_dir as OLED pixels."""
+    count = 0
+    for path in sorted(images_dir.rglob("*.png")):
+        if png_dimensions(path) not in SCREEN_SIZES:
+            continue
+        screen = read_png_lit(path)
+        if screen is None:
+            continue
+        write_screen_png(path, *screen)
+        count += 1
+    return count
+
+
 def image_block(line: str, source_dir: Path | None = None) -> str | None:
     match = re.match(r"!\[([^\]]*)\]\(([^)]+)\)", line.strip())
     if not match:
@@ -117,7 +248,7 @@ def image_block(line: str, source_dir: Path | None = None) -> str | None:
         classes.append("logo-image")
     if source_dir is not None and not re.match(r"^[a-z]+:", target):
         dims = png_dimensions((source_dir / image_target).resolve())
-        if dims in ((128, 32), (128, 64)):
+        if dims in SCREEN_SIZES:
             classes.append("screen-image")
     figure_class_attr = (
         f' class="{" ".join(figure_classes)}"' if figure_classes else ""
@@ -132,10 +263,40 @@ def image_block(line: str, source_dir: Path | None = None) -> str | None:
     )
 
 
+def table_cells(line: str) -> list[str]:
+    """The cells of a table row. A | inside a code span, such as the
+    MegaCommand's `Load | Yes`, belongs to the cell, as does an escaped \\|."""
+    row = line.strip()
+    if row.startswith("|"):
+        row = row[1:]
+    if row.endswith("|") and not row.endswith("\\|"):
+        row = row[:-1]
+    cells: list[str] = []
+    current = []
+    in_code = False
+    i = 0
+    while i < len(row):
+        ch = row[i]
+        if ch == "\\" and i + 1 < len(row) and row[i + 1] == "|":
+            current.append("|")
+            i += 2
+            continue
+        if ch == "`":
+            in_code = not in_code
+        if ch == "|" and not in_code:
+            cells.append("".join(current).strip())
+            current = []
+        else:
+            current.append(ch)
+        i += 1
+    cells.append("".join(current).strip())
+    return cells
+
+
 def table_html(lines: list[str]) -> str:
     rows = []
     for line in lines:
-        cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+        cells = table_cells(line)
         if all(re.fullmatch(r":?-{3,}:?", cell) for cell in cells):
             continue
         rows.append(cells)
@@ -538,27 +699,24 @@ figure img.logo-image {
 }
 
 figure img.screen-image {
-  width: 512px;
+  box-sizing: border-box;
+  width: 524px;
   max-width: 100%;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
+  padding: 6px;
+  border: 0;
+  border-radius: 4px;
+  background: #0d1116;
 }
 
 @media (max-width: 620px) {
   figure img.screen-image {
-    width: 384px;
+    width: 396px;
   }
 }
 
 @media (max-width: 460px) {
   figure img.screen-image {
-    width: 256px;
-  }
-}
-
-@media (max-width: 330px) {
-  figure img.screen-image {
-    width: 128px;
+    width: 268px;
   }
 }
 
@@ -1043,6 +1201,7 @@ def build(manual_root: Path, site_root: Path) -> None:
     assets_source = manual_root / "assets"
     if assets_source.exists():
         shutil.copytree(assets_source, site_root / "assets", dirs_exist_ok=True)
+        style_screen_images(site_root / "assets" / "images")
     (site_root / "assets" / "manual.css").write_text(site_css(), encoding="utf-8")
     (site_root / "assets" / "manual.js").write_text(site_js(), encoding="utf-8")
 
