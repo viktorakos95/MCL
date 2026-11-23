@@ -70,7 +70,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Global] + [Up/Down/Left/Right]** Navigate the shift menu.
 - **[Bank Group]** Hold to Open the Page Select menu.
 - **[Bank Group] + [Trig]** MCL Page Select.
-- **[Bank Group] + [Global]** MCL Config Menu.
+- **[Bank Group] + [Pattern/Song]** MCL Config Menu.
 - **[Bank Group] + [No/Exit]** Return to Grid page.
 - **[Function] + [Encoder]** Simultaneously modify parameters across all tracks.
 - **[Function] + [Classic/Extended]** Simultaneously reset parameters to last load value across all tracks.
@@ -115,7 +115,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown, with `CONFIG > SYSTEM > LOAD/SAVE` at `CLOSE` or `STAY`. At `LEGACY` they close Load and move the grid cursor.
 - **[Bank A,B,C]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
 - **[Bank D]** (the Slide key): tap to turn FADE on or off, hold for the FADE screen.
-- **[Function]** to specify a destination track offset for the next load.
+- **[Function]** in Manual mode: press a trig for the destination slot, then select and release the source slots to load them there.
 - Hold **[Global]** to edit the Load panel: the load mode, QUANT, then FADE and FLEN (LEN in Queue mode). **[Up/Down]** move the cursor and **[Left/Right]** change the value.
 - **[No/Exit]** closes the Load Page. Whether it closes after a load is set by `CONFIG > SYSTEM > LOAD/SAVE`.
 
@@ -130,7 +130,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 **Mixer Page**
 
 
-- **[Classic/Extended]** Open/Close the Mixer Page.
+- **[Classic/Extended]** Open/Close the Mixer Page while the sequencer is running.
 - **[Classic/Extended]** + **[Trig]** Mute/Unmute selected track(s).
 - **[Scale]** Switch Grid X Y tracks.
 - **[Trig]** Select track.
@@ -141,8 +141,8 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Function]** + **[Yes/Enter]** Flip active mutes.
 - **[Up/Down/Left/Right]** Preview and edit Performance Sets.
 - **[Up/Down/Left/Right]** + **[Yes/Enter]** Load selected Performance Set.
-- **[Up/Down/Left/Right]** + **[Mute/BankA]** Disable active device's mutes from selected Performance Set.
-- **[Up/Down/Left/Right]** + **[Swing/BankB]** Set selected Performance Set to load automatically with PF Slot in Grid Y.
+- **[Up/Down/Left/Right]** + **[Mute/Bank A]** Disable active device's mutes from selected Performance Set.
+- **[Up/Down/Left/Right]** + **[Accent/Bank B]** Set selected Performance Set to load automatically with PF Slot in Grid Y.
 - **`Encoders1-4`** Performance Controllers (A,B,C,D) scene morphs.
 - Hold a Perf encoder button + **[Global]** / **`Shift | Menu`** to clear both assigned scenes for that controller.
 - Hold a Perf encoder button + **`Load | Yes`** to autofill that controller's right scene from changed kit parameters.

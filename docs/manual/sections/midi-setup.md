@@ -28,7 +28,7 @@ Recommended configuration:
 | `CONFIG > MIDI > DEVICES > GRID X > DEVICE` | `MD` |
 | `CONFIG > MIDI > DEVICES > GRID X > PORT` | `MIDI 1`, meaning MCL MIDI IN 1 / OUT 1 with standard 5-pin MIDI cables |
 
-Upgrade the Machinedrum to OS X.13 before using MCL. For Machinedrum MK1 units, keep Turbo MIDI at `4x` or lower.
+Run MDX X.14 or X.20 on the Machinedrum before using MCL. For Machinedrum MK1 units, keep Turbo MIDI at `4x` or lower.
 
 With MDX X.20 or later, MCL also supports the Machinedrum's parameters 24 to 37, USR machines, fill from the Machinedrum's keys, and step conditions on its microtiming popup.
 

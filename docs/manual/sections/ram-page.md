@@ -11,7 +11,7 @@ Open them with:
 | RAM 1 | **[Bank Group] + [Trig 15]** | Track 15 in mono mode. |
 | RAM 2 | **[Bank Group] + [Trig 16]** | Track 16 in mono mode. |
 
-In stereo/link mode, RAM 1 controls the linked track pair 15 and 16.
+In stereo mode, RAM 1 controls the linked track pair 15 and 16.
 
 ## RAM Link Mode
 
@@ -22,7 +22,7 @@ RAM mode is configured from the Machinedrum configuration page:
 | Value | Behavior |
 | --- | --- |
 | `MONO` | RAM 1 and RAM 2 act independently on tracks 15 and 16. Source can be `INT`, `A` or `B`. |
-| `STEREO` / `LINK` | Tracks 15 and 16 are linked as a stereo pair. Main output records as left/right, and external input records as A/B. |
+| `STEREO` | Tracks 15 and 16 are linked as a stereo pair. Main output records as left/right, and external input records as A/B. |
 
 This option moved from the old Page Setup area into the Machinedrum configuration page.
 
@@ -69,9 +69,9 @@ In `MONO`, the pages are independent:
 
 Source `INT` samples the Machinedrum mix. Sources `A` and `B` sample the external inputs.
 
-## Stereo / Link Mode
+## Stereo Mode
 
-In `STEREO` / `LINK`, track 15 and 16 work as a pair. MCL creates linked RAM machines, pans them left/right and keeps compatible playback parameter changes synchronized between the pair.
+In `STEREO`, tracks 15 and 16 work as a pair. MCL creates linked RAM machines, pans them left/right and keeps compatible playback parameter changes synchronized between the pair.
 
 For main-output recording, track 15 records the left side and track 16 records the right side. For external-input recording, track 15 records input A and track 16 records input B.
 

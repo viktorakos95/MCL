@@ -8,6 +8,8 @@ Open it from the Grid Page with:
 [Bank Group], then [Pattern/Song]
 ```
 
+On MegaCommand and MegaCMD, **`Save | No`** + **`Load | Yes`** opens it too.
+
 Use **[Up]** and **[Down]** to move through entries, **[Yes/Enter]** to select, and **[No/Exit]** to leave a menu.
 
 ## Top-Level Entries
