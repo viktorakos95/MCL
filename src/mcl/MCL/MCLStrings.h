@@ -50,6 +50,7 @@ MCLSTR_DECLARE(hex_prefix); // For "0x"
 MCLSTR_DECLARE(plen);
 MCLSTR_DECLARE(quant);
 MCLSTR_DECLARE(fade);
+MCLSTR_DECLARE(flen);
 MCLSTR_DECLARE(fade_in);
 MCLSTR_DECLARE(fade_out);
 MCLSTR_DECLARE(arp);

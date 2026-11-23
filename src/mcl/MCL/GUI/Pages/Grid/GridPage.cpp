@@ -1756,10 +1756,11 @@ static void print_fade_steps(uint8_t n, uint8_t y) {
 }
 
 // While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
-// settings are edited with one cursor walking down its stops: the mode (the
-// chip), QUANT, Queue's LEN (in Queue), then FADE's MODE and LEN, which show
-// on the FADE screen (the one holding FADE opens). Knob 2 or UP/DOWN move
-// the cursor, the picked row is inverted; knob 1 or LEFT/RIGHT change it.
+// settings are edited with one cursor over its stops: the mode (the chip),
+// QUANT, then FADE and FLEN (the fade's mode and length; in Queue, LEN, the
+// queue's length, instead). Holding FADE runs the same edit on the fade's
+// two stops on the FADE screen, in Queue too. Knob 2 or UP/DOWN move the
+// cursor, the picked row is inverted; knob 1 or LEFT/RIGHT change it.
 // Otherwise the knobs stay the Grid page's own (grid_knobs).
 enum : uint8_t {
   IO_ITEM_MODE,
@@ -1822,6 +1823,13 @@ static bool io_slide_used;
 // When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
 // so a tap goes from blank straight to the length it turns on.
 static uint16_t io_slide_clock;
+
+// The cursor's last stop: Queue's LEN in Queue, else FLEN (FLEN too with
+// FADE held, whose screen has the fade's stops in Queue as well).
+static uint8_t io_last_stop() {
+  return mcl_cfg.load_mode == LOAD_QUEUE && !io_slide ? IO_ITEM_QLEN
+                                                      : io_fade_stop() + 1;
+}
 
 static bool io_fade_page() {
   return io_slide &&
@@ -1999,7 +2007,7 @@ void GridPage::io_loop() {
     // The stops follow the mode (BANK A-C may change it mid-edit); with FADE
     // held only FADE's two.
     io_menu_line.min = io_slide ? io_fade_stop() : 0;
-    io_menu_line.max = io_fade_stop() + 1;
+    io_menu_line.max = io_last_stop();
     io_menu_line.cur =
         constrain(io_menu_line.cur, io_menu_line.min, io_menu_line.max);
     const int8_t dir = io_menu_value.cur - 1;
@@ -2170,10 +2178,10 @@ void GridPage::io_display_panel() {
   // the mode: LOAD (Manual), AUTO or QUE. While the rows are edited it is the
   // mode row, boxed only while that row is picked, so the picked row is the
   // only box.
-  // With the cursor on FADE's stops (or FADE held) the panel is the FADE
-  // screen: the chip reads FADE and the rows are FADE's MODE and LEN.
+  // With FADE held the panel is the FADE screen: the chip reads FADE and
+  // the rows are the fade's MODE and FLEN.
   const uint8_t item = io_item();
-  const bool fade_page = load && io_editing && item >= IO_ITEM_FMODE;
+  const bool fade_page = load && io_editing && io_slide;
   const bool boxed =
       fade_page || !(io_editing && item != IO_ITEM_MODE);
   // While the mode row is picked, the chip stands right of a filled arrow:
@@ -2226,10 +2234,10 @@ void GridPage::io_display_panel() {
       }
       const uint8_t len = mcl_cfg.load_fade_len;
       if (len) {
-        text_at_P(1, 24, mclstr_len);
+        text_at_P(1, 24, mclstr_flen);
         print_fade_steps(len - 1, 24);
       } else {
-        panel_row(24, mclstr_len, 0);
+        panel_row(24, mclstr_flen, 0);
       }
       // The picked row is inverted.
       oled_display.fillRect(0, 10 + 8 * (item - IO_ITEM_FMODE), 37, 7,
@@ -2243,19 +2251,32 @@ void GridPage::io_display_panel() {
       } else {
         // FADE in the other modes: "FADE -" when off, else FADE and its
         // mode's graphic: AUT (direction by column), IN or OUT (forced).
-        // Off, the row shows only in the edit (FADE's stops follow QUANT).
+        // Off, the row shows only in the edit. In the edit line 4 is FLEN,
+        // on the screen's last row (baseline 31, its box y 25 .. 31).
         if (mcl_cfg.load_fade & 1) {
           text_at_P(1, 24, mclstr_fade);
           draw_fade_mode(24);
         } else if (io_editing) {
           panel_row(24, mclstr_fade, 0);
         }
+        if (io_editing) {
+          const uint8_t len = mcl_cfg.load_fade_len;
+          if (len) {
+            text_at_P(1, 31, mclstr_flen);
+            print_fade_steps(len - 1, 31);
+          } else {
+            panel_row(31, mclstr_flen, 0);
+          }
+        }
       }
       if (io_editing && item != IO_ITEM_MODE) {
         // Editing: the row the knobs edit is inverted, with 1 px of the box
         // each side of the text, as in menus (the mode row is the chip).
-        oled_display.fillRect(0, item == IO_ITEM_QUANT ? 10 : 18, 37, 7,
-                              INVERT);
+        oled_display.fillRect(0,
+                              item == IO_ITEM_QUANT  ? 10
+                              : item == IO_ITEM_FLEN ? 25
+                                                     : 18,
+                              37, 7, INVERT);
       }
     }
   } else {
@@ -2278,7 +2299,8 @@ void GridPage::io_display_panel() {
   char val[4];
   const GridSlot offset = GridIOPage::offset;
   const bool picked = offset < NUM_SLOTS;
-  if (load && (GridIOPage::show_offset || picked)) {
+  // Not in the edit, where line 4 is FLEN.
+  if (load && !io_editing && (GridIOPage::show_offset || picked)) {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
@@ -2449,7 +2471,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         if (load && (io_editing || io_slide)) {
           io_menu_line.cur = limit_value(
               io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1,
-              io_slide ? io_fade_stop() : 0, io_fade_stop() + 1);
+              io_slide ? io_fade_stop() : 0, io_last_stop());
           io_slide_used |= io_slide;
           return true;
         }

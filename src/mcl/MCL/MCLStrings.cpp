@@ -32,6 +32,7 @@ MCLSTR_DEFINE(hex_prefix, "0x");
 MCLSTR_DEFINE(plen, "PLEN");
 MCLSTR_DEFINE(quant, "QUANT");
 MCLSTR_DEFINE(fade, "FADE");
+MCLSTR_DEFINE(flen, "FLEN");
 MCLSTR_DEFINE(fade_in, "IN");
 MCLSTR_DEFINE(fade_out, "OUT");
 MCLSTR_DEFINE(arp, "ARP");
