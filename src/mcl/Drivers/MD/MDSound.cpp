@@ -99,13 +99,9 @@ bool MDSound::load_sound(uint8_t track) {
     if (machine2.lfo.destinationTrack < 16) {
       machine2.lfo.destinationTrack += track;
     }
-    machine1.trigGroup = track + 1;
     machine2.trigGroup = track;
 
     MD.sendMachine(track + 1, &machine2, send_level, send);
-
-  } else {
-    machine1.trigGroup = track;
   }
 
   if (machine1.lfo.destinationTrack < 16) {
