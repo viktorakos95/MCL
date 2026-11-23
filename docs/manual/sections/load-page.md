@@ -100,7 +100,7 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
-| `AUT` | A cross | Each track fades by what it was playing (see below). |
+| `AUT` | A cross | Each track picks its own direction from what it is playing (see below). |
 | `IN` | A rising line | Every loaded track fades in. |
 | `OUT` | A falling line | Every loaded track fades out. |
 
@@ -125,7 +125,7 @@ With `FLEN` at `-`, a fade lasts the `QUANT` length; with `QUANT` also at `-`, i
 
 ### Fade Mode AUT
 
-In fade mode `AUT`, each track fades by what it was playing:
+In fade mode `AUT`, each track picks its own direction from what it is playing when the load arrives:
 
 | The track was | You load | Result |
 | --- | --- | --- |

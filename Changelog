@@ -135,9 +135,13 @@ Configuration Menu page.
   In Load, tap [ Bank D ] (Slide) to turn FADE on or off. Hold it for the
   FADE screen, which sets the fade mode and the fade length (FLEN).
 
-  Fade mode AUT fades each track by what it was playing. A new slot fades
-  the playing slot out, switches in, then fades in. Reloading the playing
-  slot fades it out. A silent track fades in.
+  In fade mode AUT, each track picks its own direction from what it is
+  playing when the load arrives:
+
+   Playing another slot = that slot fades out, the new slot switches in,
+   then fades in.
+   Playing the slot being loaded = it fades out and stays silent.
+   Silent = the new slot fades in.
 
   Fade modes IN and OUT make every loaded track fade in or fade out.
 
