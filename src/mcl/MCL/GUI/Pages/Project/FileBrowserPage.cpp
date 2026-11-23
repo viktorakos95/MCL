@@ -319,6 +319,12 @@ void FileBrowserPage::draw_filebrowser() {
         oled_hline(x_offset + 1, y_pos - 1 - 4, 3, !color);
         oled_cursor(x_offset + 8, y_pos);
       }
+      if (type == FILE_TYPE && hide_suffix) {
+        char *suffix = strrchr(temp_entry, '.');
+        if (suffix != nullptr) {
+          *suffix = '\0';
+        }
+      }
       oled_display.println(temp_entry);
     }
   }

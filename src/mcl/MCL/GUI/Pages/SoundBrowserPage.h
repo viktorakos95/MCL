@@ -13,6 +13,7 @@ class SoundBrowserPage : public FileBrowserPage {
 
   SoundBrowserPage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL,
                   Encoder *e4 = NULL) : FileBrowserPage(e1, e2, e3, e4) {
+    hide_suffix = true;
   }
 
   virtual void on_new();

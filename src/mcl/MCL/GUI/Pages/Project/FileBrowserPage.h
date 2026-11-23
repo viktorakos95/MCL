@@ -98,6 +98,8 @@ public:
   static int numEntries;
 
   char lwd[128];
+  // Files are listed without their suffix: set by a browser of one file type.
+  bool hide_suffix;
   static char title[12];
   static char str_save[16];
   uint8_t cur_row;
@@ -141,6 +143,7 @@ public:
     param1 = e1;
     param2 = e2;
     lwd[0] = '\0';
+    hide_suffix = false;
   }
   virtual bool handleEvent(gui_event_t *event);
   void draw_sidebar();
