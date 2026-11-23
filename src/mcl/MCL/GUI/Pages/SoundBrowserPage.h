@@ -25,6 +25,12 @@ class SoundBrowserPage : public FileBrowserPage {
 
   virtual void init();
   void setup();
+#ifdef PLATFORM_TBD
+  virtual bool tbd_can_cd_up() const;
+#endif
+
+protected:
+  virtual bool can_show_parent_entry() const;
 
 };
 

@@ -4,7 +4,7 @@
 #include "../../../Drivers/MD/MD.h"
 #include "../../../Drivers/MD/MDSound.h"
 
-const char *c_snd_root = "/Sounds";
+const char c_snd_root[] = "/Sounds";
 const char *c_snd_suffix = ".snd";
 
 void SoundBrowserPage::setup() {
@@ -16,26 +16,47 @@ void SoundBrowserPage::setup() {
 }
 
 void SoundBrowserPage::init() {
+  // The browser options are shared by every file browser page: start from
+  // the defaults, or the last page's settings stay (the project page selects
+  // folders instead of opening them).
+  FileBrowserPage::init();
   FileBrowserPage::selection_change = true;
-  file_types.reset();
   file_types.add(c_snd_suffix);
 
   key_interface.off();
 
   strcpy_P(title, mclstr_title_sound);
   show_dirs = true;
+  select_dirs = false;
+  draw_dirs = true;
   show_save = true;
   show_filemenu = true;
   show_new_folder = true;
   show_parent = true;
-  SD.chdir(lwd);
-  query_filesystem();
-
   strcpy_P(str_save, mclstr_action_save_bracket);
+  query_filesystem();
 
   R.Clear();
   R.use_machine_names_short();
 }
+
+// ".." is shown only inside a folder, so the browser stays in /Sounds. It
+// opens /Sounds and never goes above it, so a longer path is a folder.
+bool SoundBrowserPage::can_show_parent_entry() const {
+#ifdef __AVR__
+  return show_parent && strlen(lwd) > sizeof(c_snd_root) - 1;
+#else
+  char path[64];
+  return show_parent &&
+         strlen(lwd) > strlen(mcl_sd.full_path(c_snd_root, path, sizeof(path)));
+#endif
+}
+
+#ifdef PLATFORM_TBD
+bool SoundBrowserPage::tbd_can_cd_up() const {
+  return can_show_parent_entry();
+}
+#endif
 
 void SoundBrowserPage::save_sound() {
 
@@ -101,13 +122,14 @@ void SoundBrowserPage::on_select(const char *__) {
 bool SoundBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
-      bool state = (param2->cur == 0);
+      // A new folder can be made from any row; delete and rename act on a
+      // sound or folder, not on the save row or "..", which follows it.
+      bool state = param2->cur <= SoundBrowserPage::can_show_parent_entry();
       uint16_t disabled = FM_MASK(FM_DUPLICATE) | FM_MASK(FM_MOVE) |
                           FM_MASK(FM_VERSIONS) | FM_MASK(FM_RECVALL) |
                           FM_MASK(FM_SENDALL);
       if (state) {
-        disabled |=
-            FM_MASK(FM_NEW_FOLDER) | FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME);
+        disabled |= FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME);
       }
       set_file_menu_disabled_mask(disabled);
       open_filemenu();
