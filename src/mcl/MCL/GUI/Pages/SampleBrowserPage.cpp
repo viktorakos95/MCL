@@ -110,27 +110,19 @@ void SampleBrowserPage::init(uint8_t show_samplemgr_) {
   filemenu_active = false;
   select_dirs = false;
   show_samplemgr = show_samplemgr_;
+  // Folders, the receive row and the file menu belong to the card's file
+  // list, not to the Machinedrum's sample slots.
+  draw_dirs = show_dirs = show_save = show_filemenu = show_new_folder =
+      show_parent = !show_samplemgr;
 
   if (show_samplemgr) {
     strcpy_P(title, mclstr_title_md_rom);
     encoders[1] = &samplebrowser_param3;
-    draw_dirs = false;
-    show_dirs = false;
-    show_save = false;
-    show_filemenu = false;
-    show_new_folder = false;
-    show_parent = false;
     query_sample_slots();
   } else {
     strcpy_P(title, mclstr_title_sample);
     encoders[1] = &samplebrowser_param2;
     if (old_cur_row != 255) { cur_row = old_cur_row; old_cur_row = 255;}
-    draw_dirs = true;
-    show_dirs = true;
-    show_save = true;
-    show_filemenu = true;
-    show_new_folder = true;
-    show_parent = true;
     //if (query) {
       SD.chdir(lwd);
       query_filesystem();
