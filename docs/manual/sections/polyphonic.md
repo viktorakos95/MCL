@@ -10,7 +10,7 @@ Open it from the Chromatic Page Track Menu:
 
 ![voice select page](../assets/images/voice_select_page.png)
 
-On hardware with panel buttons, the Chromatic Page can also open Polyphony with the **[Save/No]** + **[Load/Yes]** button chord.
+On hardware with panel buttons, the Chromatic Page can also open Polyphony with the **`Save | No`** + **`Load | Yes`** button chord.
 
 ## Core Idea
 

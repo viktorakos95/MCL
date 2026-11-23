@@ -130,7 +130,7 @@ Scene Autofill creates kit morphs by storing changed kit parameters as scene loc
 | Control | Action |
 | --- | --- |
 | Hold a Perf encoder button + **[Global]** | Clear both scenes assigned to that controller. |
-| Hold a Perf encoder button + **[Load/Yes]** | Autofill the controller's right scene from changed kit parameters. |
+| Hold a Perf encoder button + **`Load | Yes`** | Autofill the controller's right scene from changed kit parameters. |
 
 See [Performance Page](perf-page.md) for controller, scene and scene-lock editing.
 

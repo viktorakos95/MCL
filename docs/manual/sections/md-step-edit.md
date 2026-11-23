@@ -183,7 +183,7 @@ Use Encoder 3 for quick length changes, or use Track Menu `LENGTH` and `SPEED`.
 | Length | 1-64 steps for primary step tracks. |
 | Speed | `1x`, `2x`, `3/2x`, `3/4x`, `1/2x`, `1/4x`, `1/8x`. |
 
-Hold **[Yes/Load]** while applying speed or swing from the Track Menu to update all compatible primary step tracks.
+Hold **`Load | Yes`** while applying speed or swing from the Track Menu to update all compatible primary step tracks.
 
 With MDX X.20 or later, a length or speed change on the Machinedrum's SCALE page goes to its track or to all tracks, as chosen there.
 

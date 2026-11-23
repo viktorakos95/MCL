@@ -23,7 +23,7 @@ If your SD card uses an `/MCL` folder, sounds are stored under `/MCL/Sounds`.
 | Control | Action |
 | --- | --- |
 | **[Up]** / **[Down]** | Move through folders and `.snd` files. |
-| **[Yes]** / **[Load/Yes]** | Enter a folder, save from `[SAVE]`, or load the selected sound. |
+| **[Yes]** / **`Load | Yes`** | Enter a folder, save from `[SAVE]`, or load the selected sound. |
 | **[No]** | Cancel or return from the browser. |
 | Hold **[Global]** | Open the file menu. |
 
