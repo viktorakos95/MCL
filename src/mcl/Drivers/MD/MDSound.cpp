@@ -35,52 +35,44 @@ bool MDSound::read_sound() {
   return true;
 }
 
-bool MDSound::fetch_sound(uint8_t track) {
-  DEBUG_PRINT_FN();
-  machine_count = 0;
-  machine1.model = MD.kit.models[track]; //get raw model including tonal bit
-  machine1.level = MD.kit.levels[track];
-  memcpy(&machine1.params, &(MD.kit.params[track]), SPS_PARAMS_PER_TRACK);
-  MD.kit.get_ext(track, &machine1);
-  MD.kit.get_lfo(track, &machine1.lfo);
+// Copies kit track `from` into one machine of a sound, stored as the sound's
+// slot `slot`. The LFO destination is kept as a slot: 0 for track `first`,
+// 1 for track `second`; an LFO aimed at any other track is dropped, with its
+// depth.
+static void fetch_machine(MDMachine &machine, uint8_t from, uint8_t first,
+                          uint8_t second, uint8_t slot) NOINLINE();
+static void fetch_machine(MDMachine &machine, uint8_t from, uint8_t first,
+                          uint8_t second, uint8_t slot) {
+  machine.model = MD.kit.models[from]; //get raw model including tonal bit
+  machine.level = MD.kit.levels[from];
+  memcpy(&machine.params, &(MD.kit.params[from]), SPS_PARAMS_PER_TRACK);
+  MD.kit.get_ext(from, &machine);
+  MD.kit.get_lfo(from, &machine.lfo);
 
-  uint8_t trigGroup = MD.kit.trigGroups[track];
-  if (machine1.lfo.destinationTrack == track) {
-    machine1.lfo.destinationTrack = 0;
-  } else if (machine1.lfo.destinationTrack == trigGroup) {
-    machine1.lfo.destinationTrack = 1;
+  if (machine.lfo.destinationTrack == first) {
+    machine.lfo.destinationTrack = 0;
+  } else if (machine.lfo.destinationTrack == second) {
+    machine.lfo.destinationTrack = 1;
   } else {
-    machine1.lfo.destinationTrack = 255;
-    machine1.lfo.depth = machine1.params[MODEL_LFOD] = 0;
+    machine.lfo.destinationTrack = 255;
+    machine.lfo.depth = machine.params[MODEL_LFOD] = 0;
   }
 
-  machine1.track = 0;
-  machine1.normalize_level();
-  machine_count++;
+  machine.track = slot;
+  machine.normalize_level();
+}
+
+bool MDSound::fetch_sound(uint8_t track) {
+  DEBUG_PRINT_FN();
+  uint8_t trigGroup = MD.kit.trigGroups[track];
+  fetch_machine(machine1, track, track, trigGroup, 0);
+  machine_count = 1;
 
   // If track uses trigGroup, assume sound is made up of two models.
 
   if ((trigGroup < 16) && (trigGroup != track)) {
-    machine2.model = MD.kit.models[trigGroup]; //get raw model including tonal bit
-    machine2.level = MD.kit.levels[trigGroup];
-    memcpy(&machine2.params, &(MD.kit.params[trigGroup]), SPS_PARAMS_PER_TRACK);
-    MD.kit.get_ext(trigGroup, &machine2);
-    MD.kit.get_lfo(trigGroup, &machine2.lfo);
-
-    if (machine2.lfo.destinationTrack == trigGroup) {
-      machine2.lfo.destinationTrack = 1;
-    }
-
-    else if (machine2.lfo.destinationTrack == track) {
-      machine2.lfo.destinationTrack = 0;
-    } else {
-      machine2.lfo.destinationTrack = 255;
-      machine2.lfo.depth = machine2.params[MODEL_LFOD] = 0;
-    }
-
-    machine_count++;
-    machine2.track = 1;
-    machine2.normalize_level();
+    fetch_machine(machine2, trigGroup, track, trigGroup, 1);
+    machine_count = 2;
   }
   return true;
 }
