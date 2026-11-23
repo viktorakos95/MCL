@@ -21,7 +21,7 @@ The top-level menu is named `CONFIG`.
 | `LOAD PROJECT` | Opens the project browser. |
 | `MIDI` | Opens device, port, sync, routing, controller and program-change settings. |
 | Device config entries | Dynamic entries for connected devices, such as Machinedrum, Monomachine, Analog Four, generic MIDI or TBD. |
-| `SYSTEM` | Opens display, project-configuration and grid-encoder settings. |
+| `SYSTEM` | Opens display, project-configuration, grid-encoder and Load/Save settings. |
 
 ## Project Browser
 
@@ -39,6 +39,8 @@ The project browser can show:
 | Project | Load the project. |
 
 The currently loaded project is marked in the browser.
+
+The browser opens on the last project you loaded or tried to load. If a project fails to load, MCL keeps the current project and the browser stays open on the one that failed.
 
 Browser shortcuts: **[Left]** jumps to the top of the current project list. **[Right]** returns to the project root and focuses the currently loaded project path.
 
@@ -87,6 +89,24 @@ Creating a project opens a text-entry page. If a project or directory with the s
 Projects are stored on the SD card with a project master file and grid files. Project and grid headers are versioned so older projects can be upgraded safely.
 
 Back up projects before upgrading firmware. Supported older projects are upgraded when they are first loaded, and upgraded projects are not intended to be opened by older firmware.
+
+### Projects From Older Versions
+
+| Project from | Opening it in MCL 5.10 |
+| --- | --- |
+| MCL 5.00 to 5.02 | It opens directly and is upgraded as it opens. MCL 5.0x cannot open it afterwards. |
+| Before MCL 5.00 | On TBD it is converted when it loads. On MegaCommand and MegaCMD the browser shows `UPGRADE PROJECT`: convert it with the project upgrader first. |
+
+### Project Upgrader
+
+The project upgrader is a separate firmware for MegaCommand and MegaCMD, `mcl_project_upgrade_1_0.hex`. It converts projects from before MCL 5.00.
+
+1. Back up the SD card.
+2. Install the upgrader.
+3. At start-up it asks `Convert all projects?`. **`Load | Yes`** converts; **`Save | No`** leaves the card unchanged and shows `NOTHING CHANGED`.
+4. It converts the older projects in the projects folder and in the folders one level below it. Each conversion writes new grid files, so it converts as many projects as the card has room for.
+5. It shows how many projects are ready (`PROJECTS READY`) and how many were left because the card is full (`LEFT: SD FULL`), then `INSTALL MCL 5.10`.
+6. Install MCL 5.10 again.
 
 Do not edit project files by hand. Use the project browser, file menu and version browser from MCL.
 

@@ -13,6 +13,8 @@ Recommended device OS versions:
 | Machinedrum | OS X.13 |
 | Monomachine | OS X.01 |
 
+Some Machinedrum features need MDX X.20 or later. The manual says where.
+
 This manual was migrated from the legacy LaTeX/PDF documentation. Some legacy sections and screenshots are still being updated.
 
 ![MCL logo](assets/images/mcl_logo_black_short.png)

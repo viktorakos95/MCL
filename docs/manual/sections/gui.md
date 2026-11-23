@@ -24,7 +24,7 @@ While Load or Save is open:
 
 **`Shift | Menu`**: Hold to open group selection; release to load or save the selected groups.
 **`Save | No`**: Closes Load or Save.
-**`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load settings: Encoder 2 chooses a row and Encoder 1 changes it. On Save, closes Save.
+**`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load settings: Encoder 2 moves the cursor and Encoder 1 changes the setting under it. On Save, closes Save.
 
 
 ## Encoder Buttons
@@ -77,6 +77,16 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Function] + [Classic/Extended]** Simultaneously reset parameters to last load value across all tracks.
 
 
+**Fill (MDX X.20 or later)**
+
+
+- **[Scale] + [Up]** hold fill, or end a latched fill.
+- **[Scale] + [Up] + [Down]** latch fill.
+- **[Scale] + [Down]** while playing: fill for one cycle of the longest Machinedrum track. Again to cancel it.
+- **[Bank] + [Scale]** open the Machinedrum's FILL view to choose the tracks a fill plays on.
+- **[Scale]** alone acts when it is released.
+
+
 **Loading**
 
 
@@ -105,12 +115,12 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 
 - Hold **[Enter/Yes]** to open slot Group Select. Release **[Enter/Yes]** to load by group. Group selection is editable via **[Trig]** keys 1-5.
 - **[Trig]** keys are used to select and load sequencer tracks from slots of the current row.
-- **[Up/Down]** move to another row. **[Left/Right]** scroll the columns shown.
+- **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown, with `CONFIG > SYSTEM > LOAD/SAVE` at `CLOSE` or `STAY`. At `LEGACY` they close Load and move the grid cursor.
 - **[Bank A,B,C]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
-- **[Bank D]** (the Slide key) turns FADE on or off.
+- **[Bank D]** (the Slide key): tap to turn FADE on or off, hold for the FADE screen.
 - **[Function]** to specify a destination track offset for the next load.
-- Hold **[Global]** to edit the Load settings (QUANT, LEN or FADE, load mode). **[Up/Down]** choose a row and **[Left/Right]** change it.
-- **[Exit/No]** closes the Load Page. It stays open after a load.
+- Hold **[Global]** to edit the Load settings: the load mode, QUANT, then FADE and FLEN (LEN in Queue mode). **[Up/Down]** move the cursor and **[Left/Right]** change the setting.
+- **[Exit/No]** closes the Load Page. Whether it closes after a load is set by `CONFIG > SYSTEM > LOAD/SAVE`.
 
 
 **[Function] + [Enter/Yes]** opens **Save Page**
@@ -177,6 +187,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Function/Scale/Trig] + [Clear/Copy/Paste]** clear/copy/paste for track/page/step.
 - **[Step] + [Left/Right]** microtiming.
 - **[Step] + [Up/Down]** conditionals.
+- With MDX X.20 or later, the first arrow press on a held step opens the Machinedrum's microtiming popup; later presses edit. **[Page]** sets the condition mode.
 - **[Step] + [Exit/No]** Mute/unmute step.
 - **[Function] + [Left/Right]** shift track sequence left or right.
 - **[Function] + [Up]** reverse track sequence.

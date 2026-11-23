@@ -30,6 +30,8 @@ Recommended configuration:
 
 Upgrade the Machinedrum to OS X.13 before using MCL. For Machinedrum MK1 units, keep Turbo MIDI at `4x` or lower.
 
+With MDX X.20 or later, MCL also supports the Machinedrum's parameters 24 to 37, USR machines, fill from the Machinedrum's keys, and step conditions on its microtiming popup.
+
 ## Secondary Device
 
 For a Monomachine or Analog Four as a secondary device:

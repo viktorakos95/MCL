@@ -46,6 +46,8 @@ The Performance Page has eight scenes, selected with **[Trig 1]** through **[Tri
 
 Scene locks can target device parameters, Machinedrum track and FX parameters, external MIDI parameters, TBD parameters, and LFO parameters exposed as performance targets.
 
+With a Machinedrum running MDX X.20 or later, controllers and scene locks can also target parameters 24 to 37 (envelope, second LFO, retrig, bus sends and envelope destination), and scene autofill captures them.
+
 Each controller has two scene assignments:
 
 | Control | Action |
