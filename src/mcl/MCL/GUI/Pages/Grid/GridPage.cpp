@@ -1747,7 +1747,7 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
 }
 
 // A fade length of 2^n steps, right-aligned like the panel's other values:
-// one digit up to 8, two to 64, three to 512, then 1024.
+// one digit up to 8, two to 64, three to 256.
 static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
 static void print_fade_steps(uint8_t n, uint8_t y) {
   uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
@@ -1892,7 +1892,7 @@ static void io_setting_step(int8_t dir, bool pressed) {
     return;
   }
   if (item == IO_ITEM_FLEN) {
-    // QUANT's length (-), then 1 .. 1024 steps.
+    // QUANT's length (-), then 1 .. 256 steps.
     mcl_cfg.load_fade_len =
         limit_value(mcl_cfg.load_fade_len, dir, 0, LOAD_FADE_MAX);
     return;
@@ -2321,7 +2321,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     // Editing the rows, or Slide held: the trigs set values, not slots. Trig
     // n sets QUANT, or the FADE length (turning FADE on), to 2^n steps, the
     // knob's powers of two: QUANT to 64 on trigs 1-6 (trigs 7-16 set 64
-    // too), the fade to 1024 on trigs 1-10 (either FADE stop). On the mode
+    // too), the fade to 256 on trigs 1-8 (trigs 9-16 set 256 too; either
+    // FADE stop). On the mode
     // and Queue's LEN they do nothing.
     if ((io_editing || io_slide) && !GridIOPage::show_track_type &&
         track < 16) {
@@ -2334,13 +2335,16 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         } else if (item == IO_ITEM_QUANT) {
           // Trigs past 6 set QUANT's maximum, 64.
           gridio_param4.cur = track < 6 ? 2 << track : 64;
-        } else if (item >= IO_ITEM_FMODE && track < LOAD_FADE_MAX - 1) {
+        } else if (item >= IO_ITEM_FMODE) {
           // Length code n is 2^(n-1) steps; the fade turns on. The lit
-          // trig again: back to QUANT's length.
-          const uint8_t len = track + 2;
-          mcl_cfg.load_fade_len =
-              (mcl_cfg.load_fade & 1) && mcl_cfg.load_fade_len == len ? 0
-                                                                       : len;
+          // trig again: back to QUANT's length. Trigs past 8 set the
+          // longest, 256 steps.
+          const bool fits = track < LOAD_FADE_MAX - 1;
+          const uint8_t len = fits ? track + 2 : LOAD_FADE_MAX;
+          mcl_cfg.load_fade_len = fits && (mcl_cfg.load_fade & 1) &&
+                                          mcl_cfg.load_fade_len == len
+                                      ? 0
+                                      : len;
           mcl_cfg.load_fade |= 1;
         }
         // Its release may come after the edit: it is ignored.

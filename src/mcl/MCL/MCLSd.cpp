@@ -346,9 +346,13 @@ bool MCLSd::load_init() {
           mcl_cfg.cfgfile.read(panel, 4);
           if (mcl_cfg.load_panel_tag != LOAD_PANEL_CFG_TAG ||
               panel[0] > (1 | LOAD_FADE_FORCE_OUT << 1) ||
-              mcl_cfg.load_fade_len > LOAD_FADE_MAX ||
+              mcl_cfg.load_fade_len > LOAD_FADE_STORED_MAX ||
               mcl_cfg.io_stay > LOAD_SAVE_STAY) {
             memset(panel, 0, 3);
+          }
+          // A fade set longer than the longest now takes the longest.
+          if (mcl_cfg.load_fade_len > LOAD_FADE_MAX) {
+            mcl_cfg.load_fade_len = LOAD_FADE_MAX;
           }
         }
         ptc_groups.load(mcl_cfg.ptc_group);
