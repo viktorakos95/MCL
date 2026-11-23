@@ -2020,7 +2020,8 @@ void GridPage::io_loop() {
       leds = (quant & (quant - 1)) ? 0 : quant >> 1;
     } else if (item >= IO_ITEM_FMODE) {
       const uint8_t len = mcl_cfg.load_fade_len;
-      leds = (mcl_cfg.load_fade & 1) && len >= 2 ? (uint16_t)1 << (len - 2) : 0;
+      // LEN's trig, with FADE on or off (LEN shows either way).
+      leds = len >= 2 ? (uint16_t)1 << (len - 2) : 0;
     }
   }
   if (GridIOPage::show_track_type) {
