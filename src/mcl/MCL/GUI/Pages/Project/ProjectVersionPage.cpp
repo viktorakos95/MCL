@@ -94,8 +94,7 @@ bool ProjectVersionPage::handleEvent(gui_event_t *event) {
     if (!can_delete) {
       disabled |= FM_MASK(FM_DELETE);
     }
-    set_file_menu_disabled_mask(disabled);
-    open_filemenu();
+    open_filemenu(disabled);
     return true;
   }
   return FileBrowserPage::handleEvent(event);

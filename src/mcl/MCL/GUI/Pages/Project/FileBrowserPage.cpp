@@ -116,6 +116,17 @@ void FileBrowserPage::set_entry_type(uint16_t n, uint8_t type) {
   put_bank3(ptr, &type, 1);
 }
 
+// The selected row's entry, if it is a file or folder that delete, rename,
+// move and clone can act on: not the save row, nor "..".
+bool FileBrowserPage::get_selected_entry(char *entry, uint8_t &type) {
+  uint16_t n = encoders[1]->getValue();
+  if (n >= (uint16_t)numEntries || (show_save && n == 0)) {
+    return false;
+  }
+  get_entry(n, entry, type);
+  return strcmp(entry, "..") != 0;
+}
+
 bool FileBrowserPage::can_show_parent_entry() const {
   return show_parent && strcmp(lwd, "/") != 0;
 }
@@ -275,6 +286,11 @@ void FileBrowserPage::open_filemenu() {
   encoders[0] = file_menu_page.encoders[0];
   encoders[1] = file_menu_page.encoders[1];
   file_menu_page.init();
+}
+
+void FileBrowserPage::open_filemenu(uint16_t disabled) {
+  set_file_menu_disabled_mask(disabled);
+  open_filemenu();
 }
 
 void FileBrowserPage::draw_sidebar() {
@@ -761,13 +777,10 @@ bool FileBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
 #ifdef __AVR__
-      bool can_clone = false;
-      if (show_copy && encoders[1]->getValue() < numEntries) {
-        char entry[FILE_ENTRY_SIZE];
-        uint8_t entry_type;
-        get_entry(encoders[1]->getValue(), entry, entry_type);
-        can_clone = strcmp(entry, "..") != 0 && entry_type == FILE_TYPE;
-      }
+      char entry[FILE_ENTRY_SIZE];
+      uint8_t entry_type;
+      bool can_clone = show_copy && get_selected_entry(entry, entry_type) &&
+                       entry_type == FILE_TYPE;
       file_menu_page.menu.enable_entry(FM_DUPLICATE, can_clone);
 #endif
       open_filemenu();

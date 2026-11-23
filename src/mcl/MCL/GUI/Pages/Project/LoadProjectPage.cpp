@@ -258,16 +258,11 @@ bool LoadProjectPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event) && EVENT_PRESSED(event, Buttons.BUTTON3) &&
       show_filemenu) {
     char entry[FILE_ENTRY_SIZE];
-    uint16_t entry_idx = encoders[1]->getValue();
     uint8_t entry_type = FILE_TYPE;
-    bool regular_entry = entry_idx < static_cast<uint16_t>(numEntries) &&
-                         !(show_save && entry_idx == 0);
+    bool regular_entry = get_selected_entry(entry, entry_type);
     if (regular_entry) {
-      get_entry(entry_idx, entry, entry_type);
-      regular_entry = strcmp(entry, "..") != 0;
-      if (regular_entry) {
-        entry_type = resolve_entry_type(entry_idx, entry, entry_type);
-      }
+      entry_type =
+          resolve_entry_type(encoders[1]->getValue(), entry, entry_type);
     }
     bool project_entry = regular_entry && entry_type == FILE_TYPE;
     uint16_t disabled = FM_MASK(FM_RECVALL) | FM_MASK(FM_SENDALL);
@@ -297,8 +292,7 @@ bool LoadProjectPage::handleEvent(gui_event_t *event) {
     }
 #endif
 #endif
-    set_file_menu_disabled_mask(disabled);
-    open_filemenu();
+    open_filemenu(disabled);
     return true;
   }
   return FileBrowserPage::handleEvent(event);

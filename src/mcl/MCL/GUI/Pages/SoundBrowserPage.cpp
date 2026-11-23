@@ -123,16 +123,16 @@ bool SoundBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
       // A new folder can be made from any row; delete and rename act on a
-      // sound or folder, not on the save row or "..", which follows it.
-      bool state = param2->cur <= SoundBrowserPage::can_show_parent_entry();
+      // sound or folder, not on the save row or "..".
+      char entry[FILE_ENTRY_SIZE];
+      uint8_t entry_type;
       uint16_t disabled = FM_MASK(FM_DUPLICATE) | FM_MASK(FM_MOVE) |
                           FM_MASK(FM_VERSIONS) | FM_MASK(FM_RECVALL) |
                           FM_MASK(FM_SENDALL);
-      if (state) {
+      if (!get_selected_entry(entry, entry_type)) {
         disabled |= FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME);
       }
-      set_file_menu_disabled_mask(disabled);
-      open_filemenu();
+      open_filemenu(disabled);
       return true;
     }
 

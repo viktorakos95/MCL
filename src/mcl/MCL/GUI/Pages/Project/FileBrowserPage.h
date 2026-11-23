@@ -150,6 +150,7 @@ public:
   void draw_filebrowser();
   void draw_menu();
   void open_filemenu();
+  void open_filemenu(uint16_t disabled);
 
   virtual void display();
 
@@ -161,6 +162,7 @@ public:
   bool add_entry(const char *entry, uint8_t type = FILE_TYPE);
   void get_entry(uint16_t n, char *entry);
   void get_entry(uint16_t n, char *entry, uint8_t &type);
+  bool get_selected_entry(char *entry, uint8_t &type);
   void set_entry_type(uint16_t n, uint8_t type);
 
   void draw_scrollbar(uint8_t x_offset);

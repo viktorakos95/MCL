@@ -266,21 +266,15 @@ void SampleBrowserPage::on_select(const char *__) {
 bool SampleBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
-      bool action_entry = param2->cur == 0;
-      bool regular_entry = !action_entry && param2->cur < numEntries;
+      char entry[FILE_ENTRY_SIZE];
+      uint8_t entry_type;
+      bool regular_entry = get_selected_entry(entry, entry_type);
       bool clone_entry = regular_entry;
-      if (regular_entry) {
-        char entry[FILE_ENTRY_SIZE];
-        uint8_t entry_type;
-        get_entry(param2->cur, entry, entry_type);
-        regular_entry = strcmp(entry, "..") != 0;
-        clone_entry = regular_entry;
 #ifdef __AVR__
-        clone_entry = clone_entry && entry_type == FILE_TYPE;
+      clone_entry = clone_entry && entry_type == FILE_TYPE;
 #endif
-      }
       uint16_t disabled = FM_MASK(FM_MOVE) | FM_MASK(FM_VERSIONS);
-      if (action_entry) {
+      if (param2->cur == 0) {
         disabled |= FM_MASK(FM_NEW_FOLDER);
       } else {
         disabled |= FM_MASK(FM_RECVALL) | FM_MASK(FM_SENDALL);
@@ -291,8 +285,7 @@ bool SampleBrowserPage::handleEvent(gui_event_t *event) {
       if (!clone_entry) {
         disabled |= FM_MASK(FM_DUPLICATE);
       }
-      set_file_menu_disabled_mask(disabled);
-      open_filemenu();
+      open_filemenu(disabled);
       return true;
     }
   }
