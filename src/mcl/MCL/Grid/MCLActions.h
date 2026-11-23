@@ -140,7 +140,9 @@ public:
   // At a hop of column n's chain (cache_next_tracks): once the chain's next
   // hop is not before the waiting load's point, the load takes the column,
   // its next transition and the cache this hop fills. Returns whether it did.
-  bool take_deferred_load(GridSlot n) NOINLINE();
+  bool take_deferred_load(GridSlot n);
+  // Column dst loads row at step at, once (a QUANT load's pending state).
+  void set_pending_load(GridSlot dst, GridRow row, uint16_t at) NOINLINE();
   // FADE's direction for a load of row into column dst (Grid page panel).
   uint8_t pick_fade_dir(GridSlot dst, GridRow row, uint8_t load_mode);
   // OUTIN for a column loading at its next transition (Grid page panel);

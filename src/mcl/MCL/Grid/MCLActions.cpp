@@ -310,6 +310,14 @@ bool MCLActions::chain_hops_before(GridSlot n, uint16_t point) {
          MidiClock.clock_less_than(next_transitions[n], point);
 }
 
+void MCLActions::set_pending_load(GridSlot dst, GridRow row, uint16_t at) {
+  transition_level[dst] = 0;
+  next_transitions[dst] = at;
+  transition_offsets[dst] = 0;
+  links[dst].row = row;
+  links[dst].loops = 1;
+}
+
 bool MCLActions::take_deferred_load(GridSlot n) {
   // The chain's own next hop (the handler's recalculation keeps it).
   calc_next_slot_transition(n, false);
@@ -324,11 +332,7 @@ bool MCLActions::take_deferred_load(GridSlot n) {
 #if MCL_GRID_IO_PANEL
   load_fade_dir[n] = pick_fade_dir(n, row, deferred_mode);
 #endif
-  links[n].row = row;
-  links[n].loops = 1;
-  next_transitions[n] = point;
-  transition_offsets[n] = 0;
-  transition_level[n] = 0;
+  set_pending_load(n, row, point);
   chains[n].init();
   chains[n].mode = deferred_mode;
   grid_page.active_slots[n] = SLOT_PENDING;
@@ -1085,12 +1089,7 @@ again:
           }
         }
       } else {
-        // transition_level[n] = gridio_param3.getValue();
-        transition_level[dst] = 0;
-        next_transitions[dst] = next_step;
-        transition_offsets[dst] = 0;
-        links[dst].row = row;
-        links[dst].loops = 1;
+        set_pending_load(dst, row, next_step);
         // if (grid_page.active_slots[n] < 0) {
         DEBUG_PRINT(F("slot man trans "));
         DEBUG_PRINT(dst);
