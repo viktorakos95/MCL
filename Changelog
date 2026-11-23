@@ -93,8 +93,18 @@ Configuration Menu page.
 
 - Grid Page Load and Save
 
-  On MegaCommand, MegaCMD and TBD, Load and Save now open on the Grid Page.
-  The left column becomes the Load or Save panel and the grid stays visible.
+  Load and Save are redesigned. On MegaCommand, MegaCMD and TBD they now
+  open on the Grid Page itself instead of on pages of their own: the left
+  column becomes the Load or Save panel and the grid stays visible.
+
+  The old pages covered the grid. With the grid in view you can see the
+  slots you are selecting, the row they load from or save to, and the slots
+  still waiting to load, so loading during a performance is easier to
+  follow.
+
+  The new encoder and arrow key behaviour is optional. CONFIG > SYSTEM >
+  LOAD/SAVE is LEGACY by default, which keeps the encoders and arrow keys
+  working as before (see Load/Save Setting below).
 
   The Load panel shows the load mode (LOAD, AUTO or QUE), a step count for
   timing a load, QUANT, and LEN in Queue mode. An arrow marks the row being
