@@ -74,7 +74,7 @@ With `FADE AUT`, each track fades by what it was playing:
 | Playing | The slot it is playing | The track fades out and stays silent. |
 | Silent after a fade out, or not loaded yet | Any slot | The slot switches in and fades in. |
 
-- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps with Encoder 1, or 2 to 1024 with the trigs, shown in place of `AUT`. With `QUANT` at `-`, it lasts the slot's own length.
+- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps with Encoder 1, or 2 to 1024 with the trigs. The length shows as `LEN` while **[Bank D]** is held, and on the `FADE` row while Encoder 1 is held in the Load settings. With `QUANT` at `-`, it lasts the slot's own length.
 - When the playing slot fades out first, the new slot switches in one fade length after the load point.
 - `FADE IN` and `FADE OUT`, set in the Load settings, make every loaded track fade in or fade out.
 - A load made while the sequencer is stopped fades when **[Play]** is pressed. A track that will fade in is silent until then.

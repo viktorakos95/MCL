@@ -2216,9 +2216,8 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
-        // FADE in the other modes: "FADE -" when off. With the QUANT length
-        // "FADE AUT" (direction by column), "FADE IN" or "FADE OUT" (forced);
-        // with a set length "FADE", "IN" or "OUT" and the steps.
+        // FADE in the other modes: "FADE -" when off, else FADE and its
+        // mode: AUT (direction by column), IN or OUT (forced).
         uint8_t len = mcl_cfg.load_fade_len;
         const char *word = fade_word();
         if (!(mcl_cfg.load_fade & 1)) {
@@ -2228,11 +2227,15 @@ void GridPage::io_display_panel() {
             panel_row(24, mclstr_fade, 0);
           }
         } else {
-          // With a set length the steps take the word's place, and a forced
-          // direction's word the label's.
-          text_at_P(1, 24, len && (mcl_cfg.load_fade >> 1) ? word : mclstr_fade);
-          if (len) {
-            print_fade_steps(len - 1, 24);
+          // The length shows on the FADE page, and here while knob 1 is
+          // pressed in the row edit, which sets it (- for QUANT's length).
+          text_at_P(1, 24, mclstr_fade);
+          if (io_editing && BUTTON_DOWN(Buttons.ENCODER1)) {
+            if (len) {
+              print_fade_steps(len - 1, 24);
+            } else {
+              print_right(0, 37, 24);
+            }
           } else {
             text_at_P(37 - 4 * strlen_P(word), 24, word);
           }
