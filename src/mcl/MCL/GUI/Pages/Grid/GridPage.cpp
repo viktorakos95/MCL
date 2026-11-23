@@ -266,6 +266,8 @@ void close_slot_menu_from_mouse(GridPage &page) {
 // Machinedrum's [Global] is held): the knobs edit them (io_handleEvent,
 // io_loop). Otherwise they are the Grid page's own.
 static bool io_editing;
+// FADE (Slide) is held past a tap, or used: the FADE page shows.
+static bool io_fade_page();
 // Load or Save was armed when Classic/Extended opened the mixer or REC
 // opened step edit: init() arms it again on the return from there.
 static uint8_t io_resume;
@@ -962,7 +964,7 @@ void GridPage::display_grid() {
     // separator (not while Load's rows are edited), and < / > at the grid's
     // edges for selected slots in the hidden columns.
     uint8_t ty = y_offset + cur_row * 8;
-    if (!io_editing) {
+    if (!io_editing && !io_fade_page()) {
       oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
     }
     if (io_mask & (first_bit - 1)) {
@@ -1764,12 +1766,12 @@ static MCLEncoder io_menu_line(IO_ROW_LEN_FADE, 0, ENCODER_RES_PAT);
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
-// FADE's word: ON lets each column pick its direction, IN and OUT force it.
+// FADE's word: AUT lets each column pick its direction, IN and OUT force it.
 static const char *fade_word() {
   const uint8_t force = mcl_cfg.load_fade >> 1;
   return force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
          : force == LOAD_FADE_FORCE_OUT ? mclstr_fade_out
-                                        : mclstr_on;
+                                        : mclstr_auto_short;
 }
 
 // The rows are edited while the Machinedrum's [Global] is held, or once
@@ -1797,6 +1799,21 @@ static bool io_slide_used;
 // When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
 // so a tap goes from blank straight to the length it turns on.
 static uint16_t io_slide_clock;
+
+static bool io_fade_page() {
+  return io_slide &&
+         (io_slide_used ||
+          clock_diff(io_slide_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS);
+}
+
+// One step of FADE's mode, in one order everywhere: - (off), AUT, IN, OUT.
+// Off keeps the direction, so a tap turns FADE back on in its last mode.
+static void io_step_fade_mode(int8_t dir) {
+  const uint8_t fade = mcl_cfg.load_fade;
+  uint8_t state = (fade & 1) ? 1 + (fade >> 1) : 0;
+  state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
+  mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
+}
 
 // SYSTEM > LOAD/SAVE LEGACY: while Load is open its knobs are its settings,
 // in the order of the released Load page (5.02): knob 1 the mode, knob 2
@@ -1857,14 +1874,11 @@ static void io_setting_step(int8_t dir, bool pressed) {
   }
   // FADE: turning steps off, ON (each column's own direction), IN, OUT;
   // pressed, it sets the length: QUANT's, then 1 .. 1024 steps.
-  uint8_t len = mcl_cfg.load_fade_len;
   if (!pressed) {
-    uint8_t fade = mcl_cfg.load_fade;
-    uint8_t state = (fade & 1) ? 1 + (fade >> 1) : 0;
-    state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
-    mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
+    io_step_fade_mode(dir);
   } else {
-    mcl_cfg.load_fade_len = limit_value(len, dir, 0, LOAD_FADE_MAX);
+    mcl_cfg.load_fade_len =
+        limit_value(mcl_cfg.load_fade_len, dir, 0, LOAD_FADE_MAX);
   }
 }
 
@@ -2129,10 +2143,15 @@ void GridPage::io_display_panel() {
   // the mode: LOAD (Manual), AUTO or QUE. While the rows are edited it is the
   // mode row, boxed only while that row is picked, so the picked row is the
   // only box.
-  const bool boxed = !(io_editing && io_menu_line.cur != IO_ROW_MODE);
+  // Holding FADE (Slide) shows the FADE page: the chip reads FADE and the
+  // rows are FADE's MODE and LEN.
+  const bool fade_page = load && io_fade_page();
+  const bool boxed =
+      fade_page || !(io_editing && io_menu_line.cur != IO_ROW_MODE);
   // While the mode row is picked, the chip stands right of a filled arrow:
   // >[LOAD]. Otherwise it is in its place.
-  const bool arrow = io_editing && io_menu_line.cur == IO_ROW_MODE;
+  const bool arrow =
+      !fade_page && io_editing && io_menu_line.cur == IO_ROW_MODE;
   const uint8_t cx = arrow ? 4 : 0;
   if (arrow) {
     oled_display.fillTriangle_3px(0, 2, WHITE);
@@ -2148,14 +2167,15 @@ void GridPage::io_display_panel() {
            : mcl_cfg.load_mode == LOAD_QUEUE ? mclstr_queue_short
                                              : mclstr_load;
   }
-  text_at_P(cx + 1, 1, chip);
+  text_at_P(cx + 1, 1, fade_page ? mclstr_fade : chip);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
   if (load) {
     // Line 1, beside the chip: the 16th-step count, for timing the trig
-    // release against the quantise boundary (not while the rows are edited).
-    if (!io_editing) {
+    // release against the quantise boundary (not while the rows are edited
+    // or the FADE page shows).
+    if (!io_editing && !fade_page) {
       char str[7];
       uint8_t step_count =
           (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
@@ -2168,6 +2188,22 @@ void GridPage::io_display_panel() {
     // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
+    } else if (fade_page) {
+      // MODE: - (off), AUT, IN or OUT. LEN: - (QUANT's length) or steps.
+      if (mcl_cfg.load_fade & 1) {
+        const char *word = fade_word();
+        text_at_P(1, 16, mclstr_mode);
+        text_at_P(37 - 4 * strlen_P(word), 16, word);
+      } else {
+        panel_row(16, mclstr_mode, 0);
+      }
+      const uint8_t len = mcl_cfg.load_fade_len;
+      if (len) {
+        text_at_P(1, 24, mclstr_len);
+        print_fade_steps(len - 1, 24);
+      } else {
+        panel_row(24, mclstr_len, 0);
+      }
     } else {
       uint8_t quant = mcl_cfg.chain_load_quant;
       panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
@@ -2176,16 +2212,14 @@ void GridPage::io_display_panel() {
         panel_row(24, mclstr_len, len == 1 ? 0 : len);
       } else {
         // FADE in the other modes: "FADE -" when off. With the QUANT length
-        // "FADE ON" (direction by column), "FADE IN" or "FADE OUT" (forced);
+        // "FADE AUT" (direction by column), "FADE IN" or "FADE OUT" (forced);
         // with a set length "FADE", "IN" or "OUT" and the steps.
         uint8_t len = mcl_cfg.load_fade_len;
         const char *word = fade_word();
         if (!(mcl_cfg.load_fade & 1)) {
-          // Off, the row shows only while FADE can be turned on: in the row
-          // edit, or with Slide held past a tap.
-          if (io_editing ||
-              (io_slide && clock_diff(io_slide_clock, read_clock_ms()) >=
-                               IO_EDIT_HOLD_MS)) {
+          // Off, the row shows only in the row edit, where it can be turned
+          // on (holding FADE shows the FADE page).
+          if (io_editing) {
             panel_row(24, mclstr_fade, 0);
           }
         } else {
@@ -2233,8 +2267,8 @@ void GridPage::io_display_panel() {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
-  // Not while Load's rows are edited.
-  if (!io_editing) {
+  // Not while Load's rows are edited or the FADE page shows.
+  if (!io_editing && !fade_page) {
     oled_cursor(26, 32);
     draw_bank_row_label(param2.cur, val);
   }
@@ -2266,9 +2300,13 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         } else if (row == IO_ROW_LEN_FADE &&
                    mcl_cfg.load_mode != LOAD_QUEUE &&
                    track < LOAD_FADE_MAX - 1) {
-          // Length code n is 2^(n-1) steps; the fade turns on.
+          // Length code n is 2^(n-1) steps; the fade turns on. The lit
+          // trig again: back to QUANT's length.
+          const uint8_t len = track + 2;
+          mcl_cfg.load_fade_len =
+              (mcl_cfg.load_fade & 1) && mcl_cfg.load_fade_len == len ? 0
+                                                                       : len;
           mcl_cfg.load_fade |= 1;
-          mcl_cfg.load_fade_len = track + 2;
         }
         // Its release may come after the edit: it is ignored.
         note_interface.ignoreNextEvent(track);
@@ -2338,9 +2376,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_end();
         return false;
       case MDX_KEY_BANKD:
-        // The Machinedrum's SLIDE key arrives as bank D. Outside Queue, held,
-        // the trigs set the fade length and UP/DOWN its direction; a tap (on
-        // the release) turns FADE on (with its last length) or off.
+        // The Machinedrum's SLIDE key arrives as bank D: FADE. Outside
+        // Queue, held, it shows the FADE page, the trigs set its length and
+        // UP/DOWN its mode; a tap (on the release) turns FADE off or on again
+        // in its last mode.
         if (load && !GridIOPage::show_offset &&
             mcl_cfg.load_mode != LOAD_QUEUE) {
           io_slide = true;
@@ -2392,13 +2431,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_UP:
       case MDX_KEY_DOWN:
-        // Slide held: UP/DOWN pick the fade's direction, UP towards OUT:
-        // each column's own (ON), IN, OUT. FADE turns on.
+        // FADE held: UP/DOWN step its mode, UP towards OUT: -, AUT, IN, OUT.
         if (load && io_slide) {
-          uint8_t dirn = mcl_cfg.load_fade >> 1;
-          dirn = limit_value(dirn, key == MDX_KEY_UP ? 1 : -1, 0,
-                             LOAD_FADE_FORCE_OUT);
-          mcl_cfg.load_fade = (dirn << 1) | 1;
+          io_step_fade_mode(key == MDX_KEY_UP ? 1 : -1);
           io_slide_used = true;
           return true;
         }
@@ -2431,7 +2466,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       }
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
-      if (io_slide && !io_slide_used) {
+      // A tap: let go before the hold time with nothing used. A longer
+      // hold only looked at the FADE page.
+      if (io_slide && !io_fade_page()) {
         mcl_cfg.load_fade ^= 1;
       }
       io_slide = false;

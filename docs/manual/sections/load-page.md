@@ -48,7 +48,7 @@ Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit th
 
 - Encoder 2 or **[Up/Down]** choose a row.
 - Encoder 1 or **[Left/Right]** change it.
-- On `FADE`, turning steps through `-`, `ON`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
+- On `FADE`, turning steps through `-`, `AUT`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
 - On `QUANT` or `FADE`, **[Trig]** N sets 2, 4, 8 … steps, doubling with each trig: **[Trig]** 1 to 6 set `QUANT` to 2 to 64 steps (the trigs above set 64), and **[Trig]** 1 to 10 set the fade length to 2 to 1024 steps, turning the fade on. The trig matching the current value is lit.
 
 While it is released, the encoders work as on the Grid Page, or in `LEGACY` set the mode, `LEN` and `QUANT`.
@@ -57,11 +57,16 @@ While it is released, the encoders work as on the Grid Page, or in `LEGACY` set 
 
 `FADE` fades the level of Machinedrum tracks when their slots load. It applies in Manual and Auto mode. Queue loads do not fade.
 
-Turn it on with a tap of **[Bank D]** (the Slide key) or in the Load settings. The left column shows `FADE ON` when it is on. When it is off the row is blank, and shows `FADE -` while the Load settings are edited or **[Bank D]** is held.
+A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode (`AUT` at first). The left column shows `FADE AUT` when it is on. When it is off the row is blank, and shows `FADE -` while the Load settings are edited.
 
-While **[Bank D]** is held, **[Trig]** 1 to 10 set the fade length to 2 to 1024 steps, doubling with each trig, and turn the fade on; the trig matching the current length is lit. **[Up/Down]** choose `ON`, `IN` or `OUT`, **[Up]** towards `OUT`.
+Hold **[Bank D]** to see and set the fade: the box at the top reads `FADE`, and the rows show `MODE` and `LEN`.
 
-With `FADE ON`, each track fades by what it was playing:
+- **[Up/Down]** step `MODE` through `-` (off), `AUT`, `IN` and `OUT`, **[Up]** towards `OUT`.
+- **[Trig]** 1 to 10 set `LEN` to 2 to 1024 steps, doubling with each trig, and turn the fade on; the trig matching the current length is lit. Pressing the lit trig again sets `LEN` back to `-`, the `QUANT` length.
+
+Let go of **[Bank D]** and the Load rows return.
+
+With `FADE AUT`, each track fades by what it was playing:
 
 | The track was | You load | Result |
 | --- | --- | --- |
@@ -69,7 +74,7 @@ With `FADE ON`, each track fades by what it was playing:
 | Playing | The slot it is playing | The track fades out and stays silent. |
 | Silent after a fade out, or not loaded yet | Any slot | The slot switches in and fades in. |
 
-- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps with Encoder 1, or 2 to 1024 with the trigs, shown in place of `ON`. With `QUANT` at `-`, it lasts the slot's own length.
+- The fade lasts the `QUANT` length, unless a fade length is set: 1 to 1024 steps with Encoder 1, or 2 to 1024 with the trigs, shown in place of `AUT`. With `QUANT` at `-`, it lasts the slot's own length.
 - When the playing slot fades out first, the new slot switches in one fade length after the load point.
 - `FADE IN` and `FADE OUT`, set in the Load settings, make every loaded track fade in or fade out.
 - A load made while the sequencer is stopped fades when **[Play]** is pressed. A track that will fade in is silent until then.
