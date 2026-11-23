@@ -347,35 +347,20 @@ bool LoadProjectPage::_handle_filemenu() {
 }
 
 #ifdef MCL_HAS_FILE_MOVE
+// The move itself is the file browser's, on full card paths; the project
+// page only refuses to move the current project or a folder holding it.
 bool LoadProjectPage::enter_project_move_destination(const char *entry) {
-  char source_path[PRJ_PATH_LEN];
-  if (!build_project_path(entry, source_path, sizeof(source_path))) {
+  char project_path[PRJ_PATH_LEN];
+  if (!build_project_path(entry, project_path, sizeof(project_path))) {
     gfx.alert_error("BAD PATH");
     return false;
   }
-  if (path_starts_with_dir(mcl_cfg.project, source_path)) {
+  if (path_starts_with_dir(mcl_cfg.project, project_path)) {
     gfx.alert_error("CURRENT PROJECT");
     return false;
   }
 
-  return start_move_destination(source_path);
-}
-
-bool LoadProjectPage::move_to_current_folder() {
-  const char *name = strrchr(move_source_path, '/');
-  name = name == nullptr ? move_source_path : name + 1;
-
-  char dest_path[PRJ_PATH_LEN];
-  if (!build_project_path(name, dest_path, sizeof(dest_path))) {
-    gfx.alert_error("BAD PATH");
-    return false;
-  }
-  proj.chdir_projects();
-  bool ok = finish_move_to_path(dest_path);
-  if (!ok) {
-    SD.chdir(lwd);
-  }
-  return ok;
+  return enter_move_destination(entry);
 }
 #endif
 
@@ -443,12 +428,9 @@ bool LoadProjectPage::tbd_can_cd_up() const {
 uint8_t LoadProjectPage::entry_type_for_dir(const char *entry) {
 #ifdef MCL_HAS_FILE_MOVE
   if (move_destination_mode) {
-    char project_path[PRJ_PATH_LEN];
-    if (!build_project_path(entry, project_path, sizeof(project_path)) ||
-        path_starts_with_dir(project_path, move_source_path)) {
-      return SKIP_TYPE;
-    }
-    if (is_project_dir(entry)) {
+    // Only folders are destinations, not projects.
+    if (FileBrowserPage::entry_type_for_dir(entry) == SKIP_TYPE ||
+        is_project_dir(entry)) {
       return SKIP_TYPE;
     }
     return DIR_TYPE;

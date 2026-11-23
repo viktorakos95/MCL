@@ -132,6 +132,17 @@ bool FileBrowserPage::can_show_parent_entry() const {
 }
 
 uint8_t FileBrowserPage::entry_type_for_dir(const char *entry) {
+#ifdef MCL_HAS_FILE_MOVE
+  // The DEST view leaves out the folder being moved: it cannot go inside
+  // itself.
+  if (move_destination_mode) {
+    char path[PRJ_PATH_LEN];
+    if (!MCLSd::join_path(path, sizeof(path), lwd, entry) ||
+        path_starts_with_dir(path, move_source_path)) {
+      return SKIP_TYPE;
+    }
+  }
+#endif
   (void)entry;
   return DIR_TYPE;
 }
