@@ -1541,7 +1541,14 @@ bool MDClass::probe() {
     setup();
 
     for (uint8_t i = 0; i < 32; i++) {
+#ifdef __AVR__
+      // The run across the track LEDs: 12 ms a step. It was paced by the
+      // progress bar's frame send, 12 ms before the display's waits were
+      // removed.
+      mcl_gui.delay_progress(12);
+#else
       mcl_gui.draw_progress_bar(60, 60, false, 60, 25);
+#endif
       setStatus(0x22, i & 0x0F);
     }
     setStatus(0x22, currentTrack);
