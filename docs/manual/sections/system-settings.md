@@ -52,7 +52,7 @@ After a major firmware upgrade, stored configuration may be reset to defaults on
 | Value | Behavior |
 | --- | --- |
 | `LEGACY` | The default. While Load is open, Encoder 1 sets the load mode, Encoder 2 `LEN` (Queue mode) and Encoders 3 and 4 `QUANT`. The arrow keys close Load or Save and move the Grid Page cursor. Load and Save close after a load or save. |
-| `CLOSE` | While Load is open, the encoders work as on the Grid Page, **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. On Save the arrow keys close Save. Load and Save close after a load or save. |
-| `STAY` | As `CLOSE`, and the arrow keys work the same way on Save. Load and Save stay open for the next load or save. |
+| `CLOSE` | While Load is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. On Save the arrow keys close Save. Load and Save close after a load or save. |
+| `STAY` | While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save stay open after a load or save, ready for the next one. |
 
 In every setting, holding **`Load | Yes`** or **[Global]** edits the Load settings. See the Load Page.

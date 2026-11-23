@@ -61,8 +61,8 @@ The encoders and arrow keys depend on the Load/Save setting.
 | Setting | Encoders | **[Up/Down]**, **[Left/Right]** | After a load |
 | --- | --- | --- | --- |
 | `LEGACY` (default) | Encoder 1 sets the load mode, Encoder 2 `LEN` (Queue mode) and Encoders 3 and 4 `QUANT`. | Close Load and move the Grid Page cursor. | Load closes. |
-| `CLOSE` | As on the Grid Page. | **[Up/Down]** move to another row; **[Left/Right]** scroll the columns shown. Load stays open. | Load closes. |
-| `STAY` | As on the Grid Page. | As `CLOSE`. | Load stays open for the next load. |
+| `CLOSE` | Navigate the grid, as on the Grid Page. | Navigate the grid: **[Up/Down]** move to another row; **[Left/Right]** scroll the columns shown. Load stays open. | Load closes. |
+| `STAY` | Navigate the grid, as on the Grid Page. | Navigate the grid: **[Up/Down]** move to another row; **[Left/Right]** scroll the columns shown. Load stays open. | Load stays open, ready for the next load. |
 
 ## Load Settings
 

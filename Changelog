@@ -116,12 +116,16 @@ Configuration Menu page.
   CONFIG > SYSTEM > LOAD/SAVE chooses how Load and Save behave:
 
    LEGACY = the default. While Load is open, the encoders set the load mode,
-   LEN and QUANT, the arrow keys close it, and Load and Save close after a
-   load or save.
-   CLOSE = while Load is open, the encoders work as on the Grid Page,
+   LEN and QUANT. The arrow keys close Load or Save and move the Grid Page
+   cursor. Load and Save close after a load or save.
+   CLOSE = while Load is open, the encoders and arrow keys navigate the grid:
    [ Up ] / [ Down ] move to another row and [ Left ] / [ Right ] scroll the
-   columns shown. Load and Save close after a load or save.
-   STAY = as CLOSE, and Load and Save stay open for the next load or save.
+   columns shown. On Save the arrow keys close Save. Load and Save close
+   after a load or save.
+   STAY = while Load or Save is open, the encoders and arrow keys navigate
+   the grid: [ Up ] / [ Down ] move to another row and [ Left ] / [ Right ]
+   scroll the columns shown. Load and Save stay open after a load or save,
+   ready for the next one.
 
 - Fade
 
