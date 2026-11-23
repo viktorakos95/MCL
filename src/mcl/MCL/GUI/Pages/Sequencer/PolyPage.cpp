@@ -176,8 +176,7 @@ void PolyPage::loop() {
 void PolyPage::display() {
   oled_display.clearDisplay();
 
-  oled_cursor(0, 2);
-  mcl_print_P(mclstr_channel_select);
+  text_at_P(0, 2, mclstr_channel_select);
   mcl_print_P(mclstr_space);
   print_ptc_group_label(selected_group);
   oled_display.println();

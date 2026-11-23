@@ -8,11 +8,9 @@ void QuestionDialogPage::init(const char* title_, const char* text_) {
   oled_font_small();
   oled_text_color(WHITE);
 
-  oled_cursor(MCLGUI::dlg_info_x2 - 82, MCLGUI::dlg_info_y1 + 23);
-  mcl_print_P(mclstr_no_option);
+  text_at_P(MCLGUI::dlg_info_x2 - 82, MCLGUI::dlg_info_y1 + 23, mclstr_no_option);
 
-  oled_cursor(MCLGUI::dlg_info_x2 - 53, MCLGUI::dlg_info_y1 + 23);
-  mcl_print_P(mclstr_yes_option);
+  text_at_P(MCLGUI::dlg_info_x2 - 53, MCLGUI::dlg_info_y1 + 23, mclstr_yes_option);
 
   oled_rect(MCLGUI::dlg_info_x2 - 88, MCLGUI::dlg_info_y1 + 16, 18, 9, WHITE);
   oled_rect(MCLGUI::dlg_info_x2 - 57, MCLGUI::dlg_info_y1 + 16, 18, 9, WHITE);

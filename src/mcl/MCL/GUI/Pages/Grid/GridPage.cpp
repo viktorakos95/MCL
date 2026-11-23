@@ -662,17 +662,6 @@ void GridPage::load_slot_models() {
   }
 }
 
-// Cursor + print in one out-of-line call: each inline pair costs ~30 bytes.
-static void text_at(uint8_t x, uint8_t y, const char *str) NOINLINE();
-static void text_at(uint8_t x, uint8_t y, const char *str) {
-  oled_cursor(x, y);
-  oled_display.print(str);
-}
-[[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) NOINLINE();
-[[maybe_unused]] static void text_at_P(uint8_t x, uint8_t y, const char *str_P) {
-  oled_cursor(x, y);
-  mcl_print_P(str_P);
-}
 
 void GridPage::display_counters() {
   uint8_t y_offset = 8;
@@ -1746,12 +1735,19 @@ static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
   print_right(value, 37, y);
 }
 
-// A fade length of 2^n steps, right-aligned like the panel's other values:
-// one digit up to 8, two to 64, three to 256.
-static void print_fade_steps(uint8_t n, uint8_t y) NOINLINE();
-static void print_fade_steps(uint8_t n, uint8_t y) {
-  uint8_t digits = n < 4 ? 1 : n < 7 ? 2 : n < 10 ? 3 : 4;
-  oled_cursor(37 - 4 * digits, y);
+// FLEN's row: "-" (QUANT's length) or the fade's 2^(n-1) steps,
+// right-aligned like the panel's other values: one digit up to 8, two to 64,
+// three to 256.
+static void fade_len_row(uint8_t y) NOINLINE();
+static void fade_len_row(uint8_t y) {
+  text_at_P(1, y, mclstr_flen);
+  const uint8_t len = mcl_cfg.load_fade_len;
+  if (!len) {
+    print_right(0, 37, y);
+    return;
+  }
+  const uint8_t n = len - 1;
+  oled_cursor(n < 4 ? 33 : n < 7 ? 29 : 25, y);
   oled_display.print(1u << n);
 }
 
@@ -1784,16 +1780,23 @@ static uint8_t io_item() {
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
-// FADE's mode as a filled 9 x 5 px graphic, the small font's height, at the
-// row's right (x 27 .. 35, baseline y), 1 px inside the edit box's edge: AUT
-// a dip, IN a rising ramp, OUT a falling one.
-static void draw_fade_mode(uint8_t y) {
-  const uint8_t mode = mcl_cfg.load_fade >> 1;
+// FADE's mode row: the label, then "-" when FADE is off, else the mode as a
+// filled 9 x 5 px graphic, the small font's height, at the row's right
+// (x 27 .. 35, baseline y), 1 px inside the edit box's edge: AUT a dip, IN a
+// rising ramp, OUT a falling one (IN's mirror image).
+static void fade_mode_row(uint8_t y, const char *label_P) NOINLINE();
+static void fade_mode_row(uint8_t y, const char *label_P) {
+  text_at_P(1, y, label_P);
+  const uint8_t fade = mcl_cfg.load_fade;
+  if (!(fade & 1)) {
+    print_right(0, 37, y);
+    return;
+  }
+  const uint8_t mode = fade >> 1;
   for (uint8_t i = 0; i < 9; i++) {
-    const uint8_t h = mode == LOAD_FADE_FORCE_IN    ? (i + 3) / 2
-                      : mode == LOAD_FADE_FORCE_OUT ? (11 - i) / 2
-                                                    : (i > 4 ? i - 4 : 4 - i) + 1;
-    oled_display.drawFastVLine(27 + i, y - h, h, WHITE);
+    const uint8_t h = mode ? (i + 3) / 2 : (i > 4 ? i - 4 : 4 - i) + 1;
+    const uint8_t x = mode == LOAD_FADE_FORCE_OUT ? 35 - i : 27 + i;
+    oled_display.drawFastVLine(x, y - h, h, WHITE);
   }
 }
 
@@ -2208,9 +2211,9 @@ void GridPage::io_display_panel() {
 
   if (load) {
     // Line 1, beside the chip: the 16th-step count, for timing the trig
-    // release against the quantise boundary (not while the rows are edited
-    // or the FADE page shows).
-    if (!io_editing && !fade_page) {
+    // release against the quantise boundary (not while the rows are edited,
+    // which includes the FADE page).
+    if (!io_editing) {
       char str[7];
       uint8_t step_count =
           (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
@@ -2223,60 +2226,45 @@ void GridPage::io_display_panel() {
     // destination itself goes on line 4.
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
-    } else if (fade_page) {
-      // MODE: - (off), or AUT, IN or OUT as on the FADE row. LEN: - (QUANT's
-      // length) or steps.
-      if (mcl_cfg.load_fade & 1) {
-        text_at_P(1, 16, mclstr_mode);
-        draw_fade_mode(16);
-      } else {
-        panel_row(16, mclstr_mode, 0);
-      }
-      const uint8_t len = mcl_cfg.load_fade_len;
-      if (len) {
-        text_at_P(1, 24, mclstr_flen);
-        print_fade_steps(len - 1, 24);
-      } else {
-        panel_row(24, mclstr_flen, 0);
-      }
-      // The picked row is inverted.
-      oled_display.fillRect(0, 10 + 8 * (item - IO_ITEM_FMODE), 37, 7,
-                            INVERT);
     } else {
-      uint8_t quant = mcl_cfg.chain_load_quant;
-      panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
-      if (mcl_cfg.load_mode == LOAD_QUEUE) {
-        uint8_t len = mcl_cfg.chain_queue_length;
-        panel_row(24, mclstr_len, len == 1 ? 0 : len);
-      } else {
-        // FADE in the other modes: "FADE -" when off, else FADE and its
-        // mode's graphic: AUT (direction by column), IN or OUT (forced).
-        // Off, the row shows only in the edit. In the edit line 4 is FLEN,
-        // on the screen's last row (baseline 31, its box y 25 .. 31).
-        if (mcl_cfg.load_fade & 1) {
-          text_at_P(1, 24, mclstr_fade);
-          draw_fade_mode(24);
-        } else if (io_editing) {
-          panel_row(24, mclstr_fade, 0);
+      // The top of the row the edit inverts.
+      uint8_t picked_y = 18;
+      if (fade_page) {
+        // MODE: - (off), or AUT, IN or OUT as on the FADE row. FLEN: -
+        // (QUANT's length) or steps.
+        fade_mode_row(16, mclstr_mode);
+        fade_len_row(24);
+        if (item == IO_ITEM_FMODE) {
+          picked_y = 10;
         }
-        if (io_editing) {
-          const uint8_t len = mcl_cfg.load_fade_len;
-          if (len) {
-            text_at_P(1, 31, mclstr_flen);
-            print_fade_steps(len - 1, 31);
-          } else {
-            panel_row(31, mclstr_flen, 0);
+      } else {
+        uint8_t quant = mcl_cfg.chain_load_quant;
+        panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
+        if (mcl_cfg.load_mode == LOAD_QUEUE) {
+          uint8_t len = mcl_cfg.chain_queue_length;
+          panel_row(24, mclstr_len, len == 1 ? 0 : len);
+        } else {
+          // FADE in the other modes: "FADE -" when off, else FADE and its
+          // mode's graphic: AUT (direction by column), IN or OUT (forced).
+          // Off, the row shows only in the edit. In the edit line 4 is FLEN,
+          // on the screen's last row (baseline 31, its box y 25 .. 31).
+          if ((mcl_cfg.load_fade & 1) || io_editing) {
+            fade_mode_row(24, mclstr_fade);
           }
+          if (io_editing) {
+            fade_len_row(31);
+          }
+        }
+        if (item == IO_ITEM_QUANT) {
+          picked_y = 10;
+        } else if (item == IO_ITEM_FLEN) {
+          picked_y = 25;
         }
       }
       if (io_editing && item != IO_ITEM_MODE) {
-        // Editing: the row the knobs edit is inverted, with 1 px of the box
-        // each side of the text, as in menus (the mode row is the chip).
-        oled_display.fillRect(0,
-                              item == IO_ITEM_QUANT  ? 10
-                              : item == IO_ITEM_FLEN ? 25
-                                                     : 18,
-                              37, 7, INVERT);
+        // Editing: the picked row is inverted, with 1 px of the box each
+        // side of the text, as in menus (the mode row is the chip).
+        oled_display.fillRect(0, picked_y, 37, 7, INVERT);
       }
     }
   } else {
@@ -2304,8 +2292,8 @@ void GridPage::io_display_panel() {
     print_grid_column(picked ? offset / GRID_WIDTH : cur_grid,
                       picked ? offset % GRID_WIDTH + 1 : 0, val);
   }
-  // Not while Load's rows are edited or the FADE page shows.
-  if (!io_editing && !fade_page) {
+  // Not while Load's rows are edited (the FADE page too).
+  if (!io_editing) {
     oled_cursor(26, 32);
     draw_bank_row_label(param2.cur, val);
   }
