@@ -288,7 +288,10 @@ void SPSXSeqTrack::post_seq(MidiUartClass *port_) {
 
 void SPSXSeqTrack::load_cache() {
     SPSXTrack t;
-    t.load_from_mem(track_number, MDSPSX_TRACK_TYPE);
+    if (t.load_from_mem(track_number, MDSPSX_TRACK_TYPE, t.get_track_size()) ==
+        nullptr) {
+        return;
+    }
     t.load_seq_data(static_cast<SeqTrack *>(this));
     if (load_sound) {
         MD.insertMachineInKit(track_number, &(t.machine), false);
