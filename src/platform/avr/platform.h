@@ -9,7 +9,9 @@
 #define IS_MEGACMD() IS_BIT_CLEAR(PINK,PK2)
 #define SET_USB_MODE(x) { PORTK = ((x)); }
 
-#define LOCAL_SPI_ENABLE() { DDRB = 0xFF; PORTL |= _BV(PL4); }
+// This processor's side of the SPI bus on: its level shifter (PL4), with the
+// display deselected (chip select PL7 high).
+#define LOCAL_SPI_ENABLE() { DDRB = 0xFF; PORTL |= _BV(PL7) | _BV(PL4); }
 #define LOCAL_SPI_DISABLE() { DDRB = 0; PORTB = 0; }
 
 #define EXTERNAL_SPI_ENABLE() { PORTL |= _BV(PL3); }

@@ -68,8 +68,13 @@ void init(void) {
   //PL4 == MEGA2560 level shifter enable
   //PL3 == Atmega16/32 level shifter enable
   //Only one should be active at any time.
+  // PL7 is the display's chip select. Nothing else drives it until the
+  // display is started, which comes after the SD card, and it has no
+  // pull-up: a reset leaves it low, and the display would take the card's
+  // start-up as its own commands and data. It becomes an output here and
+  // LOCAL_SPI_ENABLE() sets it high as the level shifter comes on.
 
-  DDRL |= _BV(PL4) | _BV(PL3);
+  DDRL |= _BV(PL7) | _BV(PL4) | _BV(PL3);
 
   LOCAL_SPI_ENABLE();
 
@@ -100,11 +105,6 @@ int main(void) {
 #else
   PORTE |= (1 << PE7);
 #endif
-  // Nothing drives the display's chip select until the display is started,
-  // and a reset leaves it low: the display would take the SD card's start-up
-  // as its own commands and data. Drive it high before the card is touched.
-  PORTL |= _BV(PL7);
-  DDRL |= _BV(PL7);
   setup();
   for (;;) {
     loop();
