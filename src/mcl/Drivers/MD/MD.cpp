@@ -1541,14 +1541,15 @@ bool MDClass::probe() {
     setup();
 
     for (uint8_t i = 0; i < 32; i++) {
-      mcl_gui.draw_progress_bar(60, 60, false, 60, 25);
-      setStatus(0x22, i & 0x0F);
 #ifdef __AVR__
-      // 2 ms between the track selects of the run across the LEDs. The
-      // progress bar's frame send paced it before the display's waits were
-      // removed; without a wait the 32 selects go out in under 100 ms.
-      delay(2);
+      // The run across the track LEDs: 20 ms a step, with the progress bar
+      // moving. The bar's frame send paced it before the display's waits
+      // were removed; without a wait the 32 selects go out in under 100 ms.
+      mcl_gui.delay_progress(20);
+#else
+      mcl_gui.draw_progress_bar(60, 60, false, 60, 25);
 #endif
+      setStatus(0x22, i & 0x0F);
     }
     setStatus(0x22, currentTrack);
 
