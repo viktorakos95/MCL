@@ -77,9 +77,9 @@ public:
   GridChain chains[NUM_SLOTS];
 
   // A Manual or Auto load for a column whose chain hops before the load's
-  // own point waits here (its row; 255 none), so the chain keeps going:
-  // release_deferred_loads() loads it once the chain's next hop is not
-  // before that point, in the mode of the latest load that waited
+  // own point waits here (its row; 255 none), so the chain keeps going: at
+  // the chain's last hop before that point, take_deferred_load() gives the
+  // column to it, in the mode of the latest load that waited
   // (deferred_mode).
   GridRow deferred_rows[NUM_SLOTS];
   uint8_t deferred_mode;
@@ -137,9 +137,15 @@ public:
   GridDeviceTrack *get_grid_dev_track(GridSlot slot_number);
 
   void init_chains();
-  // Loads the loads waiting behind a chain (deferred_rows) whose time has
-  // come (the transition handler calls it after each transition).
-  void release_deferred_loads() NOINLINE();
+  // At a hop of column n's chain (cache_next_tracks): once the chain's next
+  // hop is not before the waiting load's point, the load takes the column,
+  // its next transition and the cache this hop fills. Returns whether it did.
+  bool take_deferred_load(GridSlot n) NOINLINE();
+  // FADE's direction for a load of row into column dst (Grid page panel).
+  uint8_t pick_fade_dir(GridSlot dst, GridRow row, uint8_t load_mode);
+  // OUTIN for a column loading at its next transition (Grid page panel);
+  // returns whether it held the switch back by the fade's length.
+  bool hold_outin(GridSlot dst);
   // Whether column n's chain hops before point (a load point, in steps).
   bool chain_hops_before(GridSlot n, uint16_t point) NOINLINE();
 

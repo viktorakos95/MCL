@@ -650,10 +650,6 @@ void GridTask::transition_handler() {
       next_active_row = chain_behaviour ? mcl_actions.links[last_slot].row : last_active_row;
       row_update();
     }
-    // A load waiting behind its column's chain goes once the chain's next
-    // hop is not before the load's point; after the row update above, so
-    // the load's own next row stands.
-    mcl_actions.release_deferred_loads();
 
     active_state_dirty.flush();
 

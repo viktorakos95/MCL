@@ -310,35 +310,79 @@ bool MCLActions::chain_hops_before(GridSlot n, uint16_t point) {
          MidiClock.clock_less_than(next_transitions[n], point);
 }
 
-void MCLActions::release_deferred_loads() {
+bool MCLActions::take_deferred_load(GridSlot n) {
+  // The chain's own next hop (the handler's recalculation keeps it).
+  calc_next_slot_transition(n, false);
   const uint8_t q = get_quant();
-  const uint16_t point = q == QUANT_LEN ? 0 : quant_load_point(q);
-  GridRow rows[NUM_SLOTS];
-  uint8_t select[NUM_SLOTS];
-  bool any = false;
-  for (uint8_t n = 0; n < NUM_SLOTS; n++) {
-    rows[n] = deferred_rows[n];
-    // Still waiting while the chain hops before the load's point.
-    select[n] = rows[n] != 255 &&
-                !(q != QUANT_LEN && chain_hops_before(n, point));
-    if (select[n]) {
-      deferred_rows[n] = 255;
-      any = true;
-    } else {
-      rows[n] = 255;
+  const uint16_t point =
+      q == QUANT_LEN ? next_transitions[n] : quant_load_point(q);
+  if (chain_hops_before(n, point)) {
+    return false;
+  }
+  const GridRow row = deferred_rows[n];
+  deferred_rows[n] = 255;
+#if MCL_GRID_IO_PANEL
+  load_fade_dir[n] = pick_fade_dir(n, row, deferred_mode);
+#endif
+  links[n].row = row;
+  links[n].loops = 1;
+  next_transitions[n] = point;
+  transition_offsets[n] = 0;
+  transition_level[n] = 0;
+  chains[n].init();
+  chains[n].mode = deferred_mode;
+  grid_page.active_slots[n] = SLOT_PENDING;
+#if MCL_GRID_IO_PANEL
+  hold_outin(n);
+#endif
+  return true;
+}
+
+#if MCL_GRID_IO_PANEL
+// Reloading what plays fades it out; a new slot fades the old one out,
+// switches and fades in; a silent column fades back in. A forced direction
+// is its own code (LOAD_FADE_FORCE_IN / _OUT).
+uint8_t MCLActions::pick_fade_dir(GridSlot dst, GridRow row,
+                                  uint8_t load_mode) {
+  if (!(mcl_cfg.load_fade & 1) ||
+      (load_mode != LOAD_MANUAL && load_mode != LOAD_AUTO)) {
+    return LOAD_FADE_DIR_NONE;
+  }
+  const uint8_t dir = mcl_cfg.load_fade >> 1;
+  if (dir != 0) {
+    return dir;
+  }
+  const GridRow playing = grid_page.active_slots[dst];
+  return playing == SLOT_DISABLED || TrackLoadFadeRunner::silenced(dst)
+             ? LOAD_FADE_DIR_IN
+             : playing == row ? LOAD_FADE_DIR_OUT : LOAD_FADE_DIR_OUTIN;
+}
+
+// Each MD slot fades out from its load point and switches when that ends,
+// then fades in. A slot a later non-OUTIN load takes over is let go.
+bool MCLActions::hold_outin(GridSlot dst) {
+  TrackLoadFadeData fade_out;
+  if (load_fade_dir[dst] == LOAD_FADE_DIR_OUTIN &&
+      panel_fade(dst, get_grid_dev_track(dst), &fade_out)) {
+    fade_out.flags |= TRACK_LOAD_FADE_FLAG_OUT | TRACK_LOAD_FADE_FLAG_THEN_IN;
+    const uint16_t at = next_transitions[dst];
+    if (start_load_fade_at(
+            dst, &fade_out,
+            MidiClock.div16th_to_div192(at, transition_offsets[dst])
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+                ,
+            false
+#endif
+            ,
+            false)) {
+      next_transitions[dst] = at + fade_out.duration_q12 / 12;
+      return true;
     }
   }
-  if (any) {
-#if defined(__AVR__)
-    // As the AVR load queue handler does.
-    write_original = 1;
-    load_tracks(select, rows, deferred_mode);
-#else
-    // The host queue handler also flushes the arranger's runtime edits.
-    grid_task.load_queue.put(deferred_mode, rows);
-#endif
-  }
+  TrackLoadFadeRunner::release(dst);
+  return false;
 }
+#endif
 
 void MCLActions::clear_load_fades(bool preserve_armed_prestart) {
   TrackLoadFadeRunner::clear(preserve_armed_prestart);
@@ -827,27 +871,13 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
     }
 #if MCL_GRID_IO_PANEL
     // FADE picks each column's direction now, while the column still shows
-    // what it plays. Reloading what plays fades it out; a new slot fades the
-    // old one out, switches and fades in; a silent column fades back in.
+    // what it plays.
     if (first_slot == 255) {
       first_slot = n;
     }
     GridSlot dst = load_offset == 255 ? n : n - first_slot + load_offset;
     if (dst < NUM_SLOTS) {
-      uint8_t dir = LOAD_FADE_DIR_NONE;
-      if ((mcl_cfg.load_fade & 1) &&
-          (load_mode == LOAD_MANUAL || load_mode == LOAD_AUTO)) {
-        // A forced direction is its own code (LOAD_FADE_FORCE_IN / _OUT).
-        dir = mcl_cfg.load_fade >> 1;
-        if (dir == 0) {
-          const GridRow playing = grid_page.active_slots[dst];
-          dir = playing == SLOT_DISABLED || TrackLoadFadeRunner::silenced(dst)
-                    ? LOAD_FADE_DIR_IN
-                    : playing == row_array[n] ? LOAD_FADE_DIR_OUT
-                                              : LOAD_FADE_DIR_OUTIN;
-        }
-      }
-      load_fade_dir[dst] = dir;
+      load_fade_dir[dst] = pick_fade_dir(dst, row_array[n], load_mode);
     }
 #endif
 
@@ -1135,29 +1165,9 @@ again:
   // fades in. A slot a later non-OUTIN load takes over is let go.
   bool held = false;
   for (uint8_t dst = 0; dst < NUM_SLOTS; dst++) {
-    if (!loaded[dst]) {
-      continue;
+    if (loaded[dst] && hold_outin(dst)) {
+      held = true;
     }
-    TrackLoadFadeData fade_out;
-    if (load_fade_dir[dst] == LOAD_FADE_DIR_OUTIN &&
-        panel_fade(dst, get_grid_dev_track(dst), &fade_out)) {
-      fade_out.flags |= TRACK_LOAD_FADE_FLAG_OUT | TRACK_LOAD_FADE_FLAG_THEN_IN;
-      const uint16_t at = next_transitions[dst];
-      if (start_load_fade_at(
-              dst, &fade_out,
-              MidiClock.div16th_to_div192(at, transition_offsets[dst])
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
-                  ,
-              false
-#endif
-              ,
-              false)) {
-        next_transitions[dst] = at + fade_out.duration_q12 / 12;
-        held = true;
-        continue;
-      }
-    }
-    TrackLoadFadeRunner::release(dst);
   }
   if (held) {
     calc_next_transition();
@@ -1589,6 +1599,14 @@ void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
     }
 
     update_chain_links(n, gdt);
+
+    // A load waiting behind this column's chain takes the cache this hop
+    // fills, once the chain's next hop is not before the load's point. The
+    // column is then no longer hopping: the handler's recalculation, which
+    // would end a Manual column's pending transition, leaves it alone.
+    if (deferred_rows[n] != 255 && take_deferred_load(n)) {
+      slot_select_array[n] = 0;
+    }
 
     if (links[n].row >= GRID_LENGTH ||
         links[n].row == grid_page.active_slots[n] || links[n].loops == 0)
