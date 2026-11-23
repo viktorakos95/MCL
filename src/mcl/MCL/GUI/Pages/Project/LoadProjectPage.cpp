@@ -227,8 +227,7 @@ bool LoadProjectPage::handleEvent(gui_event_t *event) {
       event->mask == EVENT_BUTTON_PRESSED) {
     switch (event->source) {
     case MDX_KEY_LEFT:
-      encoders[1]->cur = encoders[1]->old = 0;
-      cur_row = 0;
+      set_cursor(0, 0);
       selection_change = true;
       return true;
     case MDX_KEY_RIGHT:

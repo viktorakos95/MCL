@@ -286,12 +286,10 @@ bool SampleBrowserPage::handleEvent(gui_event_t *event) {
 
 void SampleBrowserPage::query_sample_slots() {
   DEBUG_PRINTLN(F("query sample slots"));
-  encoders[1]->cur = 0;
-  encoders[1]->old = 0;
   old_cur_row = cur_row;
+  set_cursor(0, 0);
   numEntries = 0;
   cur_file = 255; // XXX why 255?
-  cur_row = 0;
   uint8_t data[2] = {0x70, 0x34};
   s_query_returned = false;
 

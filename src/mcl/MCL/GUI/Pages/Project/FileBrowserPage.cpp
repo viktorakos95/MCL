@@ -475,9 +475,22 @@ void FileBrowserPage::_cd_up() {
   uint16_t pos = 0;
   uint8_t row = 0;
   position.pop(pos, row);
-  encoders[1]->cur = pos;
-  encoders[1]->old = pos;
+  set_cursor(pos, row);
+}
+
+// Puts the cursor on entry `pos`, drawn on screen row `row`. The encoder's
+// old value moves with it, or loop() would scroll the list by the jump.
+void FileBrowserPage::set_cursor(uint16_t pos, uint8_t row) {
+  Encoder *list = encoders[1];
+  list->cur = list->old = pos;
   cur_row = row;
+}
+
+// The cursor on the row after the first ("..", or the first entry), with
+// the first row ([SAVE], [ MOVE ] ...) still in view.
+void FileBrowserPage::cursor_to_first_entry() {
+  uint8_t n = numEntries > 1;
+  set_cursor(n, MAX_VISIBLE_ROWS > 1 ? n : 0);
 }
 
 bool FileBrowserPage::_cd(const char *child) {
@@ -534,7 +547,7 @@ bool FileBrowserPage::_cd(const char *child) {
   uint16_t pos = encoders[1]->getValue();
   uint8_t row = cur_row;
   init();
-  encoders[1]->cur = 1;
+  cursor_to_first_entry();
   position.push(pos, row);
   return true;
 }
@@ -629,6 +642,7 @@ bool FileBrowserPage::start_move_destination(const char *source_path) {
   move_destination_mode = true;
   position.reset();
   init();
+  cursor_to_first_entry();
   return true;
 }
 

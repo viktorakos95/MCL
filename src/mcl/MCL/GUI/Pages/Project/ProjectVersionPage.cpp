@@ -13,9 +13,7 @@ void ProjectVersionPage::set_project(const char *project) {
 
 void ProjectVersionPage::setup() {
   oled_display.clearDisplay();
-  encoders[1]->cur = 0;
-  encoders[1]->old = 0;
-  cur_row = 0;
+  set_cursor(0, 0);
 }
 
 void ProjectVersionPage::init() {

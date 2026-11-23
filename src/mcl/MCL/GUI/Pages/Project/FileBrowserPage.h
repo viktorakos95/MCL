@@ -207,6 +207,8 @@ protected:
                                    const char *entry);
   void _cd_up();
   bool _cd(const char *);
+  void set_cursor(uint16_t pos, uint8_t row) NOINLINE();
+  void cursor_to_first_entry() NOINLINE();
   void query_filesystem();
   virtual bool can_show_parent_entry() const;
   virtual uint8_t entry_type_for_dir(const char *entry);

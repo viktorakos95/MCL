@@ -20,7 +20,6 @@ void SoundBrowserPage::init() {
   // the defaults, or the last page's settings stay (the project page selects
   // folders instead of opening them).
   FileBrowserPage::init();
-  FileBrowserPage::selection_change = true;
 
   key_interface.off();
 
