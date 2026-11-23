@@ -1767,15 +1767,15 @@ static MCLEncoder io_menu_line(IO_ROW_LEN_FADE, 0, ENCODER_RES_PAT);
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
 // FADE's mode as a filled 9 x 5 px graphic, the small font's height, at the
-// row's right edge (x 28 .. 36, baseline y): AUT a dip, IN a rising ramp,
-// OUT a falling one.
+// row's right (x 27 .. 35, baseline y), 1 px inside the edit box's edge: AUT
+// a dip, IN a rising ramp, OUT a falling one.
 static void draw_fade_mode(uint8_t y) {
   const uint8_t mode = mcl_cfg.load_fade >> 1;
   for (uint8_t i = 0; i < 9; i++) {
     const uint8_t h = mode == LOAD_FADE_FORCE_IN    ? (i + 3) / 2
                       : mode == LOAD_FADE_FORCE_OUT ? (11 - i) / 2
                                                     : (i > 4 ? i - 4 : 4 - i) + 1;
-    oled_display.drawFastVLine(28 + i, y - h, h, WHITE);
+    oled_display.drawFastVLine(27 + i, y - h, h, WHITE);
   }
 }
 
