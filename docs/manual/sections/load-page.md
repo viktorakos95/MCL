@@ -44,7 +44,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 ## Load Settings
 
-Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit the Load settings. While it is held, a cursor moves over the settings: the load mode (the box at the top), `QUANT`, then `FADE` (the fade's mode) and `FLEN` (its length). In Queue mode the settings are the mode, `QUANT` and `LEN` (the queue's length); set the fade there by holding **[Bank D]**.
+Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit the Load settings. While it is held, a cursor moves over the settings: the load mode (the box at the top), `QUANT`, then `FADE` (the fade's mode) and `FLEN` (its length). `FLEN` shows only while the fade is on. In Queue mode the settings are the mode, `QUANT` and `LEN` (the queue's length); set the fade there by holding **[Bank D]**.
 
 - Encoder 2 or **[Up/Down]** move the cursor.
 - Encoder 1 or **[Left/Right]** change the setting under it.
@@ -58,7 +58,7 @@ While it is released, the encoders work as on the Grid Page, or in `LEGACY` set 
 
 A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode (`AUT` at first). When it is on, the left column shows `FADE` and a small graphic for its mode: a dip for `AUT`, a rising ramp for `IN`, a falling ramp for `OUT`. When it is off the row is blank, and shows `FADE -` while the Load settings are edited.
 
-Hold **[Bank D]** to see and set the fade, in any mode: the box at the top reads `FADE`, and the rows show `MODE` and `FLEN`.
+Hold **[Bank D]** to see and set the fade, in any mode: the box at the top reads `FADE`, and the rows show `MODE` and, while the fade is on, `FLEN`.
 
 - **[Up/Down]** or Encoder 2 pick `MODE` or `FLEN`; **[Left/Right]** or Encoder 1 change it. `MODE` steps through `-` (off), `AUT`, `IN` and `OUT`, shown as their graphics. `FLEN` steps from `-` (the `QUANT` length) through 1 to 256 steps.
 - **[Trig]** 1 to 8 set `FLEN` to 2 to 256 steps, doubling with each trig, and turn the fade on (the trigs above set 256); the trig matching the current length is lit. Pressing the lit trig again sets `FLEN` back to `-`.

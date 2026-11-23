@@ -1161,13 +1161,11 @@ void MCLGUI::draw_panel_toggle(const char *s1, const char *s2, bool s1_active) {
   oled_display.fillRect(pane_label_x, active_y, pane_label_w, pane_label_h,
                         WHITE);
 
-  oled_cursor(pane_label_x + 1, pane_label_md_y + 6);
   oled_text_color(s1_active ? BLACK : WHITE);
-  oled_display.print(s1);
+  text_at(pane_label_x + 1, pane_label_md_y + 6, s1);
 
-  oled_cursor(pane_label_x + 1, pane_label_ex_y + 6);
   oled_text_color(s1_active ? WHITE : BLACK);
-  oled_display.print(s2);
+  text_at(pane_label_x + 1, pane_label_ex_y + 6, s2);
   oled_text_color(WHITE);
 }
 
