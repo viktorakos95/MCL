@@ -1542,10 +1542,10 @@ bool MDClass::probe() {
 
     for (uint8_t i = 0; i < 32; i++) {
 #ifdef __AVR__
-      // The run across the track LEDs: 20 ms a step, with the progress bar
+      // The run across the track LEDs: 18 ms a step, with the progress bar
       // moving. The bar's frame send paced it before the display's waits
       // were removed; without a wait the 32 selects go out in under 100 ms.
-      mcl_gui.delay_progress(20);
+      mcl_gui.delay_progress(18);
 #else
       mcl_gui.draw_progress_bar(60, 60, false, 60, 25);
 #endif
