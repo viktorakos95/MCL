@@ -44,12 +44,11 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 
 ## Load Settings
 
-Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit the Load settings. While it is held, one of the rows under `LOAD` is highlighted: `QUANT`, `LEN` or `FADE`, or the load mode.
+Hold **[Global]** on the Machinedrum, or the **`Load | Yes`** button, to edit the Load settings. While it is held, a cursor walks down the settings: the load mode (the box at the top), `QUANT`, `LEN` in Queue mode, then the fade's `MODE` and `LEN`. On the fade's two the left column shows the `FADE` screen, the same one holding **[Bank D]** opens.
 
-- Encoder 2 or **[Up/Down]** choose a row.
-- Encoder 1 or **[Left/Right]** change it.
-- On `FADE`, turning steps through `-`, `AUT`, `IN` and `OUT`. Hold Encoder 1's button while turning to set the fade length.
-- On `QUANT` or `FADE`, **[Trig]** N sets 2, 4, 8 … steps, doubling with each trig: **[Trig]** 1 to 6 set `QUANT` to 2 to 64 steps (the trigs above set 64), and **[Trig]** 1 to 10 set the fade length to 2 to 1024 steps, turning the fade on. The trig matching the current value is lit.
+- Encoder 2 or **[Up/Down]** move the cursor.
+- Encoder 1 or **[Left/Right]** change the setting under it.
+- On `QUANT`, **[Trig]** 1 to 6 set 2 to 64 steps, doubling with each trig (the trigs above set 64). On the fade's `MODE` or `LEN`, **[Trig]** 1 to 10 set the fade length (see Fade). The trig matching the current value is lit.
 
 While it is released, the encoders work as on the Grid Page, or in `LEGACY` set the mode, `LEN` and `QUANT`.
 
@@ -61,7 +60,7 @@ A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last 
 
 Hold **[Bank D]** to see and set the fade: the box at the top reads `FADE`, and the rows show `MODE` and `LEN`.
 
-- **[Up/Down]** pick `MODE` or `LEN`; **[Left/Right]** change it. `MODE` steps through `-` (off), `AUT`, `IN` and `OUT`, shown as their graphics. `LEN` steps from `-` (the `QUANT` length) through 1 to 1024 steps.
+- **[Up/Down]** or Encoder 2 pick `MODE` or `LEN`; **[Left/Right]** or Encoder 1 change it. `MODE` steps through `-` (off), `AUT`, `IN` and `OUT`, shown as their graphics. `LEN` steps from `-` (the `QUANT` length) through 1 to 1024 steps.
 - **[Trig]** 1 to 10 set `LEN` to 2 to 1024 steps, doubling with each trig, and turn the fade on; the trig matching the current length is lit. Pressing the lit trig again sets `LEN` back to `-`.
 
 Let go of **[Bank D]** and the Load rows return.
