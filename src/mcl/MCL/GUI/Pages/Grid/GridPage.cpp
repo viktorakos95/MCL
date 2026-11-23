@@ -1779,13 +1779,6 @@ static void draw_fade_mode(uint8_t y) {
   }
 }
 
-// FADE's word: AUT lets each column pick its direction, IN and OUT force it.
-static const char *fade_word() {
-  const uint8_t force = mcl_cfg.load_fade >> 1;
-  return force == LOAD_FADE_FORCE_IN    ? mclstr_fade_in
-         : force == LOAD_FADE_FORCE_OUT ? mclstr_fade_out
-                                        : mclstr_auto_short;
-}
 
 // The rows are edited while the Machinedrum's [Global] is held, or once
 // Load|Yes has been held this long (io_loop). Load|Yes released sooner was a
@@ -2206,11 +2199,11 @@ void GridPage::io_display_panel() {
     if (GridIOPage::show_offset) {
       text_at_P(0, 16, mclstr_dest);
     } else if (fade_page) {
-      // MODE: - (off), AUT, IN or OUT. LEN: - (QUANT's length) or steps.
+      // MODE: - (off), or AUT, IN or OUT as on the FADE row. LEN: - (QUANT's
+      // length) or steps.
       if (mcl_cfg.load_fade & 1) {
-        const char *word = fade_word();
         text_at_P(1, 16, mclstr_mode);
-        text_at_P(37 - 4 * strlen_P(word), 16, word);
+        draw_fade_mode(16);
       } else {
         panel_row(16, mclstr_mode, 0);
       }
