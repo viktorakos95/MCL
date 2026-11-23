@@ -104,24 +104,25 @@ Configuration Menu page.
 
   The new encoder and arrow key behaviour is optional. CONFIG > SYSTEM >
   LOAD/SAVE is LEGACY by default, which keeps the encoders and arrow keys
-  working as before (see Load/Save Setting below).
+  working as before (see User Interface Config below).
 
   The Load panel shows the load mode (LOAD, AUTO or QUE), a step count for
   timing a load, QUANT, and LEN in Queue mode. An arrow marks the row being
   loaded or saved, and slots waiting to load are outlined until they load.
 
-  Hold the MegaCommand's Load | Yes button, or the Machinedrum's
-  [ Global ], to edit the Load settings. Encoder 2 or [ Up ] / [ Down ] move
-  the cursor; Encoder 1 or [ Left ] / [ Right ] change the setting. A tap of
-  Load | Yes closes Load.
+  Hold the MegaCommand's Load | Yes button, or the Machinedrum's [ Global ],
+  to edit the values on the Load panel: the load mode, QUANT, and FADE and
+  FLEN (LEN in Queue mode). Encoder 2 or [ Up ] / [ Down ] move the cursor;
+  Encoder 1 or [ Left ] / [ Right ] change the value under it. A tap of Load
+  | Yes closes Load.
 
-  While the Load settings are edited, [ Trig ] 1 to 6 set QUANT to 2 to 64
+  While the Load panel is edited, [ Trig ] 1 to 6 set QUANT to 2 to 64
   steps.
 
   Load and Save open again after a visit to the Mixer Page or the Step
   Editor.
 
-- Load/Save Setting
+- User Interface Config
 
   CONFIG > SYSTEM > LOAD/SAVE chooses how Load and Save behave:
 

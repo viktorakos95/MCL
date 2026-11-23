@@ -23,7 +23,7 @@ On MegaCommand, MegaCMD and TBD, Load opens on the Grid Page itself. The left co
 
 A slot that is waiting to load has a moving outline until it loads.
 
-Whether Load closes after a load is set by `CONFIG > SYSTEM > LOAD/SAVE` (see Load/Save Setting below).
+Whether Load closes after a load is set by `CONFIG > SYSTEM > LOAD/SAVE` (see The LOAD/SAVE System Setting below).
 
 ## Load Behavior
 
@@ -46,15 +46,15 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on. Hold for the FADE screen (see Fade). |
 | **[Function]** | In Manual mode, open `DEST` to choose a destination (see Destination). |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold for group selection; release to load the selected groups. |
-| **[Global]**, **`Load | Yes`** | Hold to edit the Load settings (see Load Settings). |
+| **[Global]**, **`Load | Yes`** | Hold to edit the Load panel (see Editing The Load Panel). |
 | **[No/Exit]**, **`Save | No`**, a tap of **`Load | Yes`** | Close Load. |
 | **[Play]**, **[Stop]** | Start and stop the sequencer. Load stays open. |
 | **[Rec]**, **[Classic/Extended]** | Open the Step Editor, or the Mixer Page while the sequencer plays. Load opens again when you return to the Grid Page. |
 | Other keys | Close Load and do their usual job. |
 
-The encoders and arrow keys depend on the Load/Save setting.
+The encoders and arrow keys depend on the `LOAD/SAVE` system setting.
 
-## Load/Save Setting
+## The LOAD/SAVE System Setting
 
 `CONFIG > SYSTEM > LOAD/SAVE` chooses how the encoders and arrow keys work while Load is open, and whether Load closes after a load.
 
@@ -64,25 +64,25 @@ The encoders and arrow keys depend on the Load/Save setting.
 | `CLOSE` | Navigate the grid, as on the Grid Page. | Navigate the grid: **[Up/Down]** move to another row; **[Left/Right]** scroll the columns shown. Load stays open. | Load closes. |
 | `STAY` | Navigate the grid, as on the Grid Page. | Navigate the grid: **[Up/Down]** move to another row; **[Left/Right]** scroll the columns shown. Load stays open. | Load stays open, ready for the next load. |
 
-## Load Settings
+## Editing The Load Panel
 
-Hold **`Load | Yes`**, or **[Global]** on the Machinedrum, to edit the Load settings.
+Hold **`Load | Yes`**, or **[Global]** on the Machinedrum, to edit the values on the Load panel.
 
 ![load edit](../assets/images/load_edit.png)
 
-While it is held, a cursor moves over the settings:
+While it is held, a cursor moves over the values:
 
-| Load mode | Settings, top to bottom |
+| Load mode | Values, top to bottom |
 | --- | --- |
 | Manual, Auto | The load mode (the box at the top), `QUANT`, `FADE` and, while the fade is on, `FLEN`. |
 | Queue | The load mode, `QUANT` and `LEN`. |
 
-- Encoder 2 or **[Up/Down]** move the cursor. The setting under it is inverted.
+- Encoder 2 or **[Up/Down]** move the cursor. The value under it is inverted.
 - Encoder 1 or **[Left/Right]** change it.
 - On `QUANT`, **[Trig]** 1 to 6 set 2 to 64 steps, doubling with each trig; the trigs above set 64. The trig for the current value is lit.
 - On `FADE` or `FLEN`, the trigs set the fade length (see Fade).
 
-While the settings are edited, the step count and the row are hidden.
+While the panel is edited, the step count and the row are hidden.
 
 When it is released, the encoders go back to their usual job.
 
@@ -104,7 +104,7 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 | `IN` | A rising line | Every loaded track fades in. |
 | `OUT` | A falling line | Every loaded track fades out. |
 
-While the fade is off, line 3 is blank. It shows `FADE -` while the Load settings are edited.
+While the fade is off, line 3 is blank. It shows `FADE -` while the Load panel is edited.
 
 ### The FADE Screen
 

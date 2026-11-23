@@ -21,7 +21,7 @@ The top-level menu is named `CONFIG`.
 | `LOAD PROJECT` | Opens the project browser. |
 | `MIDI` | Opens device, port, sync, routing, controller and program-change settings. |
 | Device config entries | Dynamic entries for connected devices, such as Machinedrum, Monomachine, Analog Four, generic MIDI or TBD. |
-| `SYSTEM` | Opens display, project-configuration, grid-encoder and Load/Save settings. |
+| `SYSTEM` | Opens display, project-configuration, grid-encoder and `LOAD/SAVE` settings. |
 
 ## Project Browser
 

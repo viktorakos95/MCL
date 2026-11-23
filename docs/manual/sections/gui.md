@@ -24,7 +24,7 @@ While Load or Save is open:
 
 - **`Shift | Menu`**: Hold to open group selection; release to load or save the selected groups.
 - **`Save | No`**: Closes Load or Save.
-- **`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load settings: Encoder 2 moves the cursor and Encoder 1 changes the setting under it. On Save, closes Save.
+- **`Load | Yes`**: On Load, tap to close Load, or hold to edit the Load panel: Encoder 2 moves the cursor and Encoder 1 changes the value under it. On Save, closes Save.
 
 
 ## Encoder Buttons
@@ -116,7 +116,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Bank A,B,C]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
 - **[Bank D]** (the Slide key): tap to turn FADE on or off, hold for the FADE screen.
 - **[Function]** to specify a destination track offset for the next load.
-- Hold **[Global]** to edit the Load settings: the load mode, QUANT, then FADE and FLEN (LEN in Queue mode). **[Up/Down]** move the cursor and **[Left/Right]** change the setting.
+- Hold **[Global]** to edit the Load panel: the load mode, QUANT, then FADE and FLEN (LEN in Queue mode). **[Up/Down]** move the cursor and **[Left/Right]** change the value.
 - **[No/Exit]** closes the Load Page. Whether it closes after a load is set by `CONFIG > SYSTEM > LOAD/SAVE`.
 
 

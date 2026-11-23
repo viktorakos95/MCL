@@ -55,4 +55,4 @@ After a major firmware upgrade, stored configuration may be reset to defaults on
 | `CLOSE` | While Load is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. On Save the arrow keys close Save. Load and Save close after a load or save. |
 | `STAY` | While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save stay open after a load or save, ready for the next one. |
 
-In every setting, holding **`Load | Yes`** or **[Global]** edits the Load settings. See the Load Page.
+In every setting, holding **`Load | Yes`** or **[Global]** edits the values on the Load panel (the load mode, `QUANT`, `FADE`, `FLEN` or `LEN`). See the Load Page.
