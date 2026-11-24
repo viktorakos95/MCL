@@ -37,6 +37,9 @@ public:
 #else
   uint16_t elapsed_q12;
   uint16_t duration_q12;
+  // The level's stepper: the range is added once a tick, and the level moves
+  // one unit each time this passes the duration.
+  uint16_t remainder;
 #endif
   uint8_t flags;
   uint8_t amount;
@@ -58,6 +61,7 @@ public:
 #else
     elapsed_q12 = 0;
     duration_q12 = 0;
+    remainder = 0;
 #endif
     flags = 0;
     amount = 0;
@@ -73,6 +77,7 @@ public:
 LoadFadeState fade_states[NUM_SLOTS];
 LoadFadeMask active_mask = 0;
 
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
 uint8_t clamp_7bit(int16_t value) {
   if (value < 0) {
     return 0;
@@ -83,7 +88,6 @@ uint8_t clamp_7bit(int16_t value) {
   return (uint8_t)value;
 }
 
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
 uint8_t fade_curve_phase(uint8_t phase, int8_t curve) {
   uint16_t lin = phase > 127 ? 127 : phase;
   uint16_t expo = (uint16_t)((lin * lin + 63u) / 127u);
@@ -249,16 +253,33 @@ bool write_slot_value(GridSlot slot,
       ((int16_t)state.end_value - (int16_t)state.start_value) * phase / 127;
   uint8_t value7 = complete ? state.end_value : clamp_7bit(value);
 #else
-  uint16_t elapsed = state.elapsed_q12;
-  bool complete = elapsed >= state.duration_q12;
-  uint8_t phase = complete
-                      ? 127
-                      : (uint8_t)(((uint32_t)elapsed * 127u) /
-                                  state.duration_q12);
-  int16_t value =
-      (int16_t)state.start_value +
-      ((int16_t)state.end_value - (int16_t)state.start_value) * phase / 127;
-  uint8_t value7 = complete ? state.end_value : clamp_7bit(value);
+  // A straight line from start_value to end_value over duration_q12 ticks,
+  // stepped as the LFO steps its phase: no multiply or divide in the
+  // sequencer interrupt. Each tick adds the range to a remainder, and the
+  // level moves one unit towards its end each time the remainder passes the
+  // duration, so it arrives exactly on the last tick. last_value is the
+  // level of the tick before (every change is written).
+  const uint8_t end = state.end_value;
+  const bool complete = state.elapsed_q12 >= state.duration_q12;
+  uint8_t value7 = end;
+  if (!complete) {
+    const uint8_t start = state.start_value;
+    value7 = start;
+    if (state.elapsed_q12 != 0) {
+      value7 = state.last_value;
+      uint16_t remainder =
+          state.remainder + (end > start ? end - start : start - end);
+      while (remainder >= state.duration_q12) {
+        remainder -= state.duration_q12;
+        if (value7 < end) {
+          value7++;
+        } else if (value7 > end) {
+          value7--;
+        }
+      }
+      state.remainder = remainder;
+    }
+  }
 #endif
 
   if (value7 != state.last_value) {
@@ -276,6 +297,7 @@ bool write_slot_value(GridSlot slot,
       state.elapsed_ticks = 0;
 #else
       state.elapsed_q12 = 0;
+      state.remainder = 0;
 #endif
       return true;
     }
