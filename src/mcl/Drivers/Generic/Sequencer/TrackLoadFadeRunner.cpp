@@ -178,7 +178,13 @@ uint16_t load_fade_delay_q12(uint32_t start_clock) {
   if (to_start > (0x10000UL * 12u / 2u)) {
     return 0;
   }
-  return to_start > 0xFFFFu ? 0xFFFFu : (uint16_t)to_start;
+  // The slot's sequence switches, and sends its first trig, in the pass that
+  // brings the counter to start_clock - 1 (GridTrack::transition_load), and
+  // a fade's first level goes out in the pass after its wait ends. The wait
+  // is three ticks short, so that level is out one pass before the switch:
+  // a fade-in is at its floor before the new slot's first trig.
+  const uint16_t wait = to_start > 0xFFFFu ? 0xFFFFu : (uint16_t)to_start;
+  return wait > 3 ? wait - 3 : 0;
 #else
   uint32_t ticks_per_16th = MidiClock.div192th_ticks_per_16th();
   uint32_t cycle = 0x10000UL * ticks_per_16th;
