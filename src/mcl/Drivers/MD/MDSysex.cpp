@@ -54,13 +54,15 @@ void MDSysexListenerClass::end() {
   }
   uint8_t offset = sizeof(machinedrum_sysex_hdr);
   msgType = view.getByte(offset++);
+  // The first two data bytes: every message handled here begins with them
+  // (the kit loaded notice has only the first).
+  uint8_t param = view.getByte(offset++);
+  uint8_t value = view.getByte(offset++);
 
-  uint8_t param, value, fx_type, track;
+  uint8_t fx_type, track;
   switch (msgType) {
   case MD_STATUS_RESPONSE_ID:
-    if (view.getByte(offset) == MD_USR_QUERY) md_usr.receive(view);
-    param = view.getByte(offset++);
-    value = view.getByte(offset++);
+    if (param == MD_USR_QUERY) md_usr.receive(view);
     onStatusResponseCallbacks.call(param, value);
     break;
 
@@ -76,8 +78,6 @@ void MDSysexListenerClass::end() {
   case MD_SET_EQ_PARAM_ID:
   case MD_SET_DYNAMIX_PARAM_ID:
 
-    param = view.getByte(offset++);
-    value = view.getByte(offset++);
     fx_type = msgType - MD_SET_RHYTHM_ECHO_PARAM_ID;
 
     if (param > 7) { return; }
@@ -108,10 +108,8 @@ void MDSysexListenerClass::end() {
 
   case MD_SET_LFO_PARAM_ID:
 
-    param = view.getByte(offset++);
     track = param >> 3;
     param &= 7;
-    value = view.getByte(offset++);
 
     if (track > 15) { return; }
     if (param > 7) { return; }
@@ -152,20 +150,17 @@ void MDSysexListenerClass::end() {
 
   case MD_KIT_LOADED_ID:
     // Kit loaded notification: F0 00 20 3C 02 00 54 <kitIdx> F7
-    {
-      uint8_t kitIdx = view.getByte(offset++);
-      MD.currentKit = kitIdx;
-      md_usr.kitChanged();
-    }
+    MD.currentKit = param;
+    md_usr.kitChanged();
     break;
 
   case MD_MACHINE_UPDATE_ID:
     // Machine update: F0 00 20 3C 02 00 63 <track> <model> <flags_byte> <data_flags> [data...] F7
     {
-      track = view.getByte(offset++);
+      track = param;
       if (track > 15) { return; }
 
-      uint8_t model = view.getByte(offset++);
+      uint8_t model = value;
       uint8_t flags_byte = view.getByte(offset++);
       uint8_t data_flags = view.getByte(offset++);
 
