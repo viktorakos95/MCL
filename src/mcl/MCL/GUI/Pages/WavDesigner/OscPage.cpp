@@ -224,11 +224,7 @@ void OscPage::draw_wav(uint8_t wav_type) {
   uint8_t h = 30;
   uint8_t w = 128 - x;
   float osc_width = get_width();
-  TriOsc tri_osc(w, osc_width);
-  PulseOsc pul_osc(w, osc_width);
-  SawOsc saw_osc(w, osc_width);
-  SineOsc sine_osc(w);
-  UsrOsc usr_osc(w);
+  OscSet oscs(w);
   float sample = 0;
   uint8_t n = sample_number;
   // for (uint8_t n = 0; n < 128 - x; n++) {
@@ -239,8 +235,7 @@ void OscPage::draw_wav(uint8_t wav_type) {
     //  oled_display.drawLine(n + x, 0, n + x, 32, BLACK);
     // }
     sample = render_osc_sample(wav_type, osc_width, sine_levels, usr_values,
-                               sine_level_sum, n, 1.0f, sine_osc, tri_osc,
-                               pul_osc, saw_osc, usr_osc);
+                               sine_level_sum, n, 1.0f, oscs);
     uint8_t pixel_y = osc_sample_to_y(sample);
     if (wav_type != 0) {
        oled_display.drawPixel(x + n, pixel_y, WHITE);

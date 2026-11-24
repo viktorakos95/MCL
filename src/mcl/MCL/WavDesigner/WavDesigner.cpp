@@ -77,11 +77,7 @@ COLD_SMALL() bool WavDesigner::render() {
   DEBUG_PRINTLN(n_cycle);
   sample_rate = n_cycle * fund_freq;
 
-  SineOsc sine_osc(sample_rate);
-  TriOsc tri_osc(sample_rate);
-  PulseOsc pulse_osc(sample_rate);
-  SawOsc saw_osc(sample_rate);
-  UsrOsc usr_osc(sample_rate);
+  OscSet oscs(sample_rate);
 
   // We need at least 2 cycles of the waveform
   // MD is finicky about minimum sample length.
@@ -122,8 +118,7 @@ COLD_SMALL() bool WavDesigner::render() {
         osc_sample =
             render_osc_sample(osc_type, page->get_width(), page->sine_levels,
                               page->usr_values, page->sine_level_sum, n,
-                              page->get_freq(), sine_osc, tri_osc, pulse_osc,
-                              saw_osc, usr_osc);
+                              page->get_freq(), oscs);
       }
       // Sum oscillator samples together
       sample += osc_sample * mixer.get_gain(i);
