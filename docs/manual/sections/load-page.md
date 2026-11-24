@@ -101,8 +101,8 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
 | `AUT` | A cross | Each track picks its own direction from what it is playing (see below). |
-| `IN` | A rising line | Every loaded track fades in. |
-| `OUT` | A falling line | Every loaded track fades out. |
+| `OUT` | A filled falling ramp | Every loaded track fades out. |
+| `IN` | A filled rising ramp | Every loaded track fades in. |
 
 While the fade is off, line 3 is blank. It shows `FADE -` while the Load panel is edited.
 
@@ -113,7 +113,7 @@ Hold **[Bank D]** to see and set the fade, in any load mode. The box at the top 
 ![load fade screen](../assets/images/load_fade_screen.png)
 
 - **[Up/Down]** or Encoder 2 pick `MODE` or `FLEN`. **[Left/Right]** or Encoder 1 change it.
-- `MODE` steps through `-` (off), `AUT`, `IN` and `OUT`.
+- `MODE` steps through `-` (off), `AUT`, `OUT` and `IN`.
 - `FLEN` steps through `-` and 1 to 256 steps.
 - **[Trig]** 1 to 8 set `FLEN` to 2 to 256 steps, doubling with each trig, and turn the fade on. The trigs above set 256. The trig for the current length is lit; pressing it again sets `FLEN` back to `-`.
 

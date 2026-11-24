@@ -154,7 +154,7 @@ Configuration Menu page.
    Playing the slot being loaded = it fades out and stays silent.
    Silent = the new slot fades in.
 
-  Fade modes IN and OUT make every loaded track fade in or fade out.
+  Fade modes OUT and IN make every loaded track fade out or fade in.
 
   A fade lasts the QUANT length, or FLEN steps when FLEN is set (up to 256).
 
