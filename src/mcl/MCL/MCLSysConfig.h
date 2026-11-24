@@ -112,8 +112,11 @@ static_assert(sizeof(MCLSysConfigData) == 185,
 static inline uint16_t load_fade_steps(uint8_t len) {
   return (uint16_t)1 << (len - 1);
 }
-#define LOAD_FADE_FORCE_IN 1
-#define LOAD_FADE_FORCE_OUT 2
+// FADE's forced directions, in the order FADE's mode steps through: AUT (0),
+// OUT, IN.
+#define LOAD_FADE_FORCE_OUT 1
+#define LOAD_FADE_FORCE_IN 2
+#define LOAD_FADE_FORCE_MAX 2
 
 class MCLSysConfig : public MCLSysConfigData {
 public:

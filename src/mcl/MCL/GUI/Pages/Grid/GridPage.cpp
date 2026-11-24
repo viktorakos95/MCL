@@ -1717,22 +1717,23 @@ bool GridPage::handleEvent(gui_event_t *event) {
 // Save pages did.
 // ---------------------------------------------------------------------------
 
-// Print a number right-aligned to x = right (TomThumb digits are 4 px);
-// 0 prints " -": TomThumb's space is 2 px, so the dash sits centred
-// between the two digit columns.
-static void print_right(uint8_t value, uint8_t right, uint8_t y) {
+// Print a panel value right-aligned to the edit box's edge, x 37 (TomThumb
+// digits are 4 px). 0 and 1 print " -" (off, or QUANT and LEN's "the slot's
+// own length"): TomThumb's space is 2 px, so the dash sits centred between
+// the two digit columns.
+static void print_right(uint8_t value, uint8_t y) {
   char str[4] = {' ', '-', '\0'};
-  if (value) {
+  if (value > 1) {
     mcl_gui.put_value_at(value, str);
   }
-  text_at(right - 4 * strlen(str), y, str);
+  text_at(37 - 4 * strlen(str), y, str);
 }
 
 // "LEN 8", "QUANT 16": label on the left, value at the right edge. The label
 // starts at x 1 so the edit box (x 0 to 36) shows 1 px each side, as in menus.
 static void panel_row(uint8_t y, const char *label_P, uint8_t value) {
   text_at_P(1, y, label_P);
-  print_right(value, 37, y);
+  print_right(value, y);
 }
 
 // FLEN's row: "-" (QUANT's length) or the fade's 2^(n-1) steps,
@@ -1746,7 +1747,7 @@ static void fade_len_row(uint8_t y) {
   text_at_P(1, y, mclstr_flen);
   const uint8_t len = mcl_cfg.load_fade_len;
   if (!len) {
-    print_right(0, 37, y);
+    print_right(0, y);
     return;
   }
   const uint8_t n = len - 1;
@@ -1785,28 +1786,31 @@ static uint8_t io_item() {
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
 
 // FADE's mode row: the label, then "-" when FADE is off, else the mode as a
-// 9 x 5 px line graphic, the small font's height, at the row's right
+// 9 x 5 px graphic, the small font's height, at the row's right
 // (x 27 .. 35, baseline y), 1 px inside the edit box's edge.
 static void fade_mode_row(uint8_t y, const char *label_P) NOINLINE();
 static void fade_mode_row(uint8_t y, const char *label_P) {
   text_at_P(1, y, label_P);
   const uint8_t fade = mcl_cfg.load_fade;
   if (!(fade & 1)) {
-    print_right(0, 37, y);
+    print_right(0, y);
     return;
   }
-  // Lines: OUT the falling slope, IN the rising one, AUT both (a crossfade
-  // cross). The falling slope's row from the top is 0 0 1 1 2 3 3 4 4; the
-  // rising one is its mirror, from the bottom.
+  // AUT: the falling and rising slopes over each other (a crossfade cross);
+  // the falling slope's row from the top is 0 0 1 1 2 3 3 4 4, the rising
+  // one is its mirror. IN: a filled ramp 1 2 2 3 3 4 4 5 5 px tall; OUT:
+  // its mirror image.
   const uint8_t mode = fade >> 1;
   for (uint8_t i = 0; i < 9; i++) {
-    const uint8_t row = (uint8_t)(i + (i > 4)) >> 1;
-    if (mode != LOAD_FADE_FORCE_IN) {
-      oled_display.drawPixel(27 + i, y - 5 + row, WHITE);
+    const uint8_t step = i + (i > 4);
+    const uint8_t row = step / 2;
+    const uint8_t x = mode == LOAD_FADE_FORCE_OUT ? 35 - i : 27 + i;
+    uint8_t h = (uint8_t)(i + 3) / 2;
+    if (!mode) {
+      oled_display.drawPixel(x, y - 5 + row, WHITE);
+      h = 1;
     }
-    if (mode != LOAD_FADE_FORCE_OUT) {
-      oled_display.drawPixel(27 + i, y - 1 - row, WHITE);
-    }
+    oled_display.drawFastVLine(x, mode ? y - h : y - 1 - row, h, WHITE);
   }
 }
 
@@ -1854,12 +1858,12 @@ static bool io_fade_page() {
           clock_diff(io_slide_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS);
 }
 
-// One step of FADE's mode, in one order everywhere: - (off), AUT, IN, OUT.
+// One step of FADE's mode, in one order everywhere: - (off), AUT, OUT, IN.
 // Off keeps the direction, so a tap turns FADE back on in its last mode.
 static void io_step_fade_mode(int8_t dir) {
   const uint8_t fade = mcl_cfg.load_fade;
   uint8_t state = (fade & 1) ? 1 + (fade >> 1) : 0;
-  state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_OUT);
+  state = limit_value(state, dir, 0, 1 + LOAD_FADE_FORCE_MAX);
   mcl_cfg.load_fade = state ? ((state - 1) << 1) | 1 : fade & ~1;
 }
 
@@ -2253,10 +2257,10 @@ void GridPage::io_display_panel() {
         }
       } else {
         uint8_t quant = mcl_cfg.chain_load_quant;
-        panel_row(16, mclstr_quant, quant == 1 ? 0 : quant);
+        panel_row(16, mclstr_quant, quant);
         if (mcl_cfg.load_mode == LOAD_QUEUE) {
           uint8_t len = mcl_cfg.chain_queue_length;
-          panel_row(24, mclstr_len, len == 1 ? 0 : len);
+          panel_row(24, mclstr_len, len);
         } else {
           // FADE in the other modes: "FADE -" when off, else FADE and its
           // mode's graphic: AUT (direction by column), IN or OUT (forced).
@@ -2356,8 +2360,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
       // Not a slot pick: the note interface recorded this press, or the
       // release of a trig held from before the edit, and the grid and the
       // LEDs show its notes as the selection, so drop the note again.
-      CLEAR_BIT32(note_interface.notes_on, track);
-      CLEAR_BIT32(note_interface.notes_off, track);
+      bitfield_clear(&note_interface.notes_on, track);
+      bitfield_clear(&note_interface.notes_off, track);
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {

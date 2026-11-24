@@ -345,7 +345,7 @@ bool MCLSd::load_init() {
           memset(panel, 0, 4);
           mcl_cfg.cfgfile.read(panel, 4);
           if (mcl_cfg.load_panel_tag != LOAD_PANEL_CFG_TAG ||
-              panel[0] > (1 | LOAD_FADE_FORCE_OUT << 1) ||
+              panel[0] > (1 | LOAD_FADE_FORCE_MAX << 1) ||
               mcl_cfg.load_fade_len > LOAD_FADE_STORED_MAX ||
               mcl_cfg.io_stay > LOAD_SAVE_STAY) {
             memset(panel, 0, 3);
