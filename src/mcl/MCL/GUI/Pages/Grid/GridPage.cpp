@@ -266,8 +266,8 @@ void close_slot_menu_from_mouse(GridPage &page) {
 // Machinedrum's [Global] is held): the knobs edit them (io_handleEvent,
 // io_loop). Otherwise they are the Grid page's own.
 static bool io_editing;
-// FADE (Slide) is held past a tap, or used: the FADE page shows.
-static bool io_fade_page();
+// FADE (Slide) is held past a tap, or used: the rows are edited.
+static bool io_fade_edit();
 // Load or Save was armed when Classic/Extended opened the mixer or REC
 // opened step edit: init() arms it again on the return from there.
 static uint8_t io_resume;
@@ -953,7 +953,7 @@ void GridPage::display_grid() {
     // separator (not while Load's rows are edited), and < / > at the grid's
     // edges for selected slots in the hidden columns.
     uint8_t ty = y_offset + cur_row * 8;
-    if (!io_editing && !io_fade_page()) {
+    if (!io_editing && !io_fade_edit()) {
       oled_display.fillTriangle_3px(x_offset - 5, ty - 5, WHITE);
     }
     if (io_mask & (first_bit - 1)) {
@@ -1758,10 +1758,10 @@ static void fade_len_row(uint8_t y) {
 // While Load|Yes is held, or [Global] on the Machinedrum, the Load panel's
 // settings are edited with one cursor over its stops: the mode (the chip),
 // QUANT, then FADE and FLEN (the fade's mode and length; in Queue, LEN, the
-// queue's length, instead). Holding FADE runs the same edit on the fade's
-// two stops on the FADE screen, in Queue too. Knob 2 or UP/DOWN move the
-// cursor, the picked row is inverted; knob 1 or LEFT/RIGHT change it.
-// Otherwise the knobs stay the Grid page's own (grid_knobs).
+// queue's length, instead). Holding FADE opens the same edit with the cursor
+// on FADE; in Queue the fade's two rows then stand in LEN's place. Knob 2 or
+// UP/DOWN move the cursor, the picked row is inverted; knob 1 or LEFT/RIGHT
+// change it. Otherwise the knobs stay the Grid page's own (grid_knobs).
 enum : uint8_t {
   IO_ITEM_MODE,
   IO_ITEM_QUANT,
@@ -1769,18 +1769,27 @@ enum : uint8_t {
   IO_ITEM_FMODE,
   IO_ITEM_FLEN
 };
+// The cursor's third stop: Queue's LEN, or FADE.
+constexpr uint8_t IO_STOP_LINE3 = IO_ITEM_QLEN;
 // Knob 2 during the edit; its value is the cursor's stop.
 static MCLEncoder io_menu_line(IO_ITEM_FLEN, 0, ENCODER_RES_PAT);
-// The first FADE stop: in Queue its LEN comes first.
-static uint8_t io_fade_stop() NOINLINE();
-static uint8_t io_fade_stop() {
-  return mcl_cfg.load_mode == LOAD_QUEUE ? IO_ITEM_FMODE : IO_ITEM_QLEN;
+// The Slide key (FADE) held on Load: once held past a tap, or used, the rows
+// are edited with the cursor on FADE. Released with nothing used before the
+// hold time, it was a tap, which turns FADE on or off.
+static bool io_slide;
+static bool io_slide_used;
+// When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
+// so a tap goes from blank straight to the length it turns on.
+static uint16_t io_slide_clock;
+// The cursor's third stop is Queue's LEN: in Queue, unless FADE is held.
+static bool io_queue_stops() {
+  return mcl_cfg.load_mode == LOAD_QUEUE && !io_slide;
 }
-// What the cursor's stop edits (outside Queue there is no QLEN stop).
+// What the cursor's stop edits: the mode, QUANT, then Queue's LEN, or FADE
+// and FLEN.
 static uint8_t io_item() {
   const uint8_t stop = io_menu_line.cur;
-  return stop < IO_ITEM_QLEN || mcl_cfg.load_mode == LOAD_QUEUE ? stop
-                                                                : stop + 1;
+  return stop < IO_STOP_LINE3 || io_queue_stops() ? stop : stop + 1;
 }
 // Knob 1 during the edit: rests at 1, and io_loop takes each click off it.
 static MCLEncoder io_menu_value(2, 0, ENCODER_RES_PAT);
@@ -1832,27 +1841,14 @@ static bool io_opening;
 constexpr uint16_t IO_LEDS_SELECTION = 0xFFFF;
 constexpr uint16_t IO_LEDS_UNKNOWN = 0xFFFE;
 static uint16_t io_edit_leds = IO_LEDS_SELECTION;
-// The Slide key (FADE) held on Load: once held past a tap, or used, the edit
-// runs on FADE's two stops (the FADE screen). Released with nothing used
-// before the hold time, it was a tap, which turns FADE on or off.
-static bool io_slide;
-static bool io_slide_used;
-// When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
-// so a tap goes from blank straight to the length it turns on.
-static uint16_t io_slide_clock;
-
-// The cursor's last stop: Queue's LEN in Queue, else FLEN, or FADE while
-// FADE is off (FLEN is not shown then). With FADE held, the same in Queue too:
-// its screen has the fade's stops.
+// The cursor's last stop: Queue's LEN, else FLEN, or FADE while FADE is off
+// (FLEN is not shown then).
 static uint8_t io_last_stop() {
-  return mcl_cfg.load_mode == LOAD_QUEUE && !io_slide
-             ? IO_ITEM_QLEN
-             : io_fade_stop() + (mcl_cfg.load_fade & 1);
+  return io_queue_stops() ? IO_STOP_LINE3
+                          : IO_STOP_LINE3 + (mcl_cfg.load_fade & 1);
 }
-// The cursor's first stop: the mode, or with FADE held FADE's first.
-static uint8_t io_first_stop() { return io_slide ? io_fade_stop() : 0; }
 
-static bool io_fade_page() {
+static bool io_fade_edit() {
   return io_slide &&
          (io_slide_used ||
           clock_diff(io_slide_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS);
@@ -2020,17 +2016,16 @@ void GridPage::io_loop() {
             clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS;
   const bool edit = !GridIOPage::show_offset &&
                     (io_held || key_interface.is_key_down(MDX_KEY_PATSONG) ||
-                     io_fade_page());
+                     io_fade_edit());
   if (edit != io_editing) {
     io_rows_edit(encoders, edit);
   }
   if (io_editing) {
-    // The stops follow the mode (BANK A-C may change it mid-edit); with FADE
-    // held only FADE's two.
-    io_menu_line.min = io_first_stop();
+    // The stops follow the mode (BANK A-C may change it mid-edit) and FADE.
     io_menu_line.max = io_last_stop();
-    io_menu_line.cur =
-        constrain(io_menu_line.cur, io_menu_line.min, io_menu_line.max);
+    if (io_menu_line.cur > io_menu_line.max) {
+      io_menu_line.cur = io_menu_line.max;
+    }
     const int8_t dir = io_menu_value.cur - 1;
     io_menu_value.cur = 1;
     if (dir != 0 && !GridIOPage::show_offset) {
@@ -2199,15 +2194,11 @@ void GridPage::io_display_panel() {
   // the mode: LOAD (Manual), AUTO or QUE. While the rows are edited it is the
   // mode row, boxed only while that row is picked, so the picked row is the
   // only box.
-  // With FADE held the panel is the FADE screen: the chip reads FADE and
-  // the rows are the fade's MODE and FLEN.
   const uint8_t item = io_item();
-  const bool fade_page = load && io_editing && io_slide;
-  const bool boxed =
-      fade_page || !(io_editing && item != IO_ITEM_MODE);
+  const bool boxed = !(io_editing && item != IO_ITEM_MODE);
   // While the mode row is picked, the chip stands right of a filled arrow:
   // >[LOAD]. Otherwise it is in its place.
-  const bool arrow = !fade_page && io_editing && item == IO_ITEM_MODE;
+  const bool arrow = io_editing && item == IO_ITEM_MODE;
   const uint8_t cx = arrow ? 4 : 0;
   if (arrow) {
     oled_display.fillTriangle_3px(0, 2, WHITE);
@@ -2223,7 +2214,7 @@ void GridPage::io_display_panel() {
            : mcl_cfg.load_mode == LOAD_QUEUE ? mclstr_queue_short
                                              : mclstr_load;
   }
-  text_at_P(cx + 1, 1, fade_page ? mclstr_fade : chip);
+  text_at_P(cx + 1, 1, chip);
   oled_font_small();
   oled_text_color(WHITE, BLACK);
 
@@ -2247,38 +2238,29 @@ void GridPage::io_display_panel() {
     } else {
       // The top of the row the edit inverts.
       uint8_t picked_y = 18;
-      if (fade_page) {
-        // MODE: - (off), or AUT, IN or OUT as on the FADE row. FLEN: -
-        // (QUANT's length) or steps.
-        fade_mode_row(16, mclstr_mode);
-        fade_len_row(24);
-        if (item == IO_ITEM_FMODE) {
-          picked_y = 10;
-        }
+      uint8_t quant = mcl_cfg.chain_load_quant;
+      panel_row(16, mclstr_quant, quant);
+      // Line 3 is Queue's LEN in Queue, unless the edit was opened with
+      // FADE, which shows the fade's rows in every mode.
+      if (mcl_cfg.load_mode == LOAD_QUEUE && !(io_slide && io_editing)) {
+        uint8_t len = mcl_cfg.chain_queue_length;
+        panel_row(24, mclstr_len, len);
       } else {
-        uint8_t quant = mcl_cfg.chain_load_quant;
-        panel_row(16, mclstr_quant, quant);
-        if (mcl_cfg.load_mode == LOAD_QUEUE) {
-          uint8_t len = mcl_cfg.chain_queue_length;
-          panel_row(24, mclstr_len, len);
-        } else {
-          // FADE in the other modes: "FADE -" when off, else FADE and its
-          // mode's graphic: AUT (direction by column), IN or OUT (forced).
-          // Off, the row shows only in the edit. In the edit, with FADE on,
-          // line 4 is FLEN, on the screen's last row (baseline 31, its box
-          // y 25 .. 31).
-          if ((mcl_cfg.load_fade & 1) || io_editing) {
-            fade_mode_row(24, mclstr_fade);
-          }
-          if (io_editing) {
-            fade_len_row(31);
-          }
+        // FADE: "FADE -" when off, else FADE and its mode's graphic: AUT
+        // (direction by column), OUT or IN (forced). Off, the row shows only
+        // in the edit. In the edit, with FADE on, line 4 is FLEN, on the
+        // screen's last row (baseline 31, its box y 25 .. 31).
+        if ((mcl_cfg.load_fade & 1) || io_editing) {
+          fade_mode_row(24, mclstr_fade);
         }
-        if (item == IO_ITEM_QUANT) {
-          picked_y = 10;
-        } else if (item == IO_ITEM_FLEN) {
-          picked_y = 25;
+        if (io_editing) {
+          fade_len_row(31);
         }
+      }
+      if (item == IO_ITEM_QUANT) {
+        picked_y = 10;
+      } else if (item == IO_ITEM_FLEN) {
+        picked_y = 25;
       }
       if (io_editing && item != IO_ITEM_MODE) {
         // Editing: the picked row is inverted, with 1 px of the box each
@@ -2423,18 +2405,16 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       case MDX_KEY_BANKD:
         // The Machinedrum's SLIDE key arrives as bank D: FADE. Held, the
-        // edit opens on FADE's stops (the FADE screen): the arrows and knobs
-        // pick and change MODE and LEN, the trigs set the length; a tap (on
-        // the release) turns FADE off or on again in its last mode. In Queue
-        // too, where FADE is set for the Manual and Auto loads (queue loads
-        // do not fade).
+        // rows are edited with the cursor on FADE: the arrows and knobs move
+        // it and change the row under it, the trigs set the fade length; a
+        // tap (on the release) turns FADE off or on again in its last mode.
+        // In Queue too, where FADE is set for the Manual and Auto loads
+        // (queue loads do not fade) and its rows stand in LEN's place.
         if (load && !GridIOPage::show_offset) {
           io_slide = true;
           io_slide_used = false;
           io_slide_clock = read_clock_ms();
-          if (io_menu_line.cur < io_fade_stop()) {
-            io_menu_line.cur = io_fade_stop();
-          }
+          io_menu_line.cur = IO_STOP_LINE3;
         }
         return true;
       case MDX_KEY_FUNC:
@@ -2482,7 +2462,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         if (load && (io_editing || io_slide)) {
           io_menu_line.cur = limit_value(
               io_menu_line.cur, key == MDX_KEY_DOWN ? 1 : -1,
-              io_first_stop(), io_last_stop());
+              0, io_last_stop());
           io_slide_used |= io_slide;
           return true;
         }
@@ -2510,7 +2490,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
       // A tap: let go before the hold time with nothing used. A longer
       // hold only looked at the FADE page.
-      if (io_slide && !io_fade_page()) {
+      if (io_slide && !io_fade_edit()) {
         mcl_cfg.load_fade ^= 1;
       }
       io_slide = false;
