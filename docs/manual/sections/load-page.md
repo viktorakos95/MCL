@@ -43,7 +43,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Trig]** keys | Select slots. Releasing the trigs loads them. |
 | **[Scale]**, **`Page`** | Toggle Grid X / Grid Y while selecting. |
 | **[Bank A/B/C]** | Set the load mode: Manual, Auto or Queue. |
-| **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on. Hold for the FADE screen (see Fade). |
+| **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on. Hold to edit the Load panel with the cursor on `FADE` (see Fade). |
 | **[Function]** | In Manual mode, open `DEST` to choose a destination (see Destination). |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold for group selection; release to load the selected groups. |
 | **[Global]**, **`Load | Yes`** | Hold to edit the Load panel (see Editing The Load Panel). |
@@ -66,7 +66,7 @@ The encoders and arrow keys depend on the `LOAD/SAVE` system setting.
 
 ## Editing The Load Panel
 
-Hold **`Load | Yes`**, or **[Global]** on the Machinedrum, to edit the values on the Load panel.
+Hold **`Load | Yes`**, or **[Global]** on the Machinedrum, to edit the values on the Load panel. Holding **[Bank D]** opens the same edit with the cursor on `FADE` (see Fade).
 
 ![load edit](../assets/images/load_edit.png)
 
@@ -106,18 +106,20 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 While the fade is off, line 3 is blank. It shows `FADE -` while the Load panel is edited.
 
-### The FADE Screen
+### Setting The Fade
 
-Hold **[Bank D]** to see and set the fade, in any load mode. The box at the top reads `FADE`, and the rows show `MODE` and, while the fade is on, `FLEN`.
+Hold **[Bank D]** to set the fade. The Load panel's edit opens, as with **`Load | Yes`** or **[Global]**, with the cursor on `FADE`.
 
-![load fade screen](../assets/images/load_fade_screen.png)
+![load fade hold](../assets/images/load_fade_hold.png)
 
-- **[Up/Down]** or Encoder 2 pick `MODE` or `FLEN`. **[Left/Right]** or Encoder 1 change it.
-- `MODE` steps through `-` (off), `AUT`, `OUT` and `IN`.
+- **[Left/Right]** or Encoder 1 change the row under the cursor. **[Up/Down]** or Encoder 2 move the cursor to `FLEN`, or to the other rows.
+- `FADE` steps through `-` (off), `AUT`, `OUT` and `IN`.
 - `FLEN` steps through `-` and 1 to 256 steps.
 - **[Trig]** 1 to 8 set `FLEN` to 2 to 256 steps, doubling with each trig, and turn the fade on. The trigs above set 256. The trig for the current length is lit; pressing it again sets `FLEN` back to `-`.
 
-Let go of **[Bank D]** and the Load rows return.
+In Queue mode, where line 3 is `LEN`, `FADE` and `FLEN` take its place for as long as **[Bank D]** is held.
+
+Let go of **[Bank D]** and the edit closes. The cursor of the **`Load | Yes`** and **[Global]** edit is not moved by it: that edit opens where it was last left.
 
 ### Length
 

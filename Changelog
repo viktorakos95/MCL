@@ -143,8 +143,9 @@ Configuration Menu page.
   Load can fade the levels of Machinedrum tracks as their slots load, in
   Manual and Auto mode.
 
-  In Load, tap [ Bank D ] (Slide) to turn FADE on or off. Hold it for the
-  FADE screen, which sets the fade mode and the fade length (FLEN).
+  In Load, tap [ Bank D ] (Slide) to turn FADE on or off. Hold it to edit
+  the Load panel with the cursor on FADE: the fade mode, and under it the
+  fade length (FLEN).
 
   In fade mode AUT, each track picks its own direction from what it is
   playing when the load arrives:

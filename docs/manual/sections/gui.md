@@ -114,7 +114,7 @@ Enhanced mode disables editing access to the MD's internal sequencer and enables
 - **[Trig]** keys are used to select and load sequencer tracks from slots of the current row.
 - **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown, with `CONFIG > SYSTEM > LOAD/SAVE` at `CLOSE` or `STAY`. At `LEGACY` they close Load and move the grid cursor.
 - **[Bank A,B,C]** keys can be used to quickly select the load mode: MAN, AUT, QUE.
-- **[Bank D]** (the Slide key): tap to turn FADE on or off, hold for the FADE screen.
+- **[Bank D]** (the Slide key): tap to turn FADE on or off, hold to edit the Load panel with the cursor on FADE.
 - **[Function]** in Manual mode: press a trig for the destination slot, then select and release the source slots to load them there.
 - Hold **[Global]** to edit the Load panel: the load mode, QUANT, then FADE and FLEN (LEN in Queue mode). **[Up/Down]** move the cursor and **[Left/Right]** change the value.
 - **[No/Exit]** closes the Load Page. Whether it closes after a load is set by `CONFIG > SYSTEM > LOAD/SAVE`.
