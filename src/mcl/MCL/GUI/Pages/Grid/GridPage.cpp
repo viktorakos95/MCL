@@ -1781,6 +1781,15 @@ static bool io_slide_used;
 // When Slide went down: FADE's off row shows once it is held IO_EDIT_HOLD_MS,
 // so a tap goes from blank straight to the length it turns on.
 static uint16_t io_slide_clock;
+// Where the cursor stood when FADE went down. The hold moves it to FADE and
+// puts it back, so the Load|Yes and [Global] edit keeps its own place.
+static uint8_t io_slide_back;
+static void io_slide_end() {
+  if (io_slide) {
+    io_menu_line.cur = io_slide_back;
+    io_slide = false;
+  }
+}
 // The cursor's third stop is Queue's LEN: in Queue, unless FADE is held.
 static bool io_queue_stops() {
   return mcl_cfg.load_mode == LOAD_QUEUE && !io_slide;
@@ -1955,7 +1964,7 @@ void GridPage::io_begin(uint8_t mode) {
   io_mode = mode;
   io_editing = false;
   io_edit_leds = IO_LEDS_SELECTION;
-  io_slide = false;
+  io_slide_end();
   io_slide_used = false;
   GridIOPage::old_grid = cur_grid;
   io_saved_grid = cur_grid;
@@ -2411,6 +2420,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         // In Queue too, where FADE is set for the Manual and Auto loads
         // (queue loads do not fade) and its rows stand in LEN's place.
         if (load && !GridIOPage::show_offset) {
+          io_slide_end();
+          io_slide_back = io_menu_line.cur;
           io_slide = true;
           io_slide_used = false;
           io_slide_clock = read_clock_ms();
@@ -2489,11 +2500,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
       // A tap: let go before the hold time with nothing used. A longer
-      // hold only looked at the FADE page.
+      // hold was the edit.
       if (io_slide && !io_fade_edit()) {
         mcl_cfg.load_fade ^= 1;
       }
-      io_slide = false;
+      io_slide_end();
       return true;
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_YES) {
