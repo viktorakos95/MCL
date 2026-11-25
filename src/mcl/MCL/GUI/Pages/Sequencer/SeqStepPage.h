@@ -22,8 +22,6 @@ class SeqStepPage : public SeqPage {
 public:
   bool show_pitch;
   bool reset_on_release;
-  // Lock side the popup's arrows keep while the condition passes "none".
-  bool popup_cond_plock = false;
   bool update_params_queue;
   bool prepare;
   bool page_copy;

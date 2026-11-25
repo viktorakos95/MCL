@@ -225,11 +225,11 @@ public:
   uint8_t condition_mode(uint8_t step) const {
     return track_->steps[step].cond_plock ? 1 : 0;
   }
+  // Also on a step with no condition, as on the Machinedrum: the mode stays
+  // with the step and the condition chosen next takes it.
   void cycle_condition_mode(uint8_t step) {
-    if (track_->steps[step].cond_id != 0) {
-      track_->steps[step].cond_plock = !track_->steps[step].cond_plock;
-      track_->clear_step_oneshot(step);
-    }
+    track_->steps[step].cond_plock = !track_->steps[step].cond_plock;
+    track_->clear_step_oneshot(step);
   }
 
   void set_timing_from_encoder(uint8_t step, uint8_t encoder_value) {

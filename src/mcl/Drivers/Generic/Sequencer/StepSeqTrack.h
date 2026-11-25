@@ -385,9 +385,9 @@ public:
     }
     void cycle_condition_mode_value(uint8_t step) override {
         auto& descriptor = steps[step];
-        // A step with no condition has nothing for a mode to gate.
-        if (descriptor.cond_id == 0) return;
-        // TRIG -> LOCK -> TRIG+LOCK -> TRIG.
+        // TRIG -> LOCK -> TRIG+LOCK -> TRIG. Also on a step with no
+        // condition, as on the Machinedrum: the mode stays with the step and
+        // the condition chosen next takes it.
         if (!descriptor.cond_plock) {
             descriptor.cond_plock = true;
             descriptor.cond_explicit = this->plays_lock_only();

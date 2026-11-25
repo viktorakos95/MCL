@@ -363,10 +363,8 @@ public:
   void cycle_condition_mode(uint8_t step) {
     if (kind_ == KIND_MD) {
       auto &s = tracks_.md->steps[step];
-      if (s.cond_id != 0) {
-        s.cond_plock = !s.cond_plock;
-        tracks_.md->clear_step_oneshot(step);
-      }
+      s.cond_plock = !s.cond_plock;
+      tracks_.md->clear_step_oneshot(step);
     } else {
       tracks_.stepseq->cycle_condition_mode_value(step);
     }

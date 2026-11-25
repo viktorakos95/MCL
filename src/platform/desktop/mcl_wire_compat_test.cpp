@@ -16,6 +16,7 @@
 #include "MidiUart.h"
 #include "Project.h"
 #include "Sequencer/MCLSeq.h"
+#include "Sequencer/SeqStepTrackRef.h"
 #include "Sequencer/SeqTrackUtil.h"
 
 #include <array>
@@ -1609,12 +1610,30 @@ bool checkMicrotimingPopupCondition() {
     track.cycle_condition_mode_value(6);
     ok &= track.condition_mode_value(6) == 0 && !track.steps[6].cond_plock;
     ok &= track.steps[6].cond_id == SEQ_COND_ITER_BASE;
-    // A step with no condition has no mode to step.
+    // PAGE also steps a step with no condition, as on the Machinedrum: the
+    // step keeps the mode and the condition chosen next takes it.
     track.set_conditional_value(7, SEQ_COND_100PCT, false);
     track.cycle_condition_mode_value(7);
-    ok &= track.condition_mode_value(7) == 0 && !track.steps[7].cond_plock &&
-          !track.steps[7].cond_explicit;
+    ok &= track.condition_mode_value(7) == 5 &&
+          track.steps[7].cond_id == SEQ_COND_100PCT;
+    track.set_conditional_value(7, SEQ_COND_FILL,
+                                track.conditional_plock_value(7));
+    ok &= track.condition_mode_value(7) == 5 &&
+          track.steps[7].cond_id == SEQ_COND_FILL;
+    track.set_conditional_value(7, SEQ_COND_100PCT, false);
     track.set_conditional_value(6, SEQ_COND_100PCT, false);
+
+    // An MD track has two modes; the same holds there.
+    {
+        MDSeqTrack& md_track = mcl_seq.md_tracks[5];
+        SeqStepTrackBackend backend(md_track);
+        backend.set_conditional(9, SEQ_COND_100PCT, false);
+        backend.cycle_condition_mode(9);
+        ok &= backend.condition_mode(9) == 1 &&
+              backend.conditional_id(9) == SEQ_COND_100PCT;
+        backend.cycle_condition_mode(9);
+        ok &= backend.condition_mode(9) == 0;
+    }
 
     MD.connected = wasConnected;
     MD.uart = wasUart;

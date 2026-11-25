@@ -459,6 +459,11 @@ void SeqStepPage::loop() {
           bool cond_plock;
           uint8_t condition = active_track.step_conditional_from_knob(
               seq_param1.cur, &cond_plock);
+          // "No condition" is one knob position: the step keeps its own
+          // mode there, for the condition chosen next.
+          if (condition == 0) {
+            cond_plock = active_track.conditional_plock(step);
+          }
 
           if (seq_param1_changed || seq_param2_changed) {
             active_track.clear_step_oneshot(step);
@@ -624,7 +629,6 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           active_track.conditional_plock(step));
       seq_param1.cur = condition;
       seq_param1.old = seq_param1.cur;
-      popup_cond_plock = condition < active_track.condition_count();
 
       if (active_track.uses_note_pitch()) {
         uint8_t pitch_param = active_track.pitch_lock_param_id();
@@ -866,14 +870,14 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           uint8_t num_cond = active_track.condition_count();
           if (MD.microtimingCondition()) {
             // On the Machinedrum's popup the arrows pick the condition only,
-            // stopping at both ends; PAGE owns the mode. The knob keeps its side, also
-            // across "no condition".
+            // stopping at both ends; PAGE owns the mode. At "no condition"
+            // the mode is the one the step keeps.
             bool plock;
             uint8_t cond =
                 seq_cond_knob_to_step(seq_param1.cur, num_cond, &plock);
             if (seq_param1.cur == num_cond) {
               cond = 0;
-              plock = popup_cond_plock;
+              plock = active_track.conditional_plock(step);
             }
             // UP steps forward through the Octatrack's order, as on an X.20
             // Machinedrum's own popup; FUNC steps on to the next category:
@@ -884,7 +888,6 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
             } while (func_down && cond != SEQ_COND_100PCT &&
                      cond != SEQ_COND_FILL && cond != SEQ_COND_10PCT &&
                      cond != SEQ_COND_ITER_BASE && cond != SEQ_COND_ITER_MAX);
-            popup_cond_plock = plock;
             seq_param1.cur =
                 cond ? seq_cond_step_to_knob(cond, plock, num_cond) : num_cond;
             return true;
