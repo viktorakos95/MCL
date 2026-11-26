@@ -76,7 +76,11 @@ public:
   }
   void send_parameter_locks(uint8_t step, bool trig,
                             uint16_t lock_idx = 0xFFFF);
-  void send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx);
+  // note_on: the step plays a MID note, so its NOTE, N2, N3, LEN and VEL
+  // locks apply. Otherwise they are skipped: the sounding note's Note Off is
+  // built from those fields.
+  void send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx,
+                                   bool note_on = false);
   void reset_params();
   void get_step_locks(uint8_t step, uint8_t *params,
                       bool ignore_locks_disabled = false);

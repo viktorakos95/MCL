@@ -423,7 +423,8 @@ void MDSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
           send_notes_off();
           init_notes();
         }
-        send_parameter_locks_inline(current_step, step.trig, lock_idx);
+        send_parameter_locks_inline(current_step, step.trig, lock_idx,
+                                    step_fired);
         if (IS_BIT_SET64(slide_mask, current_step)) {
           locks_slides_recalc = current_step;
           locks_slides_idx = lock_idx;
@@ -724,7 +725,10 @@ void MDSeqTrack::send_notes_ccs(uint8_t *ccs, bool send_ccs) {
   uint8_t channel = md_track_midi_channel(track_number);
   if (ccs[0] != 255) {
     notes.ccs[0] = ccs[0];
-    uart2->sendProgramChange(channel, ccs[0]);
+    // PCHG 0 is OFF; 1..127 send programs 0..126.
+    if (ccs[0] != 0) {
+      uart2->sendProgramChange(channel, ccs[0] - 1);
+    }
   }
   if (ccs[1] != 255) {
     uart2->sendPitchBend(channel, ccs[1] << 7);
@@ -799,7 +803,7 @@ void MDSeqTrack::process_note_locks(uint8_t param, uint8_t val, uint8_t *ccs) {
 }
 
 void MDSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig,
-                                             uint16_t lock_idx) {
+                                             uint16_t lock_idx, bool note_on) {
 
   uint8_t ccs[midi_cc_array_size];
   bool send_ccs = false;
@@ -836,7 +840,9 @@ void MDSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig,
     lock_idx += lock_bit;
     if (send) {
       if (is_midi_model && p < 21) {
-        process_note_locks(p, val, ccs);
+        if (p >= 5 || note_on) {
+          process_note_locks(p, val, ccs);
+        }
         send_ccs |= (p > 4 && p < 8) || ((p > 8) && (p & 1)) ||
                     (p == 20);
       }
@@ -981,6 +987,11 @@ void MDSeqTrack::dispatch_slide_value(uint8_t param, uint8_t val, uint8_t channe
 
   if (!slide_ctx->is_midi_model) {
     MD.setTrackParam_inline(track_number, param, val);
+    return;
+  }
+  // NOTE, N2, N3, LEN and VEL do not slide: the sounding note's Note Off is
+  // built from them.
+  if (param < 5) {
     return;
   }
 

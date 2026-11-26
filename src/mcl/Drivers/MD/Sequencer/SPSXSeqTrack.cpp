@@ -205,7 +205,7 @@ void SPSXSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
                 // A LOCK step whose condition failed plays the plain kit
                 // sound: its locks are replaced by the kit values.
                 send_parameter_locks_inline(current_step, step_has_trig, lock_idx,
-                                            plan.apply_locks);
+                                            plan.apply_locks, plan.fire);
 
                 if (plan.apply_locks && step_has_slide) {
                     locks_slides_recalc = current_step;
@@ -431,7 +431,8 @@ void SPSXSeqTrack::send_notes_ccs(uint8_t *ccs, bool send_ccs) {
         case 3: out->sendChannelPressure(channel, ccs[3]); break;
         case 0:
             notes.ccs[0] = ccs[0];
-            out->sendProgramChange(channel, ccs[0]);
+            // PCHG 0 is OFF; 1..127 send programs 0..126.
+            if (ccs[0] != 0) out->sendProgramChange(channel, ccs[0] - 1);
             break;
         default:
             if (!(n & 1)) continue;
@@ -522,7 +523,7 @@ void SPSXSeqTrack::send_parameter_locks(uint8_t step, bool trig, uint16_t lock_i
 }
 
 void SPSXSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx,
-                                               bool use_locks) {
+                                               bool use_locks, bool note_on) {
     uint8_t ccs[spsx_midi_cc_array_size];
     bool send_ccs = false;
     bool midi_model = is_midi_model();
@@ -558,7 +559,7 @@ void SPSXSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig, uint16_t
 
         if (send) {
             if (midi_model && p < 21) {
-                process_note_locks(p, val, ccs);
+                if (p >= 5 || note_on) process_note_locks(p, val, ccs);
                 send_ccs |= (p > 4 && p < 8) || ((p > 8) && (p & 1)) || (p == 20);
             } else {
                 MD.setTrackParam(track_number, p, val, port, false);
@@ -585,6 +586,9 @@ void SPSXSeqTrack::dispatch_slide_value(uint8_t param, uint8_t value, uint8_t ch
         MD.setTrackParam(track_number, param, value, port, false);
         return;
     }
+    // NOTE, N2, N3, LEN and VEL do not slide: the sounding note's Note Off
+    // is built from them.
+    if (param < 5) return;
     slide_ctx->send_ccs |= ((param > 4 && param < 8) ||
                             ((param > 8) && (param & 1)) || (param == 20));
     process_note_locks(param, value, slide_ctx->ccs);

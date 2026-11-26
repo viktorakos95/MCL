@@ -131,8 +131,11 @@ public:
 
     void send_parameter_locks(uint8_t step, bool trig, uint16_t lock_idx = 0xFFFF);
     // use_locks false sends the kit values in place of the step's locks.
+    // note_on: the step plays a MID note, so its NOTE, N2, N3, LEN and VEL
+    // locks apply. Otherwise they are skipped: the sounding note's Note Off
+    // is built from those fields.
     void send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx,
-                                     bool use_locks = true);
+                                     bool use_locks = true, bool note_on = false);
     void reset_params();
     void set_track_pitch(uint8_t step, uint8_t pitch) override;
     uint8_t pitch_lock_param() const override;
