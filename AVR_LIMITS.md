@@ -19,6 +19,9 @@ flashing.
   - File browser MOVE disabled on AVR. Made room for the Euclidean sequencer.
   - WAV Designer was disabled for a while, then swapped for the project-conversion
     flag at the maintainer's request.
+  - MCL 5.10 (merged as 5.10+): plain 5.10 is 245,100 bytes on its own, 5.10 with this
+    fork's features was 248,920. The WAV Designer is left out on AVR
+    (`-DMCL_DISABLE_WAV_DESIGNER` in `env:avr`, about 7 KB): 241,472 bytes, 4,288 spare.
 - Ways used to save flash without losing features: chromatic tables that are exact
   straight lines are stored as 4-byte formulas (`TUNING_FORMULA` in `MDParams.h`),
   identical formulas are shared, and the note/CC conversion lives in one place
@@ -35,6 +38,7 @@ flashing.
 - Shown as `RAM: ... used N bytes` (external RAM, the 8192 figure is misleading).
 - When it is exceeded the link fails with
   `section '.bss' is not within region 'data'`.
+- 5.10+: the link was 94 bytes over; `model_param_names` (207 bytes) moved to flash.
 - Plain `const` arrays of structs end up in RAM on AVR. Large constant tables must be
   `PROGMEM` and read with `pgm_read_*`. The chromatic tuning index (`tunings[]`) was
   moved to flash for this reason (read through the `TUNING_*` accessors in
@@ -43,7 +47,8 @@ flashing.
 ## 3. Resource buffer (the one that causes "SD CARD ERROR")
 
 - `ResourceManager` unpacks the compressed resources from `resource/*.cpp` into a
-  fixed buffer, `RM_BUFSIZE` = 6500 bytes on AVR, with no run-time size check.
+  fixed buffer, `RM_BUFSIZE` = 5991 bytes on AVR (5.10+: the menu page's set exactly;
+  every byte of it is main RAM), with no run-time size check.
 - Pages load several resources at once. If their unpacked sizes add up to more
   than the buffer, memory is silently overwritten. The usual symptom is
   **"SD CARD ERROR :-("** at boot or random failures, while the build itself
@@ -54,8 +59,8 @@ flashing.
   - FXPage: icons_knob + icons_page + machine_param_names
   - MenuPage: icons_knob + machine_names_short + menu_layouts + menu_options + options
   - GridPage: icons_knob + icons_logo + machine_names_short
-- `ResourceManager.cpp` has `static_assert`s for these sets, so an oversized
-  resource now fails the AVR build instead of failing on the device.
+- Each page states its set with `RM_REQUIRE` (5.10), a `static_assert`, so an oversized
+  resource fails the AVR build instead of failing on the device.
 - Example: adding parameter labels for the X.14 patcher machines grew
   `machine_param_names` from 4045 to 5135 bytes and pushed SeqPage to 6769 bytes,
   which gave the SD CARD ERROR. Those labels are now left out on AVR

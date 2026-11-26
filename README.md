@@ -56,8 +56,8 @@ Settings save per project.
 
 This fork disables project conversion to free up flash space, so it **cannot
 open or convert older project formats**. If you have projects from before
-MCL 5.00, open and re-save them once with an official 5.00+ build first,
-that will upgrade them to the current format. Projects already saved on
+MCL 5.00, convert them once with the project upgrader firmware (see below)
+or open and re-save them with an official 5.00+ build first. Projects already saved on
 5.00 or later need no action.
 
 ### ⚠️ File menu changes
@@ -66,6 +66,14 @@ This fork disables the `MOVE` file menu entry to free up flash space.
 Everything else in the file menu, save/load/rename/clone/delete, and the
 project backup/version browser (`VERS`), is unaffected and works exactly
 like official MCL.
+
+### ⚠️ WAV Designer (MegaCommand / MegaCMD only)
+
+MCL 5.10 with this fork's features does not fit the MegaCommand's flash
+(3 KB over the 960-page limit), so the WAV Designer is left out of the
+MegaCommand and MegaCMD builds. Everything else is in. The WAV Designer is
+still there on the other platforms this fork builds for (e.g. the 1010music
+Blackbox MCL).
 
 ### Installing this fork
 
