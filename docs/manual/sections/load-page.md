@@ -102,7 +102,7 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
-| `MIX` | A cross | Each track picks its own direction from what it is playing (see below). |
+| `MIX` | A cross | When a slot loads, the fade direction is determined automatically by what its track is playing (see below). |
 | `OUT` | A filled falling ramp | Every loaded track fades out. |
 | `IN` | A filled rising ramp | Every loaded track fades in. |
 
@@ -129,7 +129,7 @@ With `FLEN` at `-`, a fade lasts the `QUANT` length; with `QUANT` also at `-`, i
 
 ### Fade Mode MIX
 
-In fade mode `MIX`, each track picks its own direction from what it is playing when the load arrives:
+In fade mode `MIX`, when a slot loads, the fade direction is determined automatically by what its track is playing when the load arrives:
 
 | The track was | You load | Result |
 | --- | --- | --- |
