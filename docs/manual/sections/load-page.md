@@ -94,7 +94,7 @@ When it is released, the encoders go back to their usual job.
 
 ### Turning It On
 
-A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode. The first time, it turns on in fade mode `AUT`.
+A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode. The first time, it turns on in fade mode `MIX`.
 
 ![load fade on](../assets/images/load_fade_on.png)
 
@@ -102,7 +102,7 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
-| `AUT` | A cross | Each track picks its own direction from what it is playing (see below). |
+| `MIX` | A cross (a crossfade) | Tracks leaving the mix fade out while new ones fade in. Each track picks its own direction from what it is playing (see below). |
 | `OUT` | A filled falling ramp | Every loaded track fades out. |
 | `IN` | A filled rising ramp | Every loaded track fades in. |
 
@@ -115,7 +115,7 @@ Hold **[Bank D]** to set the fade. The Load panel's edit opens, as with **`Load 
 ![load fade hold](../assets/images/load_fade_hold.png)
 
 - **[Left/Right]** or Encoder 1 change the row under the cursor. **[Up/Down]** or Encoder 2 move the cursor to `FLEN`, or to the other rows.
-- `FADE` steps through `-` (off), `AUT`, `OUT` and `IN`.
+- `FADE` steps through `-` (off), `MIX`, `OUT` and `IN`.
 - `FLEN` steps through `-` and 1 to 256 steps.
 - **[Trig]** 1 to 8 set `FLEN` to 2 to 256 steps, doubling with each trig, and turn the fade on. The trigs above set 256. The trig for the current length is lit; pressing it again sets `FLEN` back to `-`.
 
@@ -127,9 +127,9 @@ Let go of **[Bank D]** and the edit closes. The cursor of the **`Load | Yes`** a
 
 With `FLEN` at `-`, a fade lasts the `QUANT` length; with `QUANT` also at `-`, it lasts the slot's own length. Otherwise it lasts `FLEN` steps.
 
-### Fade Mode AUT
+### Fade Mode MIX
 
-In fade mode `AUT`, each track picks its own direction from what it is playing when the load arrives:
+In fade mode `MIX`, each track picks its own direction from what it is playing when the load arrives:
 
 | The track was | You load | Result |
 | --- | --- | --- |

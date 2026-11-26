@@ -1814,7 +1814,7 @@ static void fade_mode_row(uint8_t y, const char *label_P) {
     print_right(0, y);
     return;
   }
-  // AUT: the falling and rising slopes over each other (a crossfade cross);
+  // MIX: the falling and rising slopes over each other (a crossfade cross);
   // the falling slope's row from the top is 0 0 1 1 2 3 3 4 4, the rising
   // one is its mirror. IN: a filled ramp 1 2 2 3 3 4 4 5 5 px tall; OUT:
   // its mirror image.
@@ -1863,7 +1863,7 @@ static bool io_fade_edit() {
           clock_diff(io_slide_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS);
 }
 
-// One step of FADE's mode, in one order everywhere: - (off), AUT, OUT, IN.
+// One step of FADE's mode, in one order everywhere: - (off), MIX, OUT, IN.
 // Off keeps the direction, so a tap turns FADE back on in its last mode.
 static void io_step_fade_mode(int8_t dir) {
   const uint8_t fade = mcl_cfg.load_fade;
@@ -2254,7 +2254,7 @@ void GridPage::io_display_panel() {
         uint8_t len = mcl_cfg.chain_queue_length;
         panel_row(24, mclstr_len, len);
       } else {
-        // FADE: "FADE -" when off, else FADE and its mode's graphic: AUT
+        // FADE: "FADE -" when off, else FADE and its mode's graphic: MIX
         // (direction by column), OUT or IN (forced). Off, the row shows only
         // in the edit. In the edit, with FADE on, line 4 is FLEN, on the
         // screen's last row (baseline 31, its box y 25 .. 31).
