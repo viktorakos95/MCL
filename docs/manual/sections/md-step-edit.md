@@ -185,7 +185,7 @@ Use Encoder 3 for quick length changes, or use Track Menu `LENGTH` and `SPEED`.
 
 Hold **`Load | Yes`** while applying speed or swing from the Track Menu to update all compatible primary step tracks.
 
-With MDX X.20 or later, a length or speed change on the Machinedrum's SCALE page goes to its track or to all tracks, as chosen there.
+With MDX X.20 or later, in Enhanced mode, track lengths and speeds can be set from the Machinedrum's **[Scale]** menu. Press **[Yes/Enter]** there to switch between `ALL`, which sets every track, and `T 01` to `T 16`, which sets only the track shown.
 
 ## Live Record
 
