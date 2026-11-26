@@ -102,7 +102,7 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
-| `MIX` | A cross (a crossfade) | Tracks leaving the mix fade out while new ones fade in. Each track picks its own direction from what it is playing (see below). |
+| `MIX` | A cross | Each track picks its own direction from what it is playing (see below). |
 | `OUT` | A filled falling ramp | Every loaded track fades out. |
 | `IN` | A filled rising ramp | Every loaded track fades in. |
 
