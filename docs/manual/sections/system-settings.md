@@ -51,8 +51,10 @@ After a major firmware upgrade, stored configuration may be reset to defaults on
 
 | Value | Behavior |
 | --- | --- |
-| `LEGACY` | The default. While Load is open, Encoder 1 sets the load mode, Encoder 2 `LEN` (Queue mode) and Encoders 3 and 4 `QUANT`. The arrow keys close Load or Save and move the Grid Page cursor. Load and Save close after a load or save. |
-| `CLOSE` | While Load is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. On Save the arrow keys close Save. Load and Save close after a load or save. |
-| `STAY` | While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save stay open after a load or save, ready for the next one. |
+| `LEGACY` | While Load is open, Encoder 1 sets the load mode, Encoder 2 `LEN` (Queue mode) and Encoders 3 and 4 `QUANT`. The arrow keys close Load or Save and move the Grid Page cursor. Load and Save close after a load or save. |
+| `CLOSE` | While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save close after a load or save. |
+| `STAY` | The default. While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save stay open after a load or save, ready for the next one. |
+
+A new install starts on `STAY`. When MCL 5.10 is installed over MCL 5.00 to 5.02, the setting starts on `LEGACY`, so the encoders and arrow keys work as before.
 
 In every setting, holding **`Load | Yes`** or **[Global]** edits the values on the Load panel (the load mode, `QUANT`, `FADE`, `FLEN` or `LEN`). See the Load Page.

@@ -222,7 +222,9 @@ bool MCLSysConfig::cfg_init() {
   memset((uint8_t *)&version, 0, sizeof(MCLSysConfigData)); //<---- flush zero to config
   load_fade = 0;
   load_fade_len = 0;
-  io_stay = LOAD_SAVE_LEGACY;
+  // A new config starts on STAY. A config from before 5.10 has no Load
+  // panel tag and reads as LEGACY instead (MCLSd::load_init).
+  io_stay = LOAD_SAVE_STAY;
   ptc_groups.clear();
 
   version = CONFIG_VERSION;
