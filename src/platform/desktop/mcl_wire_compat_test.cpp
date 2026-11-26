@@ -1437,9 +1437,11 @@ bool checkConditionModes() {
         // LOCK: the trig plays anyway; only the locks wait.
         {SPSX_TRIG_TRUE, true, true, true, false, true, true},
         {SPSX_TRIG_FALSE, true, true, true, false, false, true},
-        // A muted LOCK step is silent; a spent one-shot keeps its plain hit.
+        // A muted LOCK step is silent.
         {SPSX_TRIG_ONESHOT, true, true, true, true, false, false},
-        {SPSX_TRIG_ONESHOT, true, true, true, false, false, true},
+        // A spent one-shot is FALSE: TRIG sends its locks, LOCK its plain hit.
+        {SPSX_TRIG_FALSE, false, false, true, false, true, false},
+        {SPSX_TRIG_FALSE, true, true, true, false, false, true},
         // LOCK on a step with locks but no trig.
         {SPSX_TRIG_TRUE, true, true, false, false, true, false},
         {SPSX_TRIG_FALSE, true, true, false, false, false, false},

@@ -74,7 +74,7 @@ struct SPSXStepPlan {
 };
 
 // result is trig_conditional()'s answer: TRUE, FALSE, or ONESHOT for a muted
-// step and for a one-shot that has already played.
+// step. A one-shot that has already played is FALSE.
 //   TRIG       the condition gates the trig; the locks are always sent
 //   TRIG+LOCK  the condition gates the trig and the locks
 //   LOCK       the trig plays unless the step is muted; the condition gates

@@ -341,8 +341,10 @@ uint8_t SPSXSeqTrack::trig_conditional(uint8_t step, uint8_t condition) {
     }
 
     if (condition == SPSX_COND_ONESHOT) {
+        // A one-shot that has played fails like any other condition: in TRIG
+        // mode its locks are still sent.
         if (SPSX_IS_BIT_SET64(oneshot_mask, step)) {
-            return SPSX_TRIG_ONESHOT;
+            return SPSX_TRIG_FALSE;
         }
         SPSX_SET_BIT64(oneshot_mask, step);
         return SPSX_TRIG_TRUE;

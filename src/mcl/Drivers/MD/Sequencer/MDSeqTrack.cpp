@@ -414,7 +414,7 @@ void MDSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
         }
       }
       auto &step = steps[current_step];
-      uint8_t send_trig = trig_conditional(step.cond_id);
+      uint8_t send_trig = trig_conditional(current_step, step.cond_id);
       bool is_midi_model = md_track_is_midi_model(track_number);
       bool step_fired = send_trig == TRIG_TRUE && step.trig;
       if (send_trig == TRIG_TRUE ||
@@ -1012,14 +1012,16 @@ void MDSeqTrack::send_trig_inline() {
   SET_BIT16(MDSeqTrack::md_trig_mask, track_number);
 }
 
-uint8_t MDSeqTrack::trig_conditional(uint8_t condition) {
+uint8_t MDSeqTrack::trig_conditional(uint8_t step, uint8_t condition) {
 
-  if (IS_BIT_SET64(oneshot_mask, step_count) ||
-      IS_BIT_SET64(mute_mask, step_count)) {
+  if (IS_BIT_SET64(mute_mask, step)) {
     return TRIG_ONESHOT;
   }
+  if (IS_BIT_SET64(oneshot_mask, step)) {
+    return TRIG_FALSE;
+  }
   if (condition == SEQ_COND_ONESHOT) {
-    SET_BIT64(oneshot_mask, step_count);
+    SET_BIT64(oneshot_mask, step);
     return TRIG_TRUE;
   }
   return conditional(condition) ? TRIG_TRUE : TRIG_FALSE;

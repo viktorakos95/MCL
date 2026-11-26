@@ -70,7 +70,9 @@ public:
 
   void send_trig();
   void send_trig_inline();
-  uint8_t trig_conditional(uint8_t condition);
+  // TRIG_ONESHOT: the step is muted. A one-shot that has played is
+  // TRIG_FALSE, so in TRIG mode its locks are still sent.
+  uint8_t trig_conditional(uint8_t step, uint8_t condition);
   ALWAYS_INLINE() void clear_step_oneshot(uint8_t step) {
     CLEAR_BIT64(oneshot_mask, step);
   }
