@@ -43,7 +43,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | **[Trig]** keys | Select slots. Releasing the trigs loads them. |
 | **[Scale]**, **`Page`** | Toggle Grid X / Grid Y while selecting. |
 | **[Bank A/B/C]** | Set the load mode: Manual, Auto or Queue. |
-| **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on. Hold to edit the Load panel with the cursor on `FADE` (see Fade). |
+| **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on (not in Queue mode). Hold to edit the Load panel with the cursor on `FADE` (see Fade). |
 | **[Function]** | In Manual mode, open `DEST` to choose a destination (see Destination). |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold for group selection; release to load the selected groups. |
 | **[Global]**, **`Load | Yes`** | Hold to edit the Load panel (see Editing The Load Panel). |
@@ -94,7 +94,7 @@ When it is released, the encoders go back to their usual job.
 
 ### Turning It On
 
-Tap **[Bank D]** (the Slide key) to turn `FADE` on or off. It turns on in the mode it had last, or `MIX` the first time.
+Tap **[Bank D]** (the Slide key) to turn `FADE` on or off. It turns on in the mode it had last, or `MIX` the first time. In Queue mode, where the panel shows `LEN` and not `FADE`, a tap does nothing: hold **[Bank D]** to see and change the fade.
 
 ![load fade on](../assets/images/load_fade_on.png)
 

@@ -2500,8 +2500,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
       // A tap: let go before the hold time with nothing used. A longer
-      // hold was the edit.
-      if (io_slide && !io_fade_edit()) {
+      // hold was the edit. In Queue, where line 3 is LEN and FADE is not
+      // shown, a tap leaves FADE as it is: the hold shows and edits it.
+      if (io_slide && !io_fade_edit() &&
+          mcl_cfg.load_mode != LOAD_QUEUE) {
         mcl_cfg.load_fade ^= 1;
       }
       io_slide_end();
