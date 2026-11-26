@@ -17,14 +17,11 @@ typedef struct fx_param_t {
 //
 class FXPage : public LightPage {
 public:
-  FXPage(Encoder *e1 = NULL, Encoder *e2 = NULL,
+  constexpr FXPage(Encoder *e1 = NULL, Encoder *e2 = NULL,
           Encoder *e3 = NULL, Encoder *e4 = NULL, fx_param_t *params_ = NULL,
           const char* title = NULL, uint8_t page_id_ = 0)
-      : LightPage(e1, e2, e3, e4) {
-      page_id = page_id_;
-      params = params_;
-      fx_page_title = title ? title : "";
-  }
+      : LightPage(e1, e2, e3, e4), fx_page_title(title ? title : ""),
+        params(params_), page_mode(false), page_id(page_id_) {}
 
   static PageIndex last_page;
 

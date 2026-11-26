@@ -127,12 +127,23 @@ void handleIncomingMidi() {
   uint8_t _midi_lock_tmp = MidiUartParent::handle_midi_lock;
   MidiUartParent::handle_midi_lock = 1;
 
-  Midi.processSysex();
-  Midi2.processSysex();
-  MidiUSB.processSysex();
-  Midi.processMidi();
-  Midi2.processMidi();
-  MidiUSB.processMidi();
+  // The timer interrupt calls this 5,000 times a second, nearly always with
+  // nothing waiting. processSysex() and processMidi() save and restore every
+  // register before they look, which made an empty poll of the three ports
+  // cost 850 CPU cycles: look first, here. SysEx on all three ports, then
+  // the other bytes, as before.
+  static MidiClass *const ports[3] = {&Midi, &Midi2, &MidiUSB};
+  for (uint8_t i = 0; i < 3; i++) {
+    MidiSysexClass *sysex = ports[i]->midiSysex;
+    if (sysex->msg_wr != sysex->msg_rd) {
+      ports[i]->processSysex();
+    }
+  }
+  for (uint8_t i = 0; i < 3; i++) {
+    if (ports[i]->uart->MidiUartClass::avail()) {
+      ports[i]->processMidi();
+    }
+  }
 
   MidiUartParent::handle_midi_lock = _midi_lock_tmp;
 }

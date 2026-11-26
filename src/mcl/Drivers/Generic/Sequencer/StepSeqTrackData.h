@@ -18,9 +18,16 @@ class StepSeqStepDescriptor {
 public:
     uint64_t locks;
 
-    uint8_t reserved : 1;
+    // The condition mode, as MDX keeps it in two bits:
+    //   plock 0            TRIG       the condition gates the trig
+    //   plock 1            TRIG+LOCK  it gates the trig and its locks
+    //   plock 1, explicit  LOCK       the trig always fires; it gates the locks
+    // (explicit alone is MDX's "TRIG, chosen by hand" and plays as TRIG.)
+    // The bit was reserved and zero before, so older tracks read as before.
+    bool cond_explicit : 1;
     bool cond_plock : 1;
     uint8_t cond_id : 6;
+    bool cond_lock_only() const { return cond_explicit && cond_plock; }
 
     uint64_t get_locks() const { return locks; }
     void set_locks(uint64_t value) { locks = value; }
@@ -34,7 +41,7 @@ public:
 // Transient copy/paste data is deliberately large enough for the hosted
 // SPS-X specialization. It is not part of generic/TBD grid storage and is not
 // compiled into AVR builds.
-static constexpr std::size_t STEPSEQ_TRANSFER_LOCK_CAPACITY = 37;
+static constexpr std::size_t STEPSEQ_TRANSFER_LOCK_CAPACITY = 38;
 class StepSeqStep {
 public:
     bool active;

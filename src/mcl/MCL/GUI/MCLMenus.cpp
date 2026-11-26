@@ -206,16 +206,18 @@ const uint8_t *const menu_target_param[] PROGMEM = {
     // 74
     &mcl_cfg.md_sample_bank,
     // 75
-    &mcl_cfg.manual_step_enabled,
+    &mcl_cfg.io_stay,
     // 76
-    &mcl_cfg.manual_step_cc,
+    &mcl_cfg.manual_step_enabled,
     // 77
-    &mcl_cfg.manual_step_port,
+    &mcl_cfg.manual_step_cc,
     // 78
-    &mcl_cfg.roll_ignores_mute,
+    &mcl_cfg.manual_step_port,
     // 79
-    &mcl_cfg.roll_triplets,
+    &mcl_cfg.roll_ignores_mute,
     // 80
+    &mcl_cfg.roll_triplets,
+    // 81
     &mcl_cfg.roll_active
 };
 

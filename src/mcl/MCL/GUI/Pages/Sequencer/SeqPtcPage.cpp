@@ -98,16 +98,6 @@ SeqTrack &ptc_active_track() {
   return ptc_seq_track(device_idx, ptc_selected_track(device_idx));
 }
 
-void ptc_note_bit_set(uint64_t *mask, uint8_t bit) NOINLINE();
-void ptc_note_bit_set(uint64_t *mask, uint8_t bit) {
-  SET_BIT128_P(mask, bit);
-}
-
-void ptc_note_bit_clear(uint64_t *mask, uint8_t bit) NOINLINE();
-void ptc_note_bit_clear(uint64_t *mask, uint8_t bit) {
-  CLEAR_BIT128_P(mask, bit);
-}
-
 uint8_t ptc_ext_track_for_msg(uint8_t *msg) NOINLINE();
 uint8_t ptc_ext_track_for_msg(uint8_t *msg) {
   uint8_t channel = MIDI_VOICE_CHANNEL(msg[0]);
@@ -395,8 +385,8 @@ void SeqPtcPage::display() {
 
   // draw TI keyboard
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setCursor(105, 32);
+  oled_font_small();
+  oled_cursor(105, 32);
 
   ArpSeqTrack &arp = ptc_arp_track(device_idx, ptc_selected_track(device_idx));
   if (is_poly) {
@@ -548,7 +538,7 @@ void SeqPtcPage::recalc_notemask() {
       uint8_t pitch = calc_scale_note(i, scale_padding);
       if (pitch > 127)
         continue;
-      ptc_note_bit_set(note_mask, pitch);
+      bitfield_set(note_mask, pitch);
     }
   }
 }
@@ -822,9 +812,9 @@ uint8_t SeqPtcPage::process_ext_event(uint8_t note_num, bool note_type,
   dev_note_channels[dev] = channel;
   if (arp.locks_note_set()) {
     if (note_type) {
-      ptc_note_bit_set(dev_note_masks[dev], note_num);
+      bitfield_set(dev_note_masks[dev], note_num);
     } else {
-      ptc_note_bit_clear(dev_note_masks[dev], note_num);
+      bitfield_clear(dev_note_masks[dev], note_num);
     }
     goto pitch_out;
   }
@@ -843,14 +833,14 @@ uint8_t SeqPtcPage::process_ext_event(uint8_t note_num, bool note_type,
         memset(note_mask, 0, sizeof(note_mask));
       }
     }
-    ptc_note_bit_set(dev_note_masks[dev], note_num);
+    bitfield_set(dev_note_masks[dev], note_num);
     if (pitch != 255) {
-      ptc_note_bit_set(note_mask, pitch);
+      bitfield_set(note_mask, pitch);
     }
   } else {
-    ptc_note_bit_clear(dev_note_masks[dev], note_num);
+    bitfield_clear(dev_note_masks[dev], note_num);
     if (arp.enabled != ARP_LATCH && pitch != 255) {
-      ptc_note_bit_clear(note_mask, pitch);
+      bitfield_clear(note_mask, pitch);
     }
   }
 pitch_out:
@@ -931,7 +921,7 @@ void SeqPtcMidiEvents::onNoteOffCallback_Midi2(uint8_t *msg) {
 void SeqPtcMidiEvents::note_on(uint8_t *msg, uint8_t channel_event) {
   uint8_t note_num = msg[1];
   uint8_t channel = MIDI_VOICE_CHANNEL(msg[0]);
-  DEBUG_PRINTLN("note on");
+  DEBUG_PRINTLN(F("note on"));
   DEBUG_DUMP(channel);
 
   // pitch - MIDI_NOTE_C4

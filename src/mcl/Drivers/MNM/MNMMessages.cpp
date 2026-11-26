@@ -120,16 +120,16 @@ bool MNMKit::fromSysex(MidiClass *midi) {
   int version = sysex.getByte(6);
   origPosition = sysex.getByte(8);
 
-  DEBUG_PRINTLN("MNM kit");
+  DEBUG_PRINTLN(F("MNM kit"));
   if (version == 64) {
-     DEBUG_PRINTLN("VERSION 64");
+     DEBUG_PRINTLN(F("VERSION 64"));
      decode_offset++;
   }
 
   uint16_t len = sysex.get_recordLen() - 5;
 
   if (!ElektronHelper::checkSysexChecksum(sysex, 5, len)) {
-    DEBUG_PRINTLN("wrong checksum");
+    DEBUG_PRINTLN(F("wrong checksum"));
     return false;
   }
 

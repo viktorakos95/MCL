@@ -41,7 +41,7 @@ Each oscillator has its own pitch, fine tune, shape width and waveform-specific 
 | `Encoder 2` | Fine tune in cents. |
 | `Encoder 3` | Width for triangle, pulse and saw waveforms. |
 | `Encoder 4` | Edit sine overtones or user waveform points while trig keys are held. |
-| **[No]** / panel **Save/No** | Toggle note display and frequency display. |
+| **[No]** / **`Save | No`** | Toggle note display and frequency display. |
 | MD **[Trig]** keys | Select sine overtones or user-waveform points for `Encoder 4` editing. |
 
 The oscillator's displayed note/frequency determines its rendered pitch. The final render uses the lowest active oscillator as the fundamental so the combined waveform loops cleanly.

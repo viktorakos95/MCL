@@ -3,6 +3,7 @@
 #include "MCLGUI.h"
 #include "StackMonitor.h"
 #include "Project.h"
+#include "UpgradeLog.h"
 #include "Sequencer/PtcGroups.h"
 #include "platform.h"
 #include <string.h>
@@ -94,7 +95,273 @@ bool wait_for_project_or_headless_boot() {
 #define wait_for_project_or_headless_boot() (mcl_gui.wait_for_project(), true)
 #endif
 
+#ifdef MCL_PROJECT_UPGRADER
+// What the two passes over the projects folder count.
+struct UpgradeCounts {
+  uint8_t folders; // top-level folders, for the scan's bar
+  uint8_t scanned; // of those, scanned
+  uint8_t current, needed, unreadable;
+  uint8_t index, ok, no_room, failed; // the conversions
+};
+
+// Writes text_P, or n in decimal, at p and returns the end.
+char *put_P(char *p, const char *text_P) {
+  strcpy_P(p, text_P);
+  return p + strlen(p);
+}
+char *put_count(char *p, uint8_t n) {
+  mcl_gui.put_value_at(n, p);
+  return p + strlen(p);
+}
+char *put_projects(char *p, uint8_t n) {
+  p = put_count(p, n);
+  return put_P(p, n == 1 ? PSTR(" PROJECT") : PSTR(" PROJECTS"));
+}
+
+void upgrade_status(const char *text_P, uint8_t n = 0, uint8_t total = 0) {
+  char text[32];
+  put_P(text, text_P);
+  upgrade_log::status(text, n, total);
+}
+
+// Opens the projects folder, or the folder path inside it. SdFat cannot
+// open "." by name (it trims a name's trailing dots), so this changes to the
+// folder and opens the working folder.
+bool open_upgrade_dir(File *dir, const char *path) {
+  proj.chdir_projects();
+  if (path[0] && !SD.chdir(path)) {
+    return false;
+  }
+  return dir->openCwd();
+}
+
+// The top-level folders, for the scan's progress bar.
+uint8_t count_upgrade_folders() {
+  File dir;
+  File entry;
+  uint8_t n = 0;
+  if (!open_upgrade_dir(&dir, "")) {
+    return 0;
+  }
+  while (entry.openNext(&dir, O_READ)) {
+    if (entry.isDirectory() && n < 255) {
+      n++;
+    }
+    entry.close();
+  }
+  dir.close();
+  return n;
+}
+
+// Converts one project the scan listed, with a line that counts up in
+// percent and ends OK, NO ROOM or FAILED.
+void upgrade_convert(const char *path, UpgradeCounts *c) {
+  char text[32];
+  char *p = put_count(text, ++c->index);
+  *p++ = '/';
+  p = put_count(p, c->needed);
+  *p++ = ' ';
+  strncpy(p, path, text + sizeof(text) - 1 - p);
+  text[sizeof(text) - 1] = '\0';
+  upgrade_log::add_progress(text);
+
+  p = put_P(text, PSTR("UPGRADING "));
+  p = put_count(p, c->index);
+  *p++ = '/';
+  put_count(p, c->needed);
+  upgrade_log::status(text, c->index - 1, c->needed);
+
+  const uint8_t skipped = proj.upgrade_skipped;
+  proj.upgrade_scan = false;
+  const char *result;
+  if (proj.load_project(path)) {
+    result = PSTR("OK");
+    c->ok++;
+  } else if (proj.upgrade_skipped != skipped) {
+    result = PSTR("NO ROOM");
+    c->no_room++;
+  } else {
+    result = PSTR("FAILED");
+    c->failed++;
+  }
+  upgrade_log::set_right_P(result);
+}
+
+// Every folder under the projects folder once, and one level down in a
+// folder that is not a project. A scan lists each project with what it
+// needs and writes nothing; otherwise the projects it listed as UPGRADE
+// convert.
+void upgrade_walk(char *path, bool top, bool scan, UpgradeCounts *c) {
+  File dir;
+  File entry;
+  if (!open_upgrade_dir(&dir, path)) {
+    return;
+  }
+  const uint8_t base = strlen(path);
+  while (entry.openNext(&dir, O_READ)) {
+    const bool is_dir = entry.isDirectory();
+    uint8_t at = base;
+    if (base) {
+      path[at++] = '/';
+    }
+    if (is_dir && at + 14 <= PRJ_PATH_LEN) {
+      entry.getName(path + at, PRJ_PATH_LEN - at);
+    } else {
+      path[at] = '\0';
+    }
+    entry.close();
+    if (path[at] != '\0' && path[at] != '.') {
+      proj.upgrade_scan = true;
+      proj.load_project(path);
+      const uint8_t state = proj.upgrade_state;
+      if (state == UPGRADE_NOT_PROJECT) {
+        if (top) {
+          upgrade_walk(path, false, scan, c);
+        }
+      } else if (scan) {
+        const char *word = PSTR("CAN'T READ");
+        if (state == UPGRADE_NEEDED) {
+          word = PSTR("UPGRADE");
+          c->needed++;
+        } else if (state == UPGRADE_CURRENT) {
+          word = PSTR("UP TO DATE");
+          c->current++;
+        } else {
+          c->unreadable++;
+        }
+        upgrade_log::add(path, word);
+      } else if (state == UPGRADE_NEEDED) {
+        upgrade_convert(path, c);
+      }
+      proj.chdir_projects();
+    }
+    if (top && scan && is_dir) {
+      upgrade_status(PSTR("SCANNING"), ++c->scanned, c->folders);
+    }
+    path[base] = '\0';
+  }
+  dir.close();
+}
+
+// Counts how many conversions fit in the card's free space. Each one needs a
+// new pair of grid files, plus a little for the project file kept as .old.
+uint16_t count_upgrade_room() {
+  const uint32_t cluster_bytes = SD.bytesPerCluster();
+  const int32_t free_clusters = SD.freeClusterCount();
+  if (cluster_bytes == 0 || free_clusters <= 0) {
+    return 0;
+  }
+  const uint32_t grid_bytes = (uint32_t)GRID_SLOT_BYTES *
+                              (uint32_t)(GRID_LENGTH + 2) *
+                              (uint32_t)(GRID_WIDTH + 1);
+  const uint32_t grid_clusters = (grid_bytes + cluster_bytes - 1) / cluster_bytes;
+  const uint32_t room =
+      (uint32_t)free_clusters / (grid_clusters * NUM_GRIDS + 2);
+  return room > 0xFFFF ? 0xFFFF : room;
+}
+
+void upgrade_finish() __attribute__((noreturn));
+void upgrade_finish() {
+  upgrade_status(PSTR("NOW UPGRADE TO MCL " VERSION_STR));
+  upgrade_log::idle();
+}
+
+// The upgrader's one job: scan the card, say what it found, ask, then
+// convert the projects from before MCL 5.00 with a line for each. Projects
+// that already open in this MCL are not touched. It ends on its last screen,
+// so nothing after it at boot is built into the upgrader.
+void upgrade_all_projects() __attribute__((noreturn));
+void upgrade_all_projects() {
+  char path[PRJ_PATH_LEN] = "";
+  char text[32];
+  char detail[32];
+  char *p;
+  UpgradeCounts c = {};
+  upgrade_log::begin();
+  upgrade_log::add_P(PSTR("MCL " VERSION_STR " PROJECT UPGRADE"));
+  // Nothing is read until the user starts it.
+  strcpy_P(text, PSTR("SCAN FOR PROJECTS?"));
+  detail[0] = '\0';
+  if (!upgrade_log::ask(text, detail)) {
+    upgrade_log::add_P(PSTR("STOPPED, NO PROJECT CHANGED"));
+    upgrade_finish();
+  }
+  upgrade_log::add_P(PSTR("SCANNING SD CARD"));
+  c.folders = count_upgrade_folders();
+  upgrade_status(PSTR("SCANNING"), 0, c.folders);
+  proj.upgrade_skipped = 0;
+  upgrade_walk(path, true, true, &c);
+
+  p = put_P(text, PSTR("FOUND "));
+  put_projects(p, c.current + c.needed + c.unreadable);
+  upgrade_log::add(text);
+  if (c.unreadable) {
+    p = put_count(text, c.unreadable);
+    put_P(p, PSTR(" CAN'T BE READ"));
+    upgrade_log::add(text);
+  }
+  if (!c.needed) {
+    upgrade_log::add_P(PSTR("NOTHING TO UPGRADE"));
+    upgrade_finish();
+  }
+  p = put_count(text, c.needed);
+  p = put_P(p, PSTR(" TO UPGRADE, "));
+  p = put_count(p, c.current);
+  put_P(p, PSTR(" UP TO DATE"));
+  upgrade_log::add(text);
+
+  // Reading the free space of a large card takes a few seconds.
+  upgrade_status(PSTR("CHECKING FREE SPACE"));
+  proj.upgrade_room = count_upgrade_room();
+  if (proj.upgrade_room < c.needed) {
+    p = put_P(text, PSTR("ROOM ON CARD FOR "));
+    p = put_count(p, proj.upgrade_room);
+    p = put_P(p, PSTR(" OF "));
+    put_count(p, c.needed);
+    upgrade_log::add(text);
+  }
+
+  p = put_P(text, PSTR("UPGRADE "));
+  p = put_projects(p, c.needed);
+  put_P(p, PSTR("?"));
+  detail[0] = '\0';
+  if (proj.upgrade_room < c.needed) {
+    p = put_P(detail, PSTR("ROOM FOR "));
+    put_count(p, proj.upgrade_room);
+  }
+  if (!upgrade_log::ask(text, detail)) {
+    upgrade_log::add_P(PSTR("STOPPED, NO PROJECT CHANGED"));
+    upgrade_finish();
+  }
+
+  upgrade_log::start_file();
+  upgrade_walk(path, true, false, &c);
+  upgrade_status(PSTR("DONE"), c.needed, c.needed);
+  p = put_count(text, c.ok);
+  put_P(p, PSTR(" UPGRADED"));
+  upgrade_log::add(text);
+  if (c.no_room) {
+    p = put_count(text, c.no_room);
+    put_P(p, PSTR(" LEFT, NO ROOM ON CARD"));
+    upgrade_log::add(text);
+    upgrade_log::add_P(PSTR("FREE SOME SPACE, RUN AGAIN"));
+  }
+  if (c.failed) {
+    p = put_count(text, c.failed);
+    put_P(p, PSTR(" FAILED"));
+    upgrade_log::add(text);
+  }
+  upgrade_finish();
+}
+#endif
+
 } // namespace
+
+#ifndef WAV_DESIGNER
+// The menu tables still name the WAV designer entry points.
+void wavdesign_menu_handler() {}
+void wav_render() {}
+#endif
 
 bool MCLSd::join_path(char *dst, uint8_t dst_len, const char *dir,
                       const char *entry) {
@@ -208,6 +475,13 @@ const char *MCLSd::full_path(const char *path, char *buffer, size_t size) {
 }
 #endif
 bool MCLSd::load_init() {
+#ifdef MCL_PROJECT_UPGRADER
+  // The upgrader converts project files and nothing else: it never opens
+  // the config.
+  if (sd_state) {
+    upgrade_all_projects();
+  }
+#endif
   if (sd_state) {
     char path[64];
     if (mcl_cfg.cfgfile.open(full_path("/config.mcls", path, sizeof(path)), O_RDWR)) {
@@ -268,6 +542,23 @@ bool MCLSd::load_init() {
         if (mcl_cfg.md_sample_bank_capture > 128) {
           mcl_cfg.md_sample_bank_capture = 0;
         }
+        {
+          // FADE, its length and SYSTEM > LOAD/SAVE follow the persisted
+          // block, then their tag.
+          uint8_t *panel = (uint8_t *)&mcl_cfg.load_fade;
+          memset(panel, 0, 4);
+          mcl_cfg.cfgfile.read(panel, 4);
+          if (mcl_cfg.load_panel_tag != LOAD_PANEL_CFG_TAG ||
+              panel[0] > (1 | LOAD_FADE_FORCE_MAX << 1) ||
+              mcl_cfg.load_fade_len > LOAD_FADE_STORED_MAX ||
+              mcl_cfg.io_stay > LOAD_SAVE_STAY) {
+            memset(panel, 0, 3);
+          }
+          // A fade set longer than the longest now takes the longest.
+          if (mcl_cfg.load_fade_len > LOAD_FADE_MAX) {
+            mcl_cfg.load_fade_len = LOAD_FADE_MAX;
+          }
+        }
         ptc_groups.load(mcl_cfg.ptc_group);
 
         if (mcl_cfg.number_projects > 0) {
@@ -319,7 +610,7 @@ bool MCLSd::seek(uint32_t pos, File *filep) {
     if (ret) {
       return true;
     }
-    DEBUG_PRINTLN("seek retry");
+    DEBUG_PRINTLN(F("seek retry"));
     DEBUG_PRINTLN(pos);
     delay(20);
     n++;
@@ -337,7 +628,7 @@ bool MCLSd::write_data(void *data, size_t len, File *filep) {
     if (b == len) {
       return true;
     }
-    DEBUG_PRINTLN("write retry");
+    DEBUG_PRINTLN(F("write retry"));
     delay(20);
     write_fail++;
     filep->seekSet(pos);
@@ -359,7 +650,7 @@ bool MCLSd::read_data(void *data, size_t len, File *filep) {
     if (b == len) {
       return true;
     }
-    DEBUG_PRINTLN("read retry");
+    DEBUG_PRINTLN(F("read retry"));
     delay(20);
     read_fail++;
     filep->seekSet(pos);
@@ -369,7 +660,7 @@ bool MCLSd::read_data(void *data, size_t len, File *filep) {
   return false;
 }
 
-bool MCLSd::copy_file(const char *src, const char *dst, uint8_t progress_base,
+COLD_SMALL() bool MCLSd::copy_file(const char *src, const char *dst, uint8_t progress_base,
                       uint8_t progress_span, uint8_t progress_max) {
   File in;
   File out;

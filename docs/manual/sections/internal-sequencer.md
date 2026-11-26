@@ -52,16 +52,16 @@ Trig conditions use the same condition model across supported step sequencer eng
 | Label | Meaning |
 | --- | --- |
 | `---` | Always play. |
-| `10%`, `25%`, `33%`, `50%`, `66%`, `75%`, `90%` | Probability that the trig plays. |
-| `1SH` | One-shot; plays once, then must be rearmed. |
-| `1ST` | First cycle/pass only. |
-| `!1S` | Not first cycle/pass. |
 | `FIL` | Plays when fill is active for the track. |
 | `!FL` | Plays when fill is not active for the track. |
 | `PRE` | Plays when the previous trig condition fired. |
 | `!PR` | Plays when the previous trig condition did not fire. |
 | `NEI` | Plays when the neighbouring previous track fired. |
 | `!NE` | Plays when the neighbouring previous track did not fire. |
+| `1ST` | First cycle/pass only. |
+| `!1S` | Not first cycle/pass. |
+| `1SH` | One-shot; plays once, then must be rearmed. |
+| `10%`, `25%`, `33%`, `50%`, `66%`, `75%`, `90%` | Probability that the trig plays. |
 | `x:y` | Iterator condition; for example `2:4` plays on the second pass of a four-pass cycle. |
 
 When a condition is shown with a `^` or `+` marker, the condition also gates related lock/slide behavior instead of only gating the trig.

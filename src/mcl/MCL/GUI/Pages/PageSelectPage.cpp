@@ -117,7 +117,7 @@ static void print_category_name_by_idx(uint8_t catidx) {
 }
 
 void PageSelectPage::init() {
-  DEBUG_PRINTLN("page select init");
+  DEBUG_PRINTLN(F("page select init"));
   key_interface.on();
   uint8_t _midi_lock_tmp = MidiUartParent::handle_midi_lock;
   MidiUartParent::handle_midi_lock = 0;
@@ -243,14 +243,13 @@ void PageSelectPage::display() {
   uint8_t catidx;
 
   oled_display.fillRect(0, 0, 128, 7, WHITE);
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(BLACK);
-  oled_display.setCursor(47, 6);
-  mcl_print_P(mclstr_page_select);
+  oled_font_small();
+  oled_text_color(BLACK);
+  text_at_P(47, 6, mclstr_page_select);
   oled_display.fillRect(0, 7, 128, 25, BLACK);
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
   for (uint8_t i = 0; i < 4; ++i) {
-    oled_display.setCursor(pgm_read_byte(&page_category_label_x[i]), 31);
+    oled_cursor(pgm_read_byte(&page_category_label_x[i]), 31);
     print_category_name_by_idx(i);
   }
   bool valid_page = page_select < PageRegistry::kMaxPageSlots &&
@@ -283,7 +282,7 @@ void PageSelectPage::display() {
     if (i == catidx) {
       oled_display.fillRect(group_x, 18, 23, 6, WHITE);
     } else {
-      oled_display.drawRect(group_x, 18, 23, 6, WHITE);
+      oled_rect(group_x, 18, 23, 6, WHITE);
     }
 
     for (uint8_t j = 0; j < 4; ++j) {
@@ -302,9 +301,8 @@ void PageSelectPage::display() {
     group_x += 24;
   }
 
-  oled_display.setFont();
-  oled_display.setCursor(29, 9);
-  mcl_print_P(name_P);
+  oled_font_default();
+  text_at_P(29, 9, name_P);
 
   if (icon != nullptr) {
     oled_display.drawBitmap(12 - kPageIconWidth / 2, 19 - iconh / 2, icon,

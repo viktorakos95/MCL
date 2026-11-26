@@ -17,10 +17,10 @@ void MIDITest::setup() {
   Midi2.addOnControlChangeCallback(midi_callback,
                                    (midi_callback_ptr_t)&TestCallback::onCC);
   MidiSysex2.addSysexListener(sysex_listener);
-  DEBUG_PRINTLN("MIDI callbacks registered");
+  DEBUG_PRINTLN(F("MIDI callbacks registered"));
 
   reset_counters();
-  DEBUG_PRINTLN("Test counters reset");
+  DEBUG_PRINTLN(F("Test counters reset"));
 }
 
 void MIDITest::cleanup() {
@@ -29,10 +29,10 @@ void MIDITest::cleanup() {
   Midi2.removeOnControlChangeCallback(midi_callback,
                                    (midi_callback_ptr_t)&TestCallback::onCC);
   MidiSysex2.removeSysexListener(sysex_listener);
-  DEBUG_PRINTLN("MIDI callbacks registered");
+  DEBUG_PRINTLN(F("MIDI callbacks registered"));
 
   reset_counters();
-  DEBUG_PRINTLN("Test counters reset");
+  DEBUG_PRINTLN(F("Test counters reset"));
 }
 
 
@@ -44,7 +44,7 @@ void MIDITest::run_tests() {
   bool cc_test = run_cc_test();
   bool sysex_test = run_sysex_test();
 
-  DEBUG_PRINTLN("\n=== Final Test Results ===");
+  DEBUG_PRINTLN(F("\n=== Final Test Results ==="));
   log_test_result("Note Test", note_test);
   log_test_result("CC Test", cc_test);
   log_test_result("SYSEX Test", sysex_test);
@@ -68,17 +68,17 @@ bool MIDITest::run_note_test() {
   log_test_start("Note Test");
   reset_counters();
 
-  DEBUG_PRINTLN("Sending Note On message:");
-  DEBUG_PRINTLN("  Channel: 1");
-  DEBUG_PRINTLN("  Note: 60 (Middle C)");
-  DEBUG_PRINTLN("  Velocity: 100");
+  DEBUG_PRINTLN(F("Sending Note On message:"));
+  DEBUG_PRINTLN(F("  Channel: 1"));
+  DEBUG_PRINTLN(F("  Note: 60 (Middle C)"));
+  DEBUG_PRINTLN(F("  Velocity: 100"));
   MidiUart2.sendNoteOn(0, 60, 100);
   messages_sent++;
 
-  DEBUG_PRINTLN("Waiting for processing...");
+  DEBUG_PRINTLN(F("Waiting for processing..."));
   sleep_ms(10);
   //handleIncomingMidi();
-  DEBUG_PRINTLN("Processing received messages...");
+  DEBUG_PRINTLN(F("Processing received messages..."));
 
   bool success = messages_received == messages_sent;
   DEBUG_PRINTLN("Messages sent: " + String(messages_sent));
@@ -91,17 +91,17 @@ bool MIDITest::run_cc_test() {
   log_test_start("CC Test");
   reset_counters();
 
-  DEBUG_PRINTLN("Sending CC message:");
-  DEBUG_PRINTLN("  Channel: 1");
-  DEBUG_PRINTLN("  Controller: 7 (Volume)");
-  DEBUG_PRINTLN("  Value: 100");
+  DEBUG_PRINTLN(F("Sending CC message:"));
+  DEBUG_PRINTLN(F("  Channel: 1"));
+  DEBUG_PRINTLN(F("  Controller: 7 (Volume)"));
+  DEBUG_PRINTLN(F("  Value: 100"));
   MidiUart2.sendCC(0, 7, 100);
   messages_sent++;
 
-  DEBUG_PRINTLN("Waiting for processing...");
+  DEBUG_PRINTLN(F("Waiting for processing..."));
   sleep_ms(10);
   //handleIncomingMidi();
-  DEBUG_PRINTLN("Processing received messages...");
+  DEBUG_PRINTLN(F("Processing received messages..."));
 
   bool success = messages_received == messages_sent;
   DEBUG_PRINTLN("Messages sent: " + String(messages_sent));
@@ -116,16 +116,16 @@ bool MIDITest::run_sysex_test() {
 
   uint8_t sysex_data[] = {0x00, 0x13, 0x37, 0x11, 0x22};
 
-  DEBUG_PRINTLN("Sending SYSEX message:");
-  DEBUG_PRINTLN("  Manufacturer ID: 00 13 37");
-  DEBUG_PRINTLN("  Data bytes: 11 22");
+  DEBUG_PRINTLN(F("Sending SYSEX message:"));
+  DEBUG_PRINTLN(F("  Manufacturer ID: 00 13 37"));
+  DEBUG_PRINTLN(F("  Data bytes: 11 22"));
   MidiUart2.sendSysex(sysex_data, sizeof(sysex_data));
   messages_sent++;
 
-  DEBUG_PRINTLN("Waiting for processing...");
+  DEBUG_PRINTLN(F("Waiting for processing..."));
   sleep_ms(100);
   //handleIncomingMidi();
-  DEBUG_PRINTLN("Processing received messages...");
+  DEBUG_PRINTLN(F("Processing received messages..."));
 
   bool success = messages_received == messages_sent;
   DEBUG_PRINTLN("Messages sent: " + String(messages_sent));

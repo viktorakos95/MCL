@@ -13,8 +13,9 @@ class MidiIDSysexListenerClass : public MidiSysexListenerClass {
    **/
 
 public:
-  bool isIDMessage;
-  MidiIDSysexListenerClass() : MidiSysexListenerClass(NULL, 0x7E, 0x06, 0x02) {}
+  bool isIDMessage = false;
+  constexpr MidiIDSysexListenerClass()
+      : MidiSysexListenerClass(NULL, 0x7E, 0x06, 0x02) {}
 
   virtual void start();
   virtual void handleByte(uint8_t byte);

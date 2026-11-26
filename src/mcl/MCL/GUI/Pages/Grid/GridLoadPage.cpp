@@ -111,7 +111,7 @@ void GridLoadPage::display_at(uint8_t y_offset) {
   const uint8_t body_y_offset = content_y_offset(y_offset);
   const uint8_t menu_y = MCLGUI::s_menu_y + body_y_offset;
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   if (show_track_type) {
     grid_io_draw_groups_title(mclstr_load_groups, y_offset);
   } else {
@@ -158,14 +158,13 @@ void GridLoadPage::display_at(uint8_t y_offset) {
     //    mcl_gui.draw_text_encoder(MCLGUI::s_menu_x + 4, MCLGUI::s_menu_y + 8,
     //                              "STEP", K);
     if (show_offset) {
-      oled_display.setCursor(MCLGUI::s_menu_x + 26, 14 + body_y_offset);
-      mcl_print_P(mclstr_destination);
+      text_at_P(MCLGUI::s_menu_x + 26, 14 + body_y_offset, mclstr_destination);
       trig_mask = 0;
       if (offset < NUM_SLOTS && offset / GRID_WIDTH == old_grid) {
-        SET_BIT16(trig_mask, offset % GRID_WIDTH);
+        bitfield_set(&trig_mask, offset % GRID_WIDTH);
       }
       // if (offset < 16) {
-      //   oled_display.setCursor(MCLGUI::s_menu_x + 4 + offset * MCLGUI::seq_w
+      //   oled_cursor(MCLGUI::s_menu_x + 4 + offset * MCLGUI::seq_w
       //   + 1, 16);
       //  oled_display.print(">");
       // }
@@ -200,10 +199,10 @@ void GridLoadPage::display_at(uint8_t y_offset) {
 
       // draw step count
     }
-    oled_display.setFont(&TomThumb);
+    oled_font_small();
     uint8_t step_count = (MidiClock.div16th_counter - mcl_actions.start_clock32th / 2) % 64;
 
-    oled_display.setCursor(MCLGUI::s_menu_x + MCLGUI::s_menu_w - 11,
+    oled_cursor(MCLGUI::s_menu_x + MCLGUI::s_menu_w - 11,
                            menu_y + 4 + 17);
     oled_display.print(step_count);
 
@@ -213,18 +212,14 @@ void GridLoadPage::display_at(uint8_t y_offset) {
 #endif
     // draw data flow in the center
     /*
-    oled_display.setCursor(48, MCLGUI::s_menu_y + 4 + 12);
-    mcl_print_P(mclstr_snd);
-    oled_display.setCursor(46, MCLGUI::s_menu_y + 4 + 19);
-    mcl_print_P(mclstr_grid);
+    text_at_P(48, MCLGUI::s_menu_y + 4 + 12, mclstr_snd);
+    text_at_P(46, MCLGUI::s_menu_y + 4 + 19, mclstr_grid);
 
     mcl_gui.draw_horizontal_arrow(63, MCLGUI::s_menu_y + 4 + 8, 5);
     mcl_gui.draw_horizontal_arrow(63, MCLGUI::s_menu_y + 4 + 15, 5);
 
-    oled_display.setCursor(74, MCLGUI::s_menu_y + 4 + 12);
-    mcl_print_P(mclstr_md_prefix);
-    oled_display.setCursor(74, MCLGUI::s_menu_y + 4 + 19);
-    mcl_print_P(mclstr_seq);
+    text_at_P(74, MCLGUI::s_menu_y + 4 + 12, mclstr_md_prefix);
+    text_at_P(74, MCLGUI::s_menu_y + 4 + 19, mclstr_seq);
     */
   }
 }

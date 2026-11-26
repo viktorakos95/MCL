@@ -23,6 +23,7 @@ void FXPage::init() {
   R.use_icons_page();
   R.use_machine_param_names();
   R.use_icons_knob();
+  RM_REQUIRE(0, __T_icons_page, __T_machine_param_names, __T_icons_knob);
   last_page = mcl.currentPage();
 }
 void FXPage::update_encoders() {
@@ -91,7 +92,7 @@ void FXPage::display() {
     mcl_gui.draw_knob(i, encoders[i], str, false, false);
     //  mcl_gui.draw_light_encoder(30 + 20 * i, 18, encoders[i], str);
   }
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   const char *info1;
   ;
   const char *info2;

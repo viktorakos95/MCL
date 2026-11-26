@@ -106,10 +106,13 @@ void MDTrackSelect::handle_track_select_legacy(const SysexView &view,
       return;
     }
   update_length_speed:
-    if (is_seq_page) {
-      if (!is_single_track_edit) {
-        goto update_pattern;
-      }
+    // An X.20 Machinedrum follows "no swing" (0x7F) with the scope of its
+    // length/speed edit: 0 its track, 1 all tracks. Without it, MCL's own
+    // page decides, as for X.14.
+    if (len >= 10 && view.getByte(8) == 0x7F && view.getByte(9) <= 1) {
+      is_single_track_edit = view.getByte(9) == 0;
+    }
+    if (is_single_track_edit) {
       uint8_t b = view.getByte(3);
       MD.currentTrack = b & 0xF;
       uint8_t n = is_md_device ? MD.currentTrack : last_ext_track;
@@ -127,7 +130,6 @@ void MDTrackSelect::handle_track_select_legacy(const SysexView &view,
       }
       if (mcl.currentPage() == SEQ_EXTSTEP_PAGE) { seq_extparam4.cur = length; }
     } else {
-    update_pattern:
       uint8_t track_len = SeqTrackUtil::track_count(is_md_device);
 #if !defined(__AVR__)
       if (is_md_device && mcl_seq.using_spsx_tracks) {
@@ -168,12 +170,16 @@ void MDTrackSelect::handle_track_select_legacy(const SysexView &view,
     MD.currentBank = (b & 64) > 0;
 
     b = view.getByte(4);
-    MD.kit.models[MD.currentTrack] = view.getByte(5);
-    if (b & 1) {
-      MD.kit.models[MD.currentTrack] += 128;
+    // Bit 5 says the Machinedrum is showing its LFO page; the page number is
+    // then the tab. Older firmware leaves the bit clear.
+    if (b & 0x20) {
+      MD.currentSynthPage |= 4;
     }
-    if (b & 2) {
-      MD.kit.models[MD.currentTrack] += 0x20000;
+    MD.kit.models[MD.currentTrack] = mdModelFromMachineFlags(view.getByte(5), b);
+    // Bit 6 is the Machinedrum's channel mode, so a change made there is
+    // followed like the base channel. Older firmware leaves the bit clear.
+    if (MD.extendedMachineUpdates()) {
+      MD.global.channelMode = (b >> 6) & 1;
     }
   }
   bool ret = seq_step_page.md_track_change_check();
@@ -201,7 +207,7 @@ void MDTrackSelect::end() {
     return;
   }
 
-  DEBUG_PRINTLN("track select end");
+  DEBUG_PRINTLN(F("track select end"));
   uint8_t len = view.get_recordLen();
   DEBUG_PRINTLN(len);
   DEBUG_PRINTLN(msg_rd);

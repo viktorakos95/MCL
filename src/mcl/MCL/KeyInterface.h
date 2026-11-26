@@ -39,6 +39,11 @@
 #define MDX_KEY_FUNCYES 0x3A
 #define MDX_KEY_FUNCEXTENDED 0x3B
 #define MDX_KEY_SPS 0x3C
+// From an X.20 Machinedrum's FILL view in Enhanced mode (MDX key_mappings.h):
+// UP held (press/release), YES, and a change of the tracks taking part.
+#define MDX_KEY_FILLHOLD 0x3D
+#define MDX_KEY_FILLTOGGLE 0x3E
+#define MDX_KEY_FILLTRACKS 0x3F
 
 #include "Task.h"
 
@@ -76,7 +81,10 @@ public:
   uint16_t last_clock;
   bool throttle;
 
-  KeyInterface() : MidiSysexListenerClass(NULL, 0x7F, 0x0D) {}
+  constexpr KeyInterface()
+      : MidiSysexListenerClass(NULL, 0x7F, 0x0D), state(false),
+        cmd_key_state(0), ignore_next_mask(0), last_clock(0),
+        throttle(false) {}
   void setup(MidiClass *_midi);
   void ignoreNextEvent(uint8_t i) {
     SET_BIT64(ignore_next_mask, i);

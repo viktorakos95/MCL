@@ -180,7 +180,7 @@ void lfo_mult_label(uint8_t multiplier, char *out) {
 
 void draw_lfo_enable_info_label(bool enabled) {
   const uint8_t split_x = MCLGUI::pane_w / 2;
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   oled_display.fillRect(0, MCLGUI::pane_info1_y, MCLGUI::pane_w,
                         MCLGUI::pane_info_h, BLACK);
@@ -188,13 +188,11 @@ void draw_lfo_enable_info_label(bool enabled) {
                         enabled ? split_x : MCLGUI::pane_w - split_x,
                         MCLGUI::pane_info_h, WHITE);
 
-  oled_display.setTextColor(enabled ? BLACK : WHITE);
-  oled_display.setCursor(3, MCLGUI::pane_info1_y + 6);
-  mcl_print_P(mclstr_on);
-  oled_display.setTextColor(enabled ? WHITE : BLACK);
-  oled_display.setCursor(split_x + 2, MCLGUI::pane_info1_y + 6);
-  mcl_print_P(mclstr_off);
-  oled_display.setTextColor(WHITE);
+  oled_text_color(enabled ? BLACK : WHITE);
+  text_at_P(3, MCLGUI::pane_info1_y + 6, mclstr_on);
+  oled_text_color(enabled ? WHITE : BLACK);
+  text_at_P(split_x + 2, MCLGUI::pane_info1_y + 6, mclstr_off);
+  oled_text_color(WHITE);
 }
 
 bool lfo_preview_is_centered(uint8_t wav_type) {
@@ -204,6 +202,11 @@ bool lfo_preview_is_centered(uint8_t wav_type) {
   return (centered_mask >> wav_type) & 1;
 }
 
+MidiDeviceParamRange lfo_value_range(LFOSeqTrack *track, uint8_t param_idx) {
+  return DeviceParamResolver::perf_value_range(track->params[param_idx].dest,
+                                               track->params[param_idx].param);
+}
+
 void update_lfo_base_param(Encoder **encoders, LFOSeqTrack *track,
                            uint8_t encoder_idx, uint8_t param_idx) NOINLINE();
 void update_lfo_base_param(Encoder **encoders, LFOSeqTrack *track,
@@ -211,7 +214,11 @@ void update_lfo_base_param(Encoder **encoders, LFOSeqTrack *track,
   if (!encoders[encoder_idx]->hasChanged()) {
     return;
   }
-  uint8_t value = encoders[encoder_idx]->cur;
+  // An edit moves the value into the parameter's range; a stored value
+  // below it (RTIM under 2 from an older Kit) stays until then.
+  uint8_t value = lfo_value_range(track, param_idx)
+                      .clamp(encoders[encoder_idx]->cur);
+  encoders[encoder_idx]->cur = value;
   track->params[param_idx].offset = value;
   if (track->params[param_idx].dest != 0 &&
       LFOTrackRef::set_base_param(track->params[param_idx].dest,
@@ -288,6 +295,11 @@ void draw_lfo_value_knob(uint8_t knob, Encoder *encoder, LFOSeqTrack *track,
     value = track->last_wav_value[param_idx] == 255
                 ? track->params[param_idx].offset
                 : track->last_wav_value[param_idx];
+  } else if (DeviceParamResolver::perf_value_text(
+                 track->params[param_idx].dest,
+                 track->params[param_idx].param, value, label)) {
+    // Values with a name (RTRG OFF/INF, ENV DEST AMP...) take the label slot.
+    show_base = false;
   }
   mcl_gui.draw_light_encoder(x + 7, 6, value, label, highlight, show_base,
                              false);
@@ -300,11 +312,10 @@ void draw_lfo_wave_preview(uint8_t knob, uint8_t wav_type) {
   const uint8_t preview_height = 7;
   const uint8_t preview_width = 15;
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(WHITE);
-  oled_display.setCursor(knob_x + 5, mcl_gui.knob_y0 + 6);
-  mcl_print_P(mclstr_wav_label);
-  oled_display.setFont();
+  oled_font_small();
+  oled_text_color(WHITE);
+  text_at_P(knob_x + 5, mcl_gui.knob_y0 + 6, mclstr_wav_label);
+  oled_font_default();
 
   wav_type = wav_type < LFO_SHAPE_COUNT ? wav_type : TRI_WAV;
   uint8_t ref_y = lfo_preview_is_centered(wav_type)
@@ -433,9 +444,11 @@ void LFOPage::config_encoders() {
   }
   else if (page_mode == LFO_MODULATION) {
     set_lfo_encoder(encoders[0], lfo_track->params[0].depth, 127);
-    set_lfo_encoder(encoders[1], lfo_track->params[0].offset, 127);
+    set_lfo_encoder(encoders[1], lfo_track->params[0].offset,
+                    lfo_value_range(lfo_track, 0).max);
     set_lfo_encoder(encoders[2], lfo_track->params[1].depth, 127);
-    set_lfo_encoder(encoders[3], lfo_track->params[1].offset, 127);
+    set_lfo_encoder(encoders[3], lfo_track->params[1].offset,
+                    lfo_value_range(lfo_track, 1).max);
   }
 
   //  loop();
@@ -558,7 +571,7 @@ void LFOPage::display() {
     strcpy(info2, "LFO>DEP");
   }
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   uint8_t base_mode = lfo_track->base_mode();
   bool show_lfo_mask = base_mode == LFO_MODE_TRIG || base_mode == LFO_MODE_ONE;
@@ -751,15 +764,15 @@ bool LFOPage::handleEvent(gui_event_t *event) {
       return true;
     }
     if (event->mask == EVENT_BUTTON_PRESSED) {
-      if (!IS_BIT_SET64(lfo_track->pattern_mask, step)) {
+      if (!bitfield_test(&lfo_track->pattern_mask, step)) {
         reset_lfo_clear_undo(lfo_track);
-        SET_BIT64(lfo_track->pattern_mask, step);
+        bitfield_set(&lfo_track->pattern_mask, step);
       } else {
         DEBUG_PRINTLN(F("Trying to clear"));
         if (clock_diff(note_interface.note_hold[port], read_clock_ms()) <
             TRIG_HOLD_TIME) {
           reset_lfo_clear_undo(lfo_track);
-          CLEAR_BIT64(lfo_track->pattern_mask, step);
+          bitfield_clear(&lfo_track->pattern_mask, step);
         }
       }
     }

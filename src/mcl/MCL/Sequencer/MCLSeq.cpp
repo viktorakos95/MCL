@@ -65,6 +65,31 @@ inline __attribute__((always_inline)) void prepare_tx_buffers(MidiUartClass *pri
   uart_sidechannel = !uart_sidechannel;
 }
 
+// A queued fill starts, and a fill cycle ends, when the longest MD track
+// (length x speed) wraps: MDX's master length, for MCL's own tracks.
+template <class Track>
+void check_fill_wrap(MCLSeq &self, Track *tracks) {
+  if (!(self.fill_state & (MCLSeq::FillQueued | MCLSeq::FillCycle))) {
+    self.fill_wrap_prev = 255;
+    return;
+  }
+  uint8_t longest = 0;
+  uint16_t ticks = 0;
+  for (uint8_t i = 0; i < self.num_md_tracks; i++) {
+    const uint16_t loop =
+        uint16_t(tracks[i].length) * tracks[i].get_ticks_per_step();
+    if (loop > ticks) {
+      ticks = loop;
+      longest = i;
+    }
+  }
+  const uint8_t step = tracks[longest].step_count;
+  if (step == 0 && self.fill_wrap_prev != 0 && self.fill_wrap_prev != 255)
+    self.fill_wrapped();
+  self.fill_wrap_prev = step;
+}
+
+
 #if defined(__AVR__)
 // One shared copy on AVR: called from seq() and manual_step_advance(), and
 // inlining it twice costs ~300 bytes of flash. A call per tick is negligible.
@@ -117,6 +142,7 @@ inline __attribute__((always_inline)) void run_md_tick(MCLSeq &self, MidiUartCla
     for (uint8_t i = 0; i < self.num_md_tracks; i++) {
       self.spsx_tracks[i].recalc_slides();
     }
+    check_fill_wrap(self, self.spsx_tracks);
     return;
   }
 #endif
@@ -133,6 +159,7 @@ inline __attribute__((always_inline)) void run_md_tick(MCLSeq &self, MidiUartCla
   self.mdfx_track.seq();
 
   MDSeqTrack::post_seq(uart);
+  check_fill_wrap(self, self.md_tracks);
 
   for (uint8_t i = 0; i < NUM_AUX_TRACKS; i++) {
     self.aux_tracks[i].seq();
@@ -281,6 +308,7 @@ void MCLSeq::setup() {
   for (uint8_t i = 0; i < num_md_tracks; i++) {
     md_tracks[i].track_number = i;
     md_tracks[i].set_length(16);
+    md_tracks[i].set_default_swing();
     md_tracks[i].speed = SEQ_SPEED_1X;
     md_tracks[i].mute_state = SEQ_MUTE_OFF;
     md_arp_tracks[i].init();
@@ -564,6 +592,33 @@ void MCLSeq::manual_step_advance() {
     run_md_tick(*this, uart, uart2, /*legacy_tick=*/true);
   }
   recalc_all_slides(*this, /*legacy_tick=*/true);
+}
+
+// Foreground: an X.20 Machinedrum shows MCL's fill on its scale LEDs.
+void MCLSeq::service_fill() {
+  const bool model = MD.connected && (MD.fw_caps & FW_CAP_MCL_FILL_STATE);
+  if (model != fill_model) {
+    fill_model = model;
+    if (model) apply_fill();  // fill_mask now follows the fill state
+  }
+  if (!model) {
+    fill_state_sent = 0;
+    return;
+  }
+  if (fill_tracks_dirty) {
+    fill_tracks_dirty = false;
+    uint16_t mutes, fills;
+    if (MD.get_track_state(mutes, fills) & 2) {
+      fill_participants[0] = fills;
+      apply_fill();
+    }
+  }
+  const uint8_t wire =
+      (fill_active() ? 1 : 0) | ((fill_state & FillQueued) ? 2 : 0);
+  if (wire != fill_state_sent) {
+    MD.setFillState(wire);
+    fill_state_sent = wire;
+  }
 }
 
 MCLSeq mcl_seq;

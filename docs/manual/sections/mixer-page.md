@@ -45,6 +45,21 @@ Fill mode edits the separate per-track fill state used by the `FIL` and `!FL` tr
 
 Tracks with fill enabled are shown with the fill indicator. A step with the `FIL` condition plays only when fill is enabled for that track; a step with `!FL` plays only when fill is not enabled.
 
+### Fill With MDX X.20 Or Later
+
+With a Machinedrum running MDX X.20 or later, fill works as on the Machinedrum, from any page:
+
+| Control | Action |
+| --- | --- |
+| **[Scale]** + **[Up]** | Fill while held. On a latched fill, end it. |
+| **[Scale]** + **[Up]** + **[Down]** | Latch fill on. |
+| **[Scale]** + **[Down]** | While playing, fill for one cycle of the longest Machinedrum track. Press again to cancel it. |
+| **[Bank]** + **[Scale]** | Open the Machinedrum's FILL view. |
+
+Fill mode on the Mixer Page, and the Machinedrum's FILL view, choose the tracks a fill plays on. The `FIL` and `!FL` conditions follow those tracks while fill is on. The Machinedrum shows the fill state on its scale LEDs.
+
+**[Scale]** alone acts when it is released, so it can start these combinations. Starting or stopping the sequencer cancels a fill cycle.
+
 ## Track Parameter Editing
 
 Hold one or more track **[Trig]** keys and turn the encoders to edit supported mixer parameters across the held tracks. For Machinedrum tracks this works like a focused CTRL-ALL workflow for level and filter parameters. For other mixer targets, MCL uses the parameters exposed by the selected device.
@@ -115,7 +130,7 @@ Scene Autofill creates kit morphs by storing changed kit parameters as scene loc
 | Control | Action |
 | --- | --- |
 | Hold a Perf encoder button + **[Global]** | Clear both scenes assigned to that controller. |
-| Hold a Perf encoder button + **[Load/Yes]** | Autofill the controller's right scene from changed kit parameters. |
+| Hold a Perf encoder button + **`Load | Yes`** | Autofill the controller's right scene from changed kit parameters. |
 
 See [Performance Page](perf-page.md) for controller, scene and scene-lock editing.
 

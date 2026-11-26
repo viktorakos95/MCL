@@ -171,7 +171,7 @@ public:
                     (static_cast<uintptr_t>(get_region_size()) * column) +
                     sound_data_offset;
     volatile uint8_t *ptr = reinterpret_cast<volatile uint8_t *>(pos);
-    memcpy_bank1(sound, ptr, sound_size);
+    track_mem_copy(sound, ptr, sound_size);
   }
 
   bool restore_sound_from_mem_if_type(GridSlot column, uint8_t expected_type) {
@@ -191,7 +191,7 @@ public:
     uint8_t cached_active = EMPTY_TRACK_TYPE;
     volatile uint8_t *active_ptr =
         reinterpret_cast<volatile uint8_t *>(slot_base + active_offset);
-    memcpy_bank1(&cached_active, active_ptr, sizeof(cached_active));
+    track_mem_copy(&cached_active, active_ptr, sizeof(cached_active));
     if (cached_active != expected_type) {
       return false;
     }
@@ -199,7 +199,7 @@ public:
         reinterpret_cast<uintptr_t>(sound) - reinterpret_cast<uintptr_t>(_this());
     uintptr_t pos = slot_base + sound_data_offset;
     volatile uint8_t *ptr = reinterpret_cast<volatile uint8_t *>(pos);
-    memcpy_bank1(sound, ptr, sound_size);
+    track_mem_copy(sound, ptr, sound_size);
     return true;
   }
 
@@ -213,9 +213,7 @@ public:
     if (!that->GridTrack::load_from_mem(col)) {
       return nullptr;
     }
-#if !defined(__AVR__)
     that->on_storage_loaded();
-#endif
     return _dynamik_kast<T>(that);
   }
 };

@@ -6,16 +6,22 @@
 #include "platform.h"
 #include "MDPattern.h"
 #include "MDParams.h"
+#include "MDKitRouting.h"
+#include "MDTuning.h"
 
 #define MDX_KIT_VERSION     64
-#define SPSX_KIT_VERSION_V1 65
-#define SPSX_KIT_VERSION    66
+#define SPSX_KIT_VERSION    65
+#define MDX_GLOBAL_VERSION    6
+#define SPSX_GLOBAL_VERSION   0x40
+
+constexpr bool mdGlobalWireVersionSupported(uint8_t version) {
+  return (version >= 1 && version <= MDX_GLOBAL_VERSION) || version == SPSX_GLOBAL_VERSION;
+}
 
 static constexpr uint8_t SPS_USER_BUS_FX_COUNT = 3;
 static constexpr uint8_t SPS_USER_FX_PARAM_COUNT = 8;
 static constexpr uint8_t SPS_USER_FX_DEFAULT_PARAM = 64;
-static constexpr uint8_t SPSX_KIT_PARAMS_V2_PER_TRACK =
-    SPS_PARAMS_V1_PER_TRACK + 3;
+static constexpr uint8_t SPSX_KIT_PARAMS_PER_TRACK = 38;
 
 constexpr uint16_t mdKit7BitEncodedSize(uint16_t rawBytes) {
   return static_cast<uint16_t>(rawBytes + (rawBytes + 6) / 7);
@@ -23,21 +29,17 @@ constexpr uint16_t mdKit7BitEncodedSize(uint16_t rawBytes) {
 
 constexpr bool mdKitWireVersionSupported(uint8_t version) {
   return (version >= 1 && version <= 4) || version == MDX_KIT_VERSION ||
-         version == SPSX_KIT_VERSION_V1 || version == SPSX_KIT_VERSION;
+         version == SPSX_KIT_VERSION;
 }
 
 constexpr uint16_t mdKitParamsPerTrackForVersion(uint8_t version) {
-  return version == SPSX_KIT_VERSION ? SPSX_KIT_PARAMS_V2_PER_TRACK
-       : version == SPSX_KIT_VERSION_V1 ? SPS_PARAMS_V1_PER_TRACK
-                                         : MD_PARAMS_PER_TRACK;
+  return version == SPSX_KIT_VERSION ? SPSX_KIT_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
 }
 
 constexpr uint16_t mdKitLfoARawSizeForVersion(uint8_t version) {
   return version == 1 ? 0x340
        : version == 2 ? 11 * 36
-       : (version == SPSX_KIT_VERSION_V1 || version == SPSX_KIT_VERSION)
-             ? 16 * 9
-             : 16 * 36;
+       : version == SPSX_KIT_VERSION ? 16 * 9 : 16 * 36;
 }
 
 constexpr uint16_t mdKitWireSizeForVersion(uint8_t version) {
@@ -49,12 +51,11 @@ constexpr uint16_t mdKitWireSizeForVersion(uint8_t version) {
              mdKit7BitEncodedSize(16 * sizeof(uint32_t)) +
              mdKit7BitEncodedSize(mdKitLfoARawSizeForVersion(version)) +
              32 + mdKit7BitEncodedSize(32) +
-             ((version == SPSX_KIT_VERSION_V1 ||
-               version == SPSX_KIT_VERSION)
+             (version == SPSX_KIT_VERSION
                   ? mdKit7BitEncodedSize(16 * 9)
                   : 0) +
              (version == SPSX_KIT_VERSION
-                  ? (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT
+                  ? (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT + 16
                   : 0) +
              5);
 }
@@ -69,10 +70,8 @@ static_assert(mdKitWireSizeForVersion(4) == 1233,
               "stock kit wire size changed");
 static_assert(mdKitWireSizeForVersion(MDX_KIT_VERSION) == 1233,
               "MDX kit wire size changed");
-static_assert(mdKitWireSizeForVersion(SPSX_KIT_VERSION_V1) == 1064,
+static_assert(mdKitWireSizeForVersion(SPSX_KIT_VERSION) == 1176,
               "SPS-X v65 kit wire size changed");
-static_assert(mdKitWireSizeForVersion(SPSX_KIT_VERSION) == 1144,
-              "SPS-X v66 kit wire size changed");
 
 extern uint8_t machinedrum_sysex_hdr[5];
 extern const int8_t md_standard_drum_mapping[16] PROGMEM;
@@ -248,6 +247,36 @@ public:
 };
 
 /**
+ * The machine record stored before track storage version 6 and sound file
+ * version 2001: 24 parameters and no LFO-B or output routing.
+ **/
+class ATTR_PACKED() MDMachineV1 {
+public:
+  uint8_t params[MD_PARAMS_PER_TRACK];
+  uint8_t track;
+  uint8_t level;
+  uint32_t model;
+  MDLFO lfo;
+  uint8_t trigGroup;
+  uint8_t muteGroup;
+
+  void init() {
+    memset(params, 0, MD_PARAMS_PER_TRACK);
+    params[10] = 64;
+    params[11] = 64;
+    params[13] = 127;
+    params[17] = 127;
+    params[18] = 64;
+    params[21] = 64;
+    level = 127;
+    model = GND_MODEL;
+    trigGroup = 127;
+    muteGroup = 127;
+    lfo.init(track);
+  }
+};
+
+/**
  * This class stores the complete settings for a track inside the Kit object.
  **/
 class ATTR_PACKED() MDMachine {
@@ -257,13 +286,22 @@ class ATTR_PACKED() MDMachine {
    **/
 
 public:
-  uint8_t params[MD_PARAMS_PER_TRACK];
+  uint8_t params[SPS_PARAMS_PER_TRACK];
   uint8_t track;
   uint8_t level;
   uint32_t model;
   MDLFO lfo;
   uint8_t trigGroup;
   uint8_t muteGroup;
+  /** LFO-B destination track, destination parameter, shapes and type. **/
+  uint8_t lfoB[5];
+  /** Kit output routing: 0...5 = A...F, 6 = MAIN, 127 = GLOBAL. **/
+  uint8_t outputRouting;
+
+  /** Defaults for parameters 24...37, LFO-B and routing; needs `track`. **/
+  void init_extended();
+  /** Widen a record read in the MDMachineV1 layout, in place. **/
+  void upgrade_v1();
 
 #if defined(__AVR__)
   void scale_vol(uint8_t scale);
@@ -285,13 +323,15 @@ public:
     trigGroup = 127;
     muteGroup = 127;
     lfo.init(track);
+    init_extended();
   }
 
   uint8_t get_model();
   bool get_tonal();
+  uint8_t get_tuning() const { return mdTuningFromModel(model); }
 
   uint32_t get_model_raw() {
-    return model & 0x200FF; //2^17 + 255
+    return model & MD_MODEL_TUNING_MASK;
   }
   /* @} */
 };
@@ -306,6 +346,7 @@ public:
   MDLFO lfos[2];   // [0] = LFO-A, [1] = LFO-B
   uint8_t trigGroup;
   uint8_t muteGroup;
+  uint8_t outputRouting;
 
   void scale_vol(float scale);
   float normalize_level();
@@ -321,31 +362,37 @@ public:
     params[MODEL_ENVDCY]  = 127;
     params[MODEL_ENVMIX]  = 127;
     params[MODEL_LFO2SPD] = 64;
+    params[MODEL_RTIM]    = MD_RTIM_FASTEST_INDEX;
+    params[MODEL_RENV]    = 1;
     level = 127;
     model = GND_MODEL;
     trigGroup = 127;
     muteGroup = 127;
+    outputRouting = MD_KIT_ROUTE_GLOBAL;
     lfos[0].init(track);
     lfos[1].init(track);
   }
 
   uint8_t get_model();
   bool get_tonal();
+  uint8_t get_tuning() const { return mdTuningFromModel(model); }
 
   uint32_t get_model_raw() {
-    return model & 0x200FF;
+    return model & MD_MODEL_TUNING_MASK;
   }
 };
 #endif
 
-static_assert(sizeof(MDMachine) == MD_PARAMS_PER_TRACK + 1 + 1 + 4 + sizeof(MDLFO) + 1 + 1,
-              "MDMachine layout changed — MDTrack on-disk format will break, bump GRID_VERSION");
+static_assert(sizeof(MDMachineV1) == MD_PARAMS_PER_TRACK + 1 + 1 + 4 + sizeof(MDLFO) + 1 + 1,
+              "MDMachineV1 is the stored layout of older tracks and sounds");
+static_assert(sizeof(MDMachine) == SPS_PARAMS_PER_TRACK + 1 + 1 + 4 + sizeof(MDLFO) + 1 + 1 + 5 + 1,
+              "MDMachine layout changed — MDTrack on-disk format will break, bump its storage version");
 #if !defined(__AVR__)
-static_assert(sizeof(SPSMachine) == SPS_PARAMS_PER_TRACK + 1 + 1 + 4 + 2 * sizeof(MDLFO) + 1 + 1,
+static_assert(sizeof(SPSMachine) == SPS_PARAMS_PER_TRACK + 1 + 1 + 4 + 2 * sizeof(MDLFO) + 1 + 1 + 1,
               "SPSMachine layout changed — SPSXTrack on-disk format will break");
 #endif
 
-#if defined(__AVR__)
+#if 0
 static constexpr uint8_t MD_KIT_PARAMS_PER_TRACK = MD_PARAMS_PER_TRACK;
 #else
 static constexpr uint8_t MD_KIT_PARAMS_PER_TRACK = SPS_PARAMS_PER_TRACK;
@@ -376,6 +423,12 @@ public:
   uint32_t models[16];
   /** The LFO-A settings for each track. **/
   MDLFO lfos[16];
+  /** Copy the LFO-A settings of a track into or out of a stored machine. **/
+  void get_lfo(uint8_t track, MDLFO *lfo) const;
+  void set_lfo(uint8_t track, const MDLFO *lfo);
+  /** Copy the LFO-B settings and output routing of a track likewise. **/
+  void get_ext(uint8_t track, MDMachine *machine) const;
+  void set_ext(uint8_t track, const MDMachine *machine);
 #if !defined(__AVR__)
   /** The LFO-B settings for each track (SPS-X kits only). **/
   MDLFO lfosB[16];
@@ -394,6 +447,8 @@ public:
   uint8_t userPostFx[SPS_USER_FX_PARAM_COUNT];
   uint8_t userBusFxOrig[SPS_USER_BUS_FX_COUNT][SPS_USER_FX_PARAM_COUNT];
   uint8_t userPostFxOrig[SPS_USER_FX_PARAM_COUNT];
+  uint8_t outputRouting[16]{127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127};
+  uint8_t outputRoutingOrig[16]{127,127,127,127,127,127,127,127,127,127,127,127,127,127,127,127};
 #endif
   /** Duplicate fx params not included in the origin MD structure */
   uint8_t fx_orig[4][9];
@@ -425,6 +480,7 @@ public:
 
   uint8_t get_model(uint8_t track);
   bool get_tonal(uint8_t track);
+  uint8_t get_tuning(uint8_t track) const { return mdTuningFromModel(models[track]); }
   uint8_t get_fx_param(uint8_t fx, uint8_t param) {
     uint8_t *params = fx_params(fx);
     return params == nullptr ? 255 : params[param];

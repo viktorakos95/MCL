@@ -180,6 +180,10 @@ bool MCLSysConfig::write_cfg() {
   }
 
   ret = mcl_sd.write_data((uint8_t *)this, sizeof(MCLSysConfigData), &cfgfile);
+  if (ret) {
+    load_panel_tag = LOAD_PANEL_CFG_TAG;
+    ret = mcl_sd.write_data(&load_fade, 4, &cfgfile);
+  }
   if (!ret) {
     DEBUG_PRINTLN(F("Write cfg failed"));
   }
@@ -224,6 +228,11 @@ bool MCLSysConfig::cfg_init() {
     return false;
   }
   memset((uint8_t *)&version, 0, sizeof(MCLSysConfigData)); //<---- flush zero to config
+  load_fade = 0;
+  load_fade_len = 0;
+  // A new config starts on STAY. A config from before 5.10 has no Load
+  // panel tag and reads as LEGACY instead (MCLSd::load_init).
+  io_stay = LOAD_SAVE_STAY;
   ptc_groups.clear();
 
   version = CONFIG_VERSION;

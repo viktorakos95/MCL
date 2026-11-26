@@ -144,6 +144,123 @@ void mcl_toggle_remote_mute_window() {
 }
 #endif
 
+// With an MCL-fill Machinedrum (FW_CAP_MCL_FILL_STATE) SCALE alone acts when
+// it is released, and SCALE + UP / DOWN is MDX's fill: UP holds (or
+// unlatches), UP + DOWN latches, DOWN queues one cycle of the longest MD
+// track while playing. Another key while SCALE is held cancels SCALE's own
+// action; BANK + SCALE is the MD's FILL view, so MCL closes the bank popup
+// its BANK press opened. FUNC + SCALE, SCALE with trigs
+// held and older firmware keep SCALE acting on its press.
+namespace {
+uint8_t fill_scale = 0;   // 1: SCALE press withheld, 2: SCALE used in a chord
+uint8_t fill_arrows = 0;  // arrows taken by a fill chord: 1 UP, 2 DOWN
+
+void fill_follow_hold() {
+  if ((mcl_seq.fill_state & MCLSeq::FillHeld) &&
+      !(key_interface.is_key_down(MDX_KEY_UP) &&
+        key_interface.is_key_down(MDX_KEY_SCALE)))
+    mcl_seq.set_fill_state(mcl_seq.fill_state & ~MCLSeq::FillHeld);
+}
+
+void fill_chord() {
+  const bool up = key_interface.is_key_down(MDX_KEY_UP);
+  const bool down = key_interface.is_key_down(MDX_KEY_DOWN);
+  uint8_t state = mcl_seq.fill_state;
+  if (up && down) {
+    state = MCLSeq::FillLatched;
+  } else if (up) {
+    state = (state & MCLSeq::FillLatched) ? 0 : (state | MCLSeq::FillHeld);
+  } else if (down) {
+    // Again on a queued or playing cycle cancels it, as on MDX.
+    if (state & (MCLSeq::FillQueued | MCLSeq::FillCycle))
+      state &= ~(MCLSeq::FillQueued | MCLSeq::FillCycle);
+    else if (MidiClock.state == 2)
+      state |= MCLSeq::FillQueued;
+  }
+  mcl_seq.set_fill_state(state);
+  fill_scale |= 2;
+}
+} // namespace
+
+__attribute__((noinline)) bool mcl_fill_key(uint8_t key, bool release) {
+#if defined(PLATFORM_TBD)
+  (void)key; (void)release;
+  return false;
+#else
+  if (key >= MDX_KEY_FILLHOLD) {
+    // The MD's FILL view (Enhanced mode): UP holds, YES toggles as MDX's
+    // SeqFill::toggle, and a track change is re-read in service_fill.
+    if (mcl_seq.fill_model && (key != MDX_KEY_FILLTOGGLE || !release)) {
+      uint8_t state = mcl_seq.fill_state;
+      if (key == MDX_KEY_FILLHOLD) {
+        state = release ? state & ~MCLSeq::FillHeld : state | MCLSeq::FillHeld;
+      } else if (key == MDX_KEY_FILLTOGGLE) {
+        state = (mcl_seq.fill_active() || (state & MCLSeq::FillQueued))
+                    ? 0 : MCLSeq::FillLatched;
+      } else {
+        if (!release) mcl_seq.fill_tracks_dirty = true;
+        return true;
+      }
+      mcl_seq.set_fill_state(state);
+    }
+    return true;
+  }
+  if (!mcl_seq.fill_model) {
+    fill_scale = fill_arrows = 0;
+    return false;
+  }
+  if (key == MDX_KEY_SCALE) {
+    if (!release) {
+      if (key_interface.is_key_down(MDX_KEY_FUNC) || note_interface.notes_on)
+        return false;
+      fill_scale = 1;
+      if (bank_key_down()) {
+        if (grid_page.bank_popup) grid_page.close_bank_popup();
+        fill_scale = 3;
+      } else if (key_interface.is_key_down(MDX_KEY_UP) ||
+                 key_interface.is_key_down(MDX_KEY_DOWN)) {
+        fill_arrows = (key_interface.is_key_down(MDX_KEY_UP) ? 1 : 0) |
+                      (key_interface.is_key_down(MDX_KEY_DOWN) ? 2 : 0);
+        fill_chord();
+      }
+      return true;
+    }
+    const uint8_t scale = fill_scale;
+    fill_scale = 0;
+    fill_follow_hold();
+    if (scale == 1) {
+      // SCALE alone: its press now, then the release below.
+      key_interface.post_key_event(MDX_KEY_SCALE, false);
+      return false;
+    }
+    if (scale & 2) {
+      // A page that consumed the chord may have asked to skip this release.
+      key_interface.ignoreNextEventClear(MDX_KEY_SCALE);
+      return true;
+    }
+    return false;
+  }
+  const uint8_t arrow = key == MDX_KEY_UP ? 1 : key == MDX_KEY_DOWN ? 2 : 0;
+  if (arrow) {
+    if (release) {
+      if (!(fill_arrows & arrow)) return false;
+      fill_arrows &= ~arrow;
+      fill_follow_hold();
+      return true;
+    }
+    if (fill_arrows & arrow) return true;  // key repeat of a chord arrow
+    if (fill_scale & 1) {
+      fill_arrows |= arrow;
+      fill_chord();
+      return true;
+    }
+    return false;
+  }
+  if (!release && (fill_scale & 1)) fill_scale |= 2;
+  return false;
+#endif
+}
+
 // In MCL.cpp:
 const lightpage_ptr_t MCL::pages_table[NUM_PAGES] PROGMEM = {
     // Core pages
@@ -151,8 +268,13 @@ const lightpage_ptr_t MCL::pages_table[NUM_PAGES] PROGMEM = {
     { .ptr = &page_select_page },
     { .ptr = &system_page },
     { .ptr = &mixer_page },
+#if MCL_GRID_IO_PANEL
+    { .ptr = &grid_page }, // GRID_SAVE_PAGE: Save runs on the Grid page
+    { .ptr = &grid_page }, // GRID_LOAD_PAGE: Load runs on the Grid page
+#else
     { .ptr = &grid_save_page },
     { .ptr = &grid_load_page },
+#endif
 
     // Main sequence pages
     { .ptr = &seq_step_page },
@@ -288,18 +410,20 @@ void MCL::setup() {
   }
   if (ret) {
     R.Clear();
+#ifndef MCL_PROJECT_UPGRADER
+    // The upgrader opens straight on its log instead.
     R.use_icons_boot();
     gfx.splashscreen(R.icons_boot->mcl_logo_bitmap);
+#endif
 
     ret = mcl_sd.load_init();
   }
 
   if (!ret) {
     oled_display.clearDisplay();
-    oled_display.setFont();
-    oled_display.setTextColor(WHITE, BLACK);
-    oled_display.setCursor(0, 0);
-    mcl_print_P(mclstr_sd_card_error);
+    oled_font_default();
+    oled_text_color(WHITE, BLACK);
+    text_at_P(0, 0, mclstr_sd_card_error);
     oled_display.display();
     delay(2000);
     return;
@@ -347,6 +471,20 @@ void MCL::setup() {
 
 void MCL::loop() {
   platform_poll();
+  md_usr.service();
+  mcl_seq.service_fill();
+  if (md_usr.takeChanged()) {
+    // USR names or labels arrived, after peering or a machine change: the
+    // grid's slot labels showed "??" for USR machines until reloaded.
+    if (current_page == GRID_PAGE) {
+      grid_page.reload_slot_models = false;
+    } else if (isSeqPage() && SeqPage::active_device_is_md() &&
+               MD.currentTrack < 16 &&
+               uint8_t(MD.kit.get_model(MD.currentTrack) - MD_USR_FIRST) <
+                   MD_USR_SLOTS) {
+      GUI.currentPage()->config();
+    }
+  }
 
 #ifndef __AVR__
   MidiUartUSB.service_background();
@@ -456,7 +594,8 @@ bool mcl_handleEvent(gui_event_t *event) {
         }
         if (current_page == GRID_LOAD_PAGE ||
             current_page == GRID_SAVE_PAGE ||
-            (current_page == GRID_PAGE && grid_page.show_slot_menu)) { // ||
+            (current_page == GRID_PAGE &&
+             (grid_page.show_slot_menu || grid_page.io_armed()))) { // ||
 //            (current_page == MIXER_PAGE && mixer_page.preview_mute_set != 255))
           return false;
         }
@@ -493,6 +632,7 @@ bool mcl_handleEvent(gui_event_t *event) {
         if (current_page != TEXT_INPUT_PAGE &&
             current_page != GRID_SAVE_PAGE &&
             current_page != GRID_LOAD_PAGE &&
+            !(current_page == GRID_PAGE && grid_page.io_armed()) &&
             !key_interface.is_key_down(MDX_KEY_PATSONG)) {
           mcl.setPage(PAGE_SELECT_PAGE);
           return true;
@@ -525,7 +665,8 @@ bool mcl_handleEvent(gui_event_t *event) {
         return true;
       }
       case MDX_KEY_REALTIME: {
-        mcl_seq.set_fill(true);
+        // With an MCL-fill MD, fill comes from SCALE + arrows only.
+        if (!mcl_seq.fill_model) mcl_seq.set_fill(true);
         seq_step_page.bootstrap_record();
         return true;
       }
@@ -602,7 +743,7 @@ bool mcl_handleEvent(gui_event_t *event) {
         break;
       }
       case MDX_KEY_REALTIME: {
-        mcl_seq.set_fill(false);
+        if (!mcl_seq.fill_model) mcl_seq.set_fill(false);
         return true;
       }
       case MDX_KEY_SCALE: {
@@ -664,7 +805,7 @@ void sdcard_bench() {
     }
 #ifdef DEBUGMODE
     uint16_t diff = clock_diff(cl, read_clock_ms());
-    DEBUG_PRINT("Clock :");
+    DEBUG_PRINT(F("Clock :"));
     DEBUG_PRINTLN(diff);
 #endif
   }

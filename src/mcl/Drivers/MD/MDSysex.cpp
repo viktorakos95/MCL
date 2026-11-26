@@ -54,12 +54,15 @@ void MDSysexListenerClass::end() {
   }
   uint8_t offset = sizeof(machinedrum_sysex_hdr);
   msgType = view.getByte(offset++);
+  // The first two data bytes: every message handled here begins with them
+  // (the kit loaded notice has only the first).
+  uint8_t param = view.getByte(offset++);
+  uint8_t value = view.getByte(offset++);
 
-  uint8_t param, value, fx_type, track;
+  uint8_t fx_type, track;
   switch (msgType) {
   case MD_STATUS_RESPONSE_ID:
-    param = view.getByte(offset++);
-    value = view.getByte(offset++);
+    if (param == MD_USR_QUERY) md_usr.receive(view);
     onStatusResponseCallbacks.call(param, value);
     break;
 
@@ -75,8 +78,6 @@ void MDSysexListenerClass::end() {
   case MD_SET_EQ_PARAM_ID:
   case MD_SET_DYNAMIX_PARAM_ID:
 
-    param = view.getByte(offset++);
-    value = view.getByte(offset++);
     fx_type = msgType - MD_SET_RHYTHM_ECHO_PARAM_ID;
 
     if (param > 7) { return; }
@@ -107,20 +108,26 @@ void MDSysexListenerClass::end() {
 
   case MD_SET_LFO_PARAM_ID:
 
-    param = view.getByte(offset++);
     track = param >> 3;
     param &= 7;
-    value = view.getByte(offset++);
 
     if (track > 15) { return; }
     if (param > 7) { return; }
 
     {
-      uint8_t *p = &MD.kit.lfos[track].destinationTrack;
+      // Parameters 0-4 are the five settings at the head of the LFO record.
+      // Speed, depth and mix live in the parameter row; the record's next
+      // bytes are the Machinedrum's run state and are left alone.
 #if MCL_FEATURE_HOST_ARRANGER
-      bool kit_edited = p[param] != value;
+      bool kit_edited = false;
 #endif
-      p[param] = value;
+      if (param < 5) {
+        uint8_t *p = &MD.kit.lfos[track].destinationTrack;
+#if MCL_FEATURE_HOST_ARRANGER
+        kit_edited = p[param] != value;
+#endif
+        p[param] = value;
+      }
 
       //LFOS, LFOD, LFOM
       if (4 < param && param < 8) {
@@ -143,20 +150,17 @@ void MDSysexListenerClass::end() {
 
   case MD_KIT_LOADED_ID:
     // Kit loaded notification: F0 00 20 3C 02 00 54 <kitIdx> F7
-    {
-      uint8_t kitIdx = view.getByte(offset++);
-      MD.currentKit = kitIdx;
-      // Could trigger kit reload callback here if needed
-    }
+    MD.currentKit = param;
+    md_usr.kitChanged();
     break;
 
   case MD_MACHINE_UPDATE_ID:
     // Machine update: F0 00 20 3C 02 00 63 <track> <model> <flags_byte> <data_flags> [data...] F7
     {
-      track = view.getByte(offset++);
+      track = param;
       if (track > 15) { return; }
 
-      uint8_t model = view.getByte(offset++);
+      uint8_t model = value;
       uint8_t flags_byte = view.getByte(offset++);
       uint8_t data_flags = view.getByte(offset++);
 
@@ -165,25 +169,23 @@ void MDSysexListenerClass::end() {
       const uint8_t trailing_bytes =
           ((data_flags & 0x02) ? 5 : 0) +
           ((data_flags & 0x04) ? 1 : 0) +
-          ((data_flags & 0x08) ? 2 : 0);
+          ((data_flags & 0x08) ? 2 : 0) +
+          ((data_flags & 0x10) ? 5 : 0) +
+          ((data_flags & 0x20) ? 1 : 0);
       if (record_len < offset + trailing_bytes) {
         return;
       }
 #endif
 
-      // Decode model: flags_byte = (tonal << 1) | uwFlag
-      uint8_t uwFlag = flags_byte & 0x01;
-      uint8_t tonal = (flags_byte >> 1) & 0x01;
-
-      if (uwFlag) {
-        model += 128;
-      }
-      MD.kit.models[track] = tonal ? ((uint32_t)model + 0x20000) : model;
+      MD.kit.models[track] = mdModelFromMachineFlags(model, flags_byte);
 
       // Current SPS-X parameters, or the stock 24-byte payload.
       if (data_flags & 0x01) {
 #if defined(__AVR__)
-        const uint8_t num_params = MD_PARAMS_PER_TRACK;
+        // The extended form always carries the whole parameter row.
+        const uint8_t num_params = MD.extendedMachineUpdates()
+                                       ? SPS_PARAMS_PER_TRACK
+                                       : MD_PARAMS_PER_TRACK;
 #else
         const uint16_t available_params =
             record_len - offset - trailing_bytes;
@@ -213,6 +215,17 @@ void MDSysexListenerClass::end() {
         }
       }
 
+      // LFO-B settings (5 bytes) follow LFO-A in the extended form.
+      MDMachine ext;
+      if (data_flags & 0x30) {
+        MD.kit.get_ext(track, &ext);
+      }
+      if (data_flags & 0x10) {
+        for (uint8_t i = 0; i < 5; i++) {
+          ext.lfoB[i] = view.getByte(offset++);
+        }
+      }
+
       // Level (1 byte)
       if (data_flags & 0x04) {
         MD.kit.levels[track] = view.getByte(offset++);
@@ -224,6 +237,14 @@ void MDSysexListenerClass::end() {
         uint8_t mute = view.getByte(offset++);
         MD.kit.trigGroups[track] = (trig == 0x7F) ? 255 : trig;
         MD.kit.muteGroups[track] = (mute == 0x7F) ? 255 : mute;
+      }
+
+      // The kit output route (1 byte) arrives only in the extended form.
+      if (data_flags & 0x20) {
+        ext.outputRouting = view.getByte(offset++);
+      }
+      if (data_flags & 0x30) {
+        MD.kit.set_ext(track, &ext);
       }
 #if MCL_FEATURE_HOST_ARRANGER
       mcl_arrangement.markRuntimePrivateSourceEdited(track);

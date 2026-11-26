@@ -830,7 +830,7 @@ void SeqExtStepPage::draw_note(uint8_t x, uint8_t y, uint8_t w, bool note_beyond
     w = 1;
   }
   uint8_t note_h = fov_h / fov_notes;
-  oled_display.drawRect(x, y, w, note_h, WHITE);
+  oled_rect(x, y, w, note_h, WHITE);
   if (note_beyond_fov) { w += 1; }
   if (w > 2 && note_h > 2) {
     oled_display.fillRect(x + 1, y + 1, w - 2, note_h - 2, BLACK);
@@ -949,18 +949,18 @@ void SeqExtStepPage::draw_pianoroll() {
             // Wrap around note
 
             if (note_start < fov_offset + fov_length) {
-              oled_display.drawFastHLine(note_fov_start + draw_x, proj_y,
+              oled_hline(note_fov_start + draw_x, proj_y,
                                          pattern_end_fov_x - note_fov_start,
                                          WHITE);
             }
 
             if (note_end > fov_offset) {
-              oled_display.drawFastHLine(draw_x, proj_y, note_fov_end, WHITE);
+              oled_hline(draw_x, proj_y, note_fov_end, WHITE);
             }
 
           } else {
             // Standard note.
-            oled_display.drawFastHLine(note_fov_start + draw_x, proj_y,
+            oled_hline(note_fov_start + draw_x, proj_y,
                                        note_fov_end - note_fov_start, WHITE);
           }
         }
@@ -1021,19 +1021,19 @@ void SeqExtStepPage::draw_viewport_minimap() {
       (seq_extstep_tick_t)active_track.step_count() * ticks_per_step +
       active_track.mod_ticks();
 
-  oled_display.drawRect(pidx_x0, pidx_y, width, pidx_h, WHITE);
+  oled_rect(pidx_x0, pidx_y, width, pidx_h, WHITE);
 
   // viewport is [fov_offset, fov_offset+fov_length] out of [0,
   // pattern_end]
 
-  uint16_t s = (seq_extstep_tick_t)fov_offset * (width - 1) / pattern_end;
-  uint16_t w = fov_length * (width - 2) / pattern_end;
+  // AVR tick storage is 16-bit; multiplying by the pixel width needs 32 bits.
+  uint16_t s = (int32_t)fov_offset * (width - 1) / pattern_end;
+  uint16_t w = (int32_t)fov_length * (width - 2) / pattern_end;
   uint16_t p = min((seq_extstep_tick_t)width,
-                   (seq_extstep_tick_t)(cur_tick_x *
-                                        (seq_extstep_tick_t)(width - 1) /
+                   (seq_extstep_tick_t)((int32_t)cur_tick_x * (width - 1) /
                                         pattern_end));
 
-  oled_display.drawFastHLine(pidx_x0 + 1 + s, pidx_y + 1, w, WHITE);
+  oled_hline(pidx_x0 + 1 + s, pidx_y + 1, w, WHITE);
 
   oled_display.drawPixel(pidx_x0 + 1 + p, pidx_y + 1, INVERT);
 }
@@ -1722,7 +1722,7 @@ void SeqExtStepPage::param_select_update() {
   }
 }
 
-bool SeqExtStepPage::handleEvent(gui_event_t *event) {
+COLD_SMALL() bool SeqExtStepPage::handleEvent(gui_event_t *event) {
 
   auto active_track = active_ext_step_track();
   uint16_t ticks_per_step = active_track.ticks_per_step();
@@ -2059,7 +2059,7 @@ bool SeqExtStepPage::handleEvent(gui_event_t *event) {
         DEBUG_DUMP(locks.count_lock_event(step, lock_idx));
         return true;
       } else {
-        DEBUG_PRINTLN("here");
+        DEBUG_PRINTLN(F("here"));
         DEBUG_PRINTLN(active_track.notes_on_count());
         if (active_track.notes_on_count() > 0) {
           enter_notes();

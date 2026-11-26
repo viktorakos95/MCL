@@ -601,8 +601,11 @@ static void display_step_popup(SeqStepTrackRef track, const char *kit_str1_P,
 static const uint8_t ENHANCED_MASK_WINDOW_NONE = 255;
 uint8_t enhanced_mask_window_requested = ENHANCED_MASK_WINDOW_NONE;
 bool enhanced_mask_window_suspended = false;
+// The scope an X.20 Machinedrum's Swing/Slide window last sent (F0 7F 0F):
+// bit 0 ALL, bit 1 Slide. Older firmware never sends it.
+uint8_t enhanced_mask_scope = 0;
 
-static inline bool enhanced_mask_window_available() {
+static inline __attribute__((always_inline)) bool enhanced_mask_window_available() {
   return MD.connected && MD.global.extendedMode == 2;
 }
 
@@ -639,6 +642,7 @@ static void clear_enhanced_mask_window() {
   close_enhanced_mask_window(MASK_SLIDE);
   enhanced_mask_window_requested = ENHANCED_MASK_WINDOW_NONE;
   enhanced_mask_window_suspended = false;
+  enhanced_mask_scope = 0;
 }
 
 static inline bool should_show_enhanced_mask_window() {
@@ -690,6 +694,55 @@ bool SeqPage::consume_enhanced_mask_window_exit() {
   return true;
 }
 
+// MCL has no pattern-wide Swing/Slide mask. With the MD's window on ALL, an
+// edit of the active track's mask is copied to every track. Choosing ALL or
+// changing track copies nothing.
+static void follow_enhanced_mask_scope() NOINLINE();
+static void follow_enhanced_mask_scope() {
+  static uint64_t last_mask;
+  static uint8_t last_key;
+  const uint8_t type = SeqPage::mask_type;
+  uint64_t mask = 0;
+  uint8_t key = 0;
+  // ALL for this window: 1 Swing, 3 Slide.
+  if (!enhanced_mask_window_suspended && should_show_enhanced_mask_window() &&
+      enhanced_mask_scope == (uint8_t)(2 * type - (2 * MASK_SWING - 1))) {
+#if defined(__AVR__)
+    // The MD tracks' masks are plain fields here: copy them whole.
+    uint64_t MDSeqTrackData::*field = type == MASK_SWING
+                                          ? &MDSeqTrackData::swing_mask
+                                          : &MDSeqTrackData::slide_mask;
+    mask = mcl_seq.md_tracks[last_primary_track].*field;
+#else
+    seq_page_active_step_track().get_mask(&mask, type);
+#endif
+    key = (uint8_t)((last_primary_track << 2) | (type - MASK_SWING + 1));
+    if (key == last_key && mask != last_mask) {
+#if defined(__AVR__)
+      for (uint8_t n = 0; n < NUM_MD_TRACKS; n++) {
+        mcl_seq.md_tracks[n].*field = mask;
+      }
+#else
+      const uint8_t count = seq_page_step_track_count();
+      for (uint8_t n = 0; n < count; n++) {
+        if (n == last_primary_track) continue;
+        SeqStepTrackRef track = seq_page_step_track_for(n);
+        uint64_t old_mask;
+        track.get_mask(&old_mask, type);
+        uint64_t diff = old_mask ^ mask;
+        for (uint8_t s = 0; diff; s++, diff >>= 1) {
+          if (diff & 1) {
+            track.set_step(s, type, IS_BIT_SET64(mask, s));
+          }
+        }
+      }
+#endif
+    }
+  }
+  last_mask = mask;
+  last_key = key;
+}
+
 void SeqPage::setup() {}
 
 void SeqPage::check_and_set_page_select() {
@@ -700,7 +753,7 @@ void SeqPage::check_and_set_page_select() {
   }
   ElektronDevice *elektron_dev = midi_device->asElektronDevice();
   if (!active_device_is_md()) {
-    DEBUG_PRINTLN("bad device");
+    DEBUG_PRINTLN(F("bad device"));
   }
   if (elektron_dev != nullptr) {
     elektron_dev->set_seq_page(page_select);
@@ -741,7 +794,7 @@ void SeqPage::init() {
   seqpage_midi_events.setup_callbacks();
 
   toggle_device = true;
-  DEBUG_PRINTLN("seq page init");
+  DEBUG_PRINTLN(F("seq page init"));
 
   constexpr uint32_t base_seq_menu_entries =
       menu_entry_mask(SEQ_MENU_TRACK) | menu_entry_mask(SEQ_MENU_SPEED) |
@@ -769,6 +822,8 @@ void SeqPage::init() {
   R.use_icons_knob();
   R.use_machine_names_short();
   R.use_machine_param_names();
+  RM_REQUIRE(0, __T_icons_knob, __T_machine_names_short,
+             __T_machine_param_names);
   MidiUartParent::handle_midi_lock = _midi_lock_tmp;
 }
 
@@ -829,8 +884,17 @@ void SeqPage::config_mask_info(bool silent) {
       clear_enhanced_mask_window();
       seq_panel_popup_text((uint8_t)-1, 2);
     } else {
-      seq_page_active_step_track().popup_text(str, 1);
-      if (mask_type == MASK_SWING || mask_type == MASK_SLIDE) {
+      const bool mask_window =
+          mask_type == MASK_SWING || mask_type == MASK_SLIDE;
+      // An X.20 Machinedrum's own Swing/Slide page names itself, so clear
+      // any earlier mask text (EDIT MUTE stays up otherwise); others keep
+      // the text.
+      if (mask_window && enhanced_mask_window_available() && MD.x20()) {
+        seq_panel_popup_text((uint8_t)-1, 2);
+      } else {
+        seq_page_active_step_track().popup_text(str, 1);
+      }
+      if (mask_window) {
         if (show_seq_menu) {
           suspend_enhanced_mask_window();
         } else {
@@ -884,7 +948,7 @@ void SeqPage::select_track(MidiDevice *device, uint8_t track, bool send) {
   }
 #endif
   if (is_md_device) {
-    DEBUG_PRINTLN("setting md track");
+    DEBUG_PRINTLN(F("setting md track"));
     opt_undo = 255;
     DEBUG_PRINTLN(track);
     if (track >= NUM_MD_TRACKS) {
@@ -905,7 +969,7 @@ void SeqPage::select_track(MidiDevice *device, uint8_t track, bool send) {
   }
 #ifdef EXT_TRACKS
   else {
-    DEBUG_PRINTLN("setting ext track");
+    DEBUG_PRINTLN(F("setting ext track"));
     last_ext_track = min(track, SeqTrackUtil::track_count(false) - 1);
     auto &active_track = SeqTrackUtil::get_seq_track(false, last_ext_track);
     seq_page_active_step_track().sync_step_edit(
@@ -929,7 +993,7 @@ bool SeqPage::display_mute_mask(MidiDevice *device, uint8_t offset) {
 
   // Hack to display last_ext_track
   if (offset > 0 && !is_md_device) {
-    SET_BIT16(mute_mask, last_ext_track);
+    bitfield_set(&mute_mask, last_ext_track);
   }
 
   SeqTrackUtil::for_each_seq_track(is_md_device,
@@ -937,7 +1001,7 @@ bool SeqPage::display_mute_mask(MidiDevice *device, uint8_t offset) {
                                      if (seq_track.mute_state == SEQ_MUTE_OFF) {
                                        uint8_t d = offset + idx;
                                        if (d < kSeqPageTrackMaskWidth) {
-                                         SET_BIT16(mute_mask, d);
+                                         bitfield_set(&mute_mask, d);
                                        }
                                      }
                                    });
@@ -949,6 +1013,11 @@ bool SeqPage::display_mute_mask(MidiDevice *device, uint8_t offset) {
   return false;
 }
 
+// The length the menu showed when it opened. Applied unchanged on close, it
+// copied the active track's length to its whole poly group and wrapped those
+// tracks' steps; choosing POLY did that as its page opened.
+static uint8_t opt_length_on_open;
+
 void SeqPage::capture_seq_menu_values(bool is_md_device) {
   if (seq_page_uses_step_track_ops(is_md_device)) {
     SeqStepTrackRef bt = seq_page_active_step_track();
@@ -959,13 +1028,17 @@ void SeqPage::capture_seq_menu_values(bool is_md_device) {
   } else {
     capture_ext_track_opts();
   }
+  opt_length_on_open = opt_length;
 }
 
 void SeqPage::apply_seq_menu_values(bool same_slot) {
   if (same_slot) {
     opt_speed_handler();
     opt_swing_handler();
-    opt_length_handler();
+    // Speed and swing applied unchanged change nothing; length spreads.
+    if (opt_length != opt_length_on_open) {
+      opt_length_handler();
+    }
     opt_channel_handler();
   }
 }
@@ -1574,10 +1647,10 @@ void opt_copy_track_handler(uint8_t op) {
     const uint8_t copy_slot = use_step_tracks ? 4 : 0;
     SET_BIT(copy_mask, copy_slot + opt_copy);
   }
-  DEBUG_PRINTLN("copying");
+  DEBUG_PRINTLN(F("copying"));
   DEBUG_PRINTLN(opt_copy);
   DEBUG_PRINTLN(op);
-  DEBUG_PRINTLN("/end");
+  DEBUG_PRINTLN(F("/end"));
   if (opt_copy == 2) {
 
     if (use_step_tracks) {
@@ -1959,6 +2032,7 @@ void SeqPage::loop() {
     }
     return;
   }
+  follow_enhanced_mask_scope();
 }
 
 void SeqPage::draw_page_index(bool show_page_index, uint8_t _playing_idx) {
@@ -1985,15 +2059,15 @@ void SeqPage::draw_page_index(bool show_page_index, uint8_t _playing_idx) {
   uint8_t w = pidx_w;
 
   for (uint8_t i = 0; i < page_count; ++i) {
-    oled_display.drawRect(pidx_x, pidx_y, w, pidx_h, WHITE);
+    oled_rect(pidx_x, pidx_y, w, pidx_h, WHITE);
 
     // highlight page_select; blink playing_idx inverts it
     bool sel = (page_select == i) && show_page_index;
     bool play = (playing_idx == i) && blink;
     if (sel != play) {
-      oled_display.drawFastHLine(pidx_x + 1, pidx_y + 1, w - 2, WHITE);
+      oled_hline(pidx_x + 1, pidx_y + 1, w - 2, WHITE);
     } else if (sel) {
-      oled_display.drawFastHLine(pidx_x + 1, pidx_y + 1, w - 2, BLACK);
+      oled_hline(pidx_x + 1, pidx_y + 1, w - 2, BLACK);
     }
 
     pidx_x += w + 1;

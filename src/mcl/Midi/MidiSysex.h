@@ -27,15 +27,11 @@ public:
   volatile uint8_t msgType;
   volatile uint8_t msg_rd;
 
-  MidiSysexListenerClass(MidiSysexClass *_sysex = NULL, uint8_t id0 = 0,
-                         uint8_t id1 = 0, uint8_t id2 = 0) {
-    sysex = _sysex;
-    ids[0] = id0;
-    ids[1] = id1;
-    ids[2] = id2;
-    msgType = 255;
-    msg_rd = 255;
-  }
+  // constexpr: global listeners are constant-initialised (no start-up code).
+  constexpr MidiSysexListenerClass(MidiSysexClass *_sysex = NULL,
+                                   uint8_t id0 = 0, uint8_t id1 = 0,
+                                   uint8_t id2 = 0)
+      : ids{id0, id1, id2}, sysex(_sysex), msgType(255), msg_rd(255) {}
 
   virtual void start() {}
   virtual void end() {}
@@ -58,9 +54,9 @@ public:
   uint8_t state : 2;
   uint16_t recordLen : 14; // 16383 max record length
 #else
-  // Hosted/RP2040 SPS-X v0x41 patterns can legitimately exceed 16 KiB when
-  // all 592 lock rows contain incompressible data. Keep the compact ledger on
-  // AVR, which only supports the stock 24-parameter wire format.
+  // Hosted/RP2040 use a full-width ledger for host-side transactions. Compact
+  // pattern 0x40 itself remains bounded by the Elektron 14-bit length field.
+  // AVR keeps the smaller ledger and supports stock patterns only.
   uint8_t state;
   uint16_t recordLen;
 #endif

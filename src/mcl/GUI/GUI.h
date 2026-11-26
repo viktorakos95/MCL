@@ -22,10 +22,13 @@ class GuiClass {
 protected:
 public:
   EventManager events;
-  bool display_mirror = false;
-  bool skip_display_once = false;
+  // GUI is the only instance and starts zeroed in .bss, so zero-valued
+  // fields take no initialiser (each one is a store in the AVR global
+  // constructor).
+  bool display_mirror;
+  bool skip_display_once;
   bool use_screen_saver = true;
-  bool screen_saver = false;
+  bool screen_saver;
   Vector<event_handler_t, 4> eventHandlers;
   Vector<Task *, 4> tasks;
   Stack<LightPage *, 8> pageStack;
@@ -79,6 +82,13 @@ public:
 
   void loop();
   void deferDisplayOnce() { skip_display_once = true; }
+#if defined(__AVR__)
+  // The page is drawn at most once every FRAME_PERIOD_MS, about 60 frames a
+  // second, and the loop keeps running between frames. A page that takes
+  // longer than that to draw is drawn on every pass.
+  static constexpr uint8_t FRAME_PERIOD_MS = 16;
+  uint16_t frame_clock; // when the last frame was started
+#endif
   void wake_screen_saver();
   void mirror();
   void display();

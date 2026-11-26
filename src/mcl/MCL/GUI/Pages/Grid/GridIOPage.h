@@ -21,8 +21,9 @@ class GridIOPage : public LightPage {
  GridIOPage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL, Encoder *e4 = NULL) : LightPage( e1, e2, e3 ,e4) {
 
  }
-  void track_select_array_from_type_select(uint8_t *track_select_array);
-  void populate_track_select_from_notes(uint8_t *track_select_array);
+  static void track_select_array_from_type_select(uint8_t *track_select_array);
+  static void populate_track_select_from_notes(uint8_t *track_select_array);
+  static void toggle_grid();
   void show_group_select_ui(const char *title_P);
   static void draw_popup_P(const char *title_P);
   static void draw_grid_marker(uint8_t body_y_offset);

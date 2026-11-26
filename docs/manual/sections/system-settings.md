@@ -15,6 +15,7 @@ CONFIG > SYSTEM
 | `DISPLAY` | `INT`, `INT+EXT` | Enables the internal display only, or internal plus external display mirroring. |
 | `PROJ CFG` | `OFF`, `ON` | Chooses whether supported configuration stored in the project is applied when that project loads. |
 | `GRID ENCOD` | `--`, `PERF` | Reassigns the Grid Page encoders to performance-controller behavior when enabled. |
+| `LOAD/SAVE` | `LEGACY`, `CLOSE`, `STAY` | Sets how the encoders and arrow keys work while Load or Save is open, and whether they close after a load or save. |
 
 ## Display
 
@@ -43,3 +44,17 @@ After a major firmware upgrade, stored configuration may be reset to defaults on
 | --- | --- |
 | `--` | Encoders keep their normal grid-navigation behavior. |
 | `PERF` | Encoders act as performance controllers from the Grid Page. |
+
+## Load/Save
+
+`LOAD/SAVE` applies on MegaCommand, MegaCMD and TBD, where Load and Save open on the Grid Page.
+
+| Value | Behavior |
+| --- | --- |
+| `LEGACY` | While Load is open, Encoder 1 sets the load mode, Encoder 2 `LEN` (Queue mode) and Encoders 3 and 4 `QUANT`. The arrow keys close Load or Save and move the Grid Page cursor. Load and Save close after a load or save. |
+| `CLOSE` | While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save close after a load or save. |
+| `STAY` | The default. While Load or Save is open, the encoders and arrow keys navigate the grid: **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Load and Save stay open after a load or save, ready for the next one. |
+
+A new install starts on `STAY`. When MCL 5.10 is installed over MCL 5.00 to 5.02, the setting starts on `LEGACY`, so the encoders and arrow keys work as before.
+
+In every setting, holding **`Load | Yes`** or **[Global]** edits the values on the Load panel (the load mode, `QUANT`, `FADE`, `FLEN` or `LEN`). See the Load Page.

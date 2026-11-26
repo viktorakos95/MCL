@@ -10,11 +10,14 @@
 #define SPSX_SEQ_INTERPOLATION STEPSEQ_SEQ_INTERPOLATION
 #define LEGACY_SEQ_INTERPOLATION STEPSEQ_LEGACY_SEQ_INTERPOLATION
 #define SPSX_TICKS_PER_STEP_1X STEPSEQ_TICKS_PER_STEP_1X
+static_assert(SPSX_SEQ_INTERPOLATION == 4 &&
+              SPSX_TICKS_PER_STEP_1X == 24,
+              "MCL SPS-X timing must match the canonical 96-PPQN engine");
 
 #define SPSX_NUM_LOCKS_V1 STEPSEQ_NUM_LOCKS
-#define SPSX_NUM_LOCKS 37
-static_assert(SPSX_NUM_LOCKS == SPSX_NUM_LOCKS_V1 + 3,
-              "SPS-X lock migration assumes three added BUS parameters");
+#define SPSX_NUM_LOCKS 38
+static_assert(SPSX_NUM_LOCKS == SPSX_NUM_LOCKS_V1 + 4,
+              "SPS-X lock migration assumes BUS and ENV DEST parameters");
 
 #define SPSX_SPEED_1X STEPSEQ_SPEED_1X
 #define SPSX_SPEED_2X STEPSEQ_SPEED_2X
@@ -63,6 +66,28 @@ static_assert(SPSX_NUM_LOCKS == SPSX_NUM_LOCKS_V1 + 3,
 #define SPSX_NUM_TRIG_CONDITIONS STEPSEQ_NUM_TRIG_CONDITIONS
 
 #define SPSX_RETRIG_INFINITE STEPSEQ_RETRIG_INFINITE
+
+// What a step does once its condition has been evaluated.
+struct SPSXStepPlan {
+    bool apply_locks; // send the step's locks
+    bool fire;        // send the trig
+};
+
+// result is trig_conditional()'s answer: TRUE, FALSE, or ONESHOT for a muted
+// step. A one-shot that has already played is FALSE.
+//   TRIG       the condition gates the trig; the locks are always sent
+//   TRIG+LOCK  the condition gates the trig and the locks
+//   LOCK       the trig plays unless the step is muted; the condition gates
+//              only the locks, as on the Machinedrum
+inline SPSXStepPlan spsx_plan_step(uint8_t result, bool plock, bool lock_only,
+                                   bool has_trig, bool muted) {
+    SPSXStepPlan plan;
+    plan.apply_locks = result == SPSX_TRIG_TRUE ||
+                       (!plock && result != SPSX_TRIG_ONESHOT);
+    plan.fire = has_trig &&
+                (result == SPSX_TRIG_TRUE || (lock_only && !muted));
+    return plan;
+}
 
 #define SPSX_NUM_MD_STEPS STEPSEQ_NUM_STEPS
 #define SPSX_NUM_MD_LOCK_SLOTS STEPSEQ_NUM_LOCK_SLOTS

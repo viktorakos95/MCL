@@ -46,6 +46,23 @@
 
 #define SEQ_LEGACY_COND_MAX 14
 
+// The Machinedrum numbers the seven probabilities from 90% (1) down to 10%
+// (7); MCL numbers them from 10% (1) up to 90% (7). Every other condition id
+// is the same on both sides. A condition id that crosses between the two (a
+// received pattern, the hosted editor, the microtiming popup) goes through
+// this. The mapping is its own inverse.
+inline uint8_t seq_cond_swap_md(uint8_t condition) {
+  return (condition >= SEQ_COND_10PCT && condition <= SEQ_COND_90PCT)
+             ? (uint8_t)(SEQ_COND_10PCT + SEQ_COND_90PCT - condition)
+             : condition;
+}
+inline uint8_t seq_cond_from_md(uint8_t condition) {
+  return seq_cond_swap_md(condition);
+}
+inline uint8_t seq_cond_to_md(uint8_t condition) {
+  return seq_cond_swap_md(condition);
+}
+
 inline uint8_t seq_cond_knob_to_step(uint8_t knob, uint8_t max_condition,
                                      bool *plock) {
   if (knob == max_condition) {

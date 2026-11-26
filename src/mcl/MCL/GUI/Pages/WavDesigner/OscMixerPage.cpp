@@ -29,12 +29,12 @@ bool OscMixerPage::handleEvent(gui_event_t *event) {
 }
 
 void OscMixerPage::loop() { WavDesignerPage::loop(); }
-void OscMixerPage::display() {
+COLD_SMALL() void OscMixerPage::display() {
   if (show_menu) {
     WavDesignerPage::display();
   } else {
-    oled_display.setFont();
-    oled_display.setCursor(0, 0);
+    oled_font_default();
+    oled_cursor(0, 0);
     oled_display.fillRect(0, 0, 64, 32, BLACK);
 
     mcl_print_P(mclstr_osc_mixer);
@@ -55,11 +55,7 @@ void OscMixerPage::draw_wav() {
   uint8_t y = 0;
   uint8_t h = 30;
   uint8_t w = 128 - x;
-  TriOsc tri_osc(w);
-  PulseOsc pul_osc(w);
-  SawOsc saw_osc(w);
-  SineOsc sine_osc(w);
-  UsrOsc usr_osc(w);
+  OscSet oscs(w);
 
   // Work out lowest base frequency.
   float fund_freq = 20000;
@@ -91,8 +87,7 @@ void OscMixerPage::draw_wav() {
       float osc_sample =
           render_osc_sample(wd.pages[i].get_osc_type(), wd.pages[i].get_width(),
                             wd.pages[i].sine_levels, wd.pages[i].usr_values,
-                            wd.pages[i].sine_level_sum, n, freqs[i],
-                            sine_osc, tri_osc, pul_osc, saw_osc, usr_osc);
+                            wd.pages[i].sine_level_sum, n, freqs[i], oscs);
       // Sum oscillator samples together
       sample += osc_sample * wd.mixer.get_gain(i);
       // DEBUG_PRINTLN(mixer.get_gain(i));

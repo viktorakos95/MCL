@@ -6,7 +6,7 @@
 
 void _draw_frame(uint8_t w) {
   oled_display.fillRect(60, 0, w + 2, 32, BLACK);
-  oled_display.drawRect(61, 0, w, 32, WHITE);
+  oled_rect(61, 0, w, 32, WHITE);
 }
 
 void DiagnosticPage::draw_perfcounter() {
@@ -14,16 +14,16 @@ void DiagnosticPage::draw_perfcounter() {
 
   auto clock = read_slowclock();
 
-  oled_display.setCursor(64, 7);
+  oled_cursor(64, 7);
   mcl_print_P(mclstr_gui_loop);
-  oled_display.setCursor(97, 7);
+  oled_cursor(97, 7);
   oled_display.print(clock_diff(last_clock, clock));
 
   uint8_t y = 13;
   for (int i = 0; i < DIAGNOSTIC_NUM_COUNTER; ++i) {
-    oled_display.setCursor(64, y);
+    oled_cursor(64, y);
     oled_display.print(perf_name[i]);
-    oled_display.setCursor(97, y);
+    oled_cursor(97, y);
     oled_display.print(perf_counters[i]);
     y += 6;
   }
@@ -43,7 +43,7 @@ void DiagnosticPage::draw_log() {
     if (log_idx >= DIAGNOSTIC_NUM_LOG) {
       log_idx = 0;
     }
-    oled_display.setCursor(64, y);
+    oled_cursor(64, y);
     oled_display.print(log_buf[log_idx++]);
     y = y + 6;
   }
@@ -59,7 +59,7 @@ void DiagnosticPage::draw_log() {
 void DiagnosticPage::draw() {
 
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   if (mode == 0) {
     draw_perfcounter();

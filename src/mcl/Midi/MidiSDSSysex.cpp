@@ -83,12 +83,12 @@ void MidiSDSSysexListenerClass::end() {
     break;
 
   case MIDI_SDS_ACK:
-    DEBUG_PRINT("ACK: ");
+    DEBUG_PRINT(F("ACK: "));
     DEBUG_PRINTLN(view.getByte(3));
     break;
 
   case MIDI_SDS_NAK:
-    DEBUG_PRINT("NAK: ");
+    DEBUG_PRINT(F("NAK: "));
     DEBUG_PRINTLN(view.getByte(3));
     break;
 
@@ -161,7 +161,7 @@ void MidiSDSSysexListenerClass::dump_header(const SysexView &view) {
   DEBUG_PRINTLN(midi_sds.sampleFormat);
   DEBUG_PRINTLN(midi_sds.samplePeriod);
   DEBUG_PRINTLN(sampleRate);
-  DEBUG_PRINTLN("loop");
+  DEBUG_PRINTLN(F("loop"));
   DEBUG_PRINTLN(midi_sds.loopType);
   DEBUG_PRINTLN(midi_sds.loopStart);
   DEBUG_PRINTLN(midi_sds.loopEnd);
@@ -267,9 +267,9 @@ void MidiSDSSysexListenerClass::data_packet(const SysexView &view) {
         signed_val = decode_val;
       }
       // Shift the value in to b, byte values for wav file.
-      // DEBUG_PRINTLN(" ");
+      // DEBUG_PRINTLN(F(" "));
       // DEBUG_PRINT(decode_val);
-      // DEBUG_PRINT(",");
+      // DEBUG_PRINT(F(","));
       // DEBUG_PRINT(signed_val);
       for (uint8_t b = 0; b < midi_sds.bytes_per_word; b++) {
         samples[byte_count + b] = (uint8_t)((signed_val >> (8 * (b))) & 0xFF);
@@ -291,7 +291,7 @@ void MidiSDSSysexListenerClass::data_packet(const SysexView &view) {
       midi_sds.sendCancelMessage();
       midi_sds.state = SDS_READY;
     }
-    // DEBUG_PRINT(" ");
+    // DEBUG_PRINT(F(" "));
     if (midi_sds.samplesSoFar == midi_sds.sampleLength) {
       DEBUG_PRINTLN(F("Sample receive finished"));
       DEBUG_PRINTLN(midi_sds.wav_file.header.data.chunk_size);

@@ -41,7 +41,7 @@ public:
   bool write_header(uint32_t grid_version = GRID_VERSION,
                     uint8_t grid_id = 0);
 
-  bool open_file(const char *gridname) { return file.open(gridname, O_RDWR); }
+  bool open_file(const char *gridname);
 
   bool close_file() { return file.close(); }
 

@@ -5,6 +5,7 @@
 bool MDSound::write_sound() {
   DEBUG_PRINT_FN();
   bool ret;
+  version = SOUND_VERSION;
   ret = write_data(this, sizeof(MDSoundData), 0);
   return ret;
 }
@@ -12,54 +13,66 @@ bool MDSound::write_sound() {
 bool MDSound::read_sound() {
   DEBUG_PRINT_FN();
   bool ret;
-  ret = read_data(this, sizeof(MDSoundData), 0);
-  return ret;
+  // The version 2000 layout: header, two 24-parameter records, sample names.
+  static constexpr uint16_t v1_size =
+      offsetof(MDSoundData, machine1) + 2 * sizeof(MDMachineV1) +
+      sizeof(sample_id1) + sizeof(sample_id2);
+  uint8_t *bytes = reinterpret_cast<uint8_t *>(static_cast<MDSoundData *>(this));
+  ret = read_data(bytes, v1_size, 0);
+  if (!ret) {
+    return false;
+  }
+  if (version == SOUND_VERSION) {
+    return read_data(bytes + v1_size, sizeof(MDSoundData) - v1_size, v1_size);
+  }
+  // Widen from the back so nothing is overwritten before it has moved.
+  uint8_t *old = reinterpret_cast<uint8_t *>(&machine1);
+  memmove(sample_id1, old + 2 * sizeof(MDMachineV1),
+          sizeof(sample_id1) + sizeof(sample_id2));
+  memmove(&machine2, old + sizeof(MDMachineV1), sizeof(MDMachineV1));
+  machine2.upgrade_v1();
+  machine1.upgrade_v1();
+  return true;
+}
+
+// Copies kit track `from` into one machine of a sound, stored as the sound's
+// slot `slot`. The LFO destination is kept as a slot: 0 for track `first`,
+// 1 for track `second`; an LFO aimed at any other track is dropped, with its
+// depth.
+static void fetch_machine(MDMachine &machine, uint8_t from, uint8_t first,
+                          uint8_t second, uint8_t slot) NOINLINE();
+static void fetch_machine(MDMachine &machine, uint8_t from, uint8_t first,
+                          uint8_t second, uint8_t slot) {
+  machine.model = MD.kit.models[from]; //get raw model including tonal bit
+  machine.level = MD.kit.levels[from];
+  memcpy(&machine.params, &(MD.kit.params[from]), SPS_PARAMS_PER_TRACK);
+  MD.kit.get_ext(from, &machine);
+  MD.kit.get_lfo(from, &machine.lfo);
+
+  if (machine.lfo.destinationTrack == first) {
+    machine.lfo.destinationTrack = 0;
+  } else if (machine.lfo.destinationTrack == second) {
+    machine.lfo.destinationTrack = 1;
+  } else {
+    machine.lfo.destinationTrack = 255;
+    machine.lfo.depth = machine.params[MODEL_LFOD] = 0;
+  }
+
+  machine.track = slot;
+  machine.normalize_level();
 }
 
 bool MDSound::fetch_sound(uint8_t track) {
   DEBUG_PRINT_FN();
-  machine_count = 0;
-  machine1.model = MD.kit.models[track]; //get raw model including tonal bit
-  machine1.level = MD.kit.levels[track];
-  memcpy(&machine1.params, &(MD.kit.params[track]), 24);
-  memcpy(&machine1.lfo, &(MD.kit.lfos[track]), sizeof(MDLFO));
-
   uint8_t trigGroup = MD.kit.trigGroups[track];
-  if (machine1.lfo.destinationTrack == track) {
-    machine1.lfo.destinationTrack = 0;
-  } else if (machine1.lfo.destinationTrack == trigGroup) {
-    machine1.lfo.destinationTrack = 1;
-  } else {
-    machine1.lfo.destinationTrack = 255;
-    machine1.lfo.depth = machine1.params[MODEL_LFOD] = 0;
-  }
-
-  machine1.track = 0;
-  machine1.normalize_level();
-  machine_count++;
+  fetch_machine(machine1, track, track, trigGroup, 0);
+  machine_count = 1;
 
   // If track uses trigGroup, assume sound is made up of two models.
 
   if ((trigGroup < 16) && (trigGroup != track)) {
-    machine2.model = MD.kit.models[trigGroup]; //get raw model including tonal bit
-    machine2.level = MD.kit.levels[trigGroup];
-    memcpy(&machine2.params, &(MD.kit.params[trigGroup]), 24);
-    memcpy(&machine2.lfo, &(MD.kit.lfos[trigGroup]), sizeof(MDLFO));
-
-    if (machine2.lfo.destinationTrack == trigGroup) {
-      machine2.lfo.destinationTrack = 1;
-    }
-
-    else if (machine2.lfo.destinationTrack == track) {
-      machine2.lfo.destinationTrack = 0;
-    } else {
-      machine2.lfo.destinationTrack = 255;
-      machine2.lfo.depth = machine2.params[MODEL_LFOD] = 0;
-    }
-
-    machine_count++;
-    machine2.track = 1;
-    machine2.normalize_level();
+    fetch_machine(machine2, trigGroup, track, trigGroup, 1);
+    machine_count = 2;
   }
   return true;
 }
@@ -86,13 +99,9 @@ bool MDSound::load_sound(uint8_t track) {
     if (machine2.lfo.destinationTrack < 16) {
       machine2.lfo.destinationTrack += track;
     }
-    machine1.trigGroup = track + 1;
     machine2.trigGroup = track;
 
     MD.sendMachine(track + 1, &machine2, send_level, send);
-
-  } else {
-    machine1.trigGroup = track;
   }
 
   if (machine1.lfo.destinationTrack < 16) {

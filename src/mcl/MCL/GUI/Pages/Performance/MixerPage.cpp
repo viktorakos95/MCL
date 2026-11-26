@@ -13,7 +13,10 @@
 #include "Project.h"
 
 #define FADER_LEN 18
-#define FADE_RATE 8
+// How far a meter falls each frame. The page runs at about 62 frames a second;
+// it was 8 at the 53 (playing) to 63 (stopped) it ran at before the frame
+// rate was fixed.
+#define FADE_RATE 7
 
 // Grace window for the LEFT+RIGHT beat-repeat chord (see MixerPage.h) —
 // long enough to reliably catch a near-simultaneous two-key press, short
@@ -76,8 +79,9 @@ void toggle_md_fill_track(MixerTarget &target, DeviceIdx device_idx,
                           uint8_t track) NOINLINE();
 void toggle_md_fill_track(MixerTarget &target, DeviceIdx device_idx,
                           uint8_t track) {
-  uint16_t &fill_mask = mcl_seq.fill_mask_for(device_idx);
+  uint16_t &fill_mask = mcl_seq.fill_edit_mask(device_idx);
   TOGGLE_BIT16(fill_mask, track);
+  mcl_seq.fill_edited();
   send_md_fill_track(target, track, (fill_mask & (uint16_t)(1u << track)) != 0);
 }
 #endif
@@ -85,14 +89,16 @@ void toggle_md_fill_track(MixerTarget &target, DeviceIdx device_idx,
 void apply_fill_mask(DeviceIdx device_idx, MixerTarget &target,
                      uint16_t mask, uint8_t len) {
 #if defined(__AVR__)
-  mcl_seq.set_fill_mask(device_idx, mask);
+  mcl_seq.fill_edit_mask(device_idx) = mask;
+  mcl_seq.fill_edited();
   for (uint8_t t = 0; t < len; t++, mask >>= 1) {
     send_md_fill_track(target, t, (mask & 1) != 0);
   }
 #else
-  uint16_t old_mask = mcl_seq.fill_mask_for(device_idx);
+  uint16_t old_mask = mcl_seq.fill_edit_mask(device_idx);
   uint16_t changed = (old_mask ^ mask) & track_mask_for_len(len);
-  mcl_seq.set_fill_mask(device_idx, mask);
+  mcl_seq.fill_edit_mask(device_idx) = mask;
+  mcl_seq.fill_edited();
   for (uint8_t t = 0; changed != 0 && t < len; t++) {
     uint16_t bit = (uint16_t)(1u << t);
     if ((changed & bit) != 0) {
@@ -265,7 +271,7 @@ bool MixerPage::display_mute_mask() {
 }
 
 bool MixerPage::display_fill_mask() {
-  uint16_t mask = mcl_seq.fill_mask_for(mixer_device_idx) &
+  uint16_t mask = mcl_seq.fill_edit_mask(mixer_device_idx) &
                   track_mask_for_len(mixer_track_count());
   if (seq_step_page.mute_mask != mask) {
     mcl_gui.set_trigleds(mask, mixer_led_mode());
@@ -299,7 +305,7 @@ void MixerPage::oled_draw_mutes() {
       preview_mute_set != 255
           ? (fill_preview ? perf_states[preview_mute_set].fill_mask[slot]
                           : perf_states[preview_mute_set].mute_mask[slot])
-          : (active_fill_preview ? mcl_seq.fill_mask_for(mixer_device_idx) : 0);
+          : (active_fill_preview ? mcl_seq.fill_edit_mask(mixer_device_idx) : 0);
   for (uint8_t i = 0; i < len; ++i, preview_mutes >>= 1) {
     SeqTrack *seq_track = mixer_seq_track(i);
     if (seq_track == nullptr) {
@@ -327,12 +333,12 @@ void MixerPage::oled_draw_mutes() {
             oled_display.drawFastVLine(fader_x + 3, 2, 5, WHITE);
           }
         } else {
-          oled_display.drawFastHLine(fader_x, 5, 6, WHITE);
+          oled_hline(fader_x, 5, 6, WHITE);
         }
       } else if (mute_state) {
-        oled_display.drawRect(fader_x, 2, 6, 6, WHITE);
+        oled_rect(fader_x, 2, 6, 6, WHITE);
       } else {
-        oled_display.drawFastHLine(fader_x, 5, 6, WHITE);
+        oled_hline(fader_x, 5, 6, WHITE);
       }
     }
     fader_x += 8;
@@ -349,7 +355,7 @@ encoders[3]->handler = encoder_filtq_handle;
 }
 
 void MixerPage::init() {
-  DEBUG_PRINTLN("mixer init");
+  DEBUG_PRINTLN(F("mixer init"));
 #ifdef PLATFORM_TBD
   device_manager.exit_ui();
 #endif
@@ -475,7 +481,7 @@ void MixerPage::draw_encs() {
     uint8_t val = MixerPerf::display_value(encoders[n], perf_locks,
                                            preview_mute_set, n, highlight);
     mcl_gui.draw_encoder(24 + pos, fader_y + 4, val, highlight);
-    oled_display.setCursor(16 + pos, fader_y + 6);
+    oled_cursor(16 + pos, fader_y + 6);
     oled_display.write((uint8_t)('A' + n));
   }
 }
@@ -562,12 +568,11 @@ void MixerPage::display() {
       (draw_encoders || preview_mute_set != 255)) {
     // oled_display.clearDisplay();
     draw_encs();
-    oled_display.setFont(&TomThumb);
+    oled_font_small();
     if (load_perf_state != 255 && load_perf_state == preview_mute_set) {
-      oled_display.setCursor(111, 31);
-      mcl_print_P(mclstr_load);
+      text_at_P(111, 31, mclstr_load);
     }
-    oled_display.setFont();
+    oled_font_default();
   } else {
 
     uint8_t fader_level;
@@ -595,7 +600,7 @@ void MixerPage::display() {
 
       if (redraw & 1) {
         oled_display.fillRect(fader_x, fader_y - 1, 6, FADER_LEN + 1, BLACK);
-        oled_display.drawRect(fader_x, fader_y + (FADER_LEN - fader_level), 6,
+        oled_rect(fader_x, fader_y + (FADER_LEN - fader_level), 6,
                               fader_level + 2, WHITE);
       }
       if (note_interface.is_note_on(i)) {
@@ -716,19 +721,19 @@ void MixerPage::toggle_or_solo(bool solo) {
   sync_selected_mixer_device();
   uint8_t len = mixer_track_count();
 #if !defined(__AVR__)
-  uint16_t fill_mask = mcl_seq.fill_mask_for(mixer_device_idx);
+  uint16_t fill_mask = mcl_seq.fill_edit_mask(mixer_device_idx);
 #endif
   for (uint8_t i = 0; i < len; i++) {
     bool note_on = note_interface.is_note_on(i);
     if (fill_edit_mode) {
 #if defined(__AVR__)
-      uint16_t &fill_mask = mcl_seq.fill_mask_for(mixer_device_idx);
+      uint16_t &fill_mask = mcl_seq.fill_edit_mask(mixer_device_idx);
 #endif
       if (solo) {
         uint16_t bit = (uint16_t)(1u << i);
         if (((fill_mask & bit) != 0) != note_on) {
-          if (note_on) SET_BIT16(fill_mask, i);
-          else CLEAR_BIT16(fill_mask, i);
+          if (note_on) bitfield_set(&fill_mask, i);
+          else bitfield_clear(&fill_mask, i);
 #if defined(__AVR__)
           send_md_fill_track(mixer_target, i, note_on);
 #endif
@@ -764,6 +769,8 @@ void MixerPage::toggle_or_solo(bool solo) {
   if (fill_edit_mode) {
 #if !defined(__AVR__)
     apply_fill_mask(mixer_device_idx, mixer_target, fill_mask, len);
+#else
+    mcl_seq.fill_edited();
 #endif
     display_fill_mask();
   }
@@ -815,7 +822,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
 #if defined(__AVR__)
               toggle_md_fill_track(mixer_target, mixer_device_idx, track);
 #else
-              uint16_t fill_mask = mcl_seq.fill_mask_for(mixer_device_idx);
+              uint16_t fill_mask = mcl_seq.fill_edit_mask(mixer_device_idx);
               TOGGLE_BIT16(fill_mask, track);
               apply_fill_mask(mixer_device_idx, mixer_target, fill_mask, len);
 #endif
@@ -848,7 +855,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
     }
 
     if (event->mask == EVENT_BUTTON_RELEASED) {
-      SET_BIT16(redraw_mask, track);
+      bitfield_set(&redraw_mask, track);
       if (note_interface.notes_count_on() == 0) {
         first_track = 255;
         note_interface.init_notes();
@@ -882,7 +889,7 @@ bool MixerPage::handleEvent(gui_event_t *event) {
         break;
       }
       case MDX_KEY_EXTENDED: {
-        DEBUG_PRINTLN("key extended");
+        DEBUG_PRINTLN(F("key extended"));
         ext_key_down = 1;
         redraw();
         if (use_perf) {

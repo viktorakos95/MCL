@@ -101,6 +101,14 @@ extern const uint32_t _bvmasks32[];
 #define IS_BIT_CLEAR128_P(target, bit)         IS_BIT_CLEAR_RADDR_P(target, bit)
 
 
+/** The 16- to 128-bit macros above expand to some 26 bytes of code at each
+ * use with a variable bit number. Code that is not timing-critical calls
+ * these instead; the sequencer and the MIDI callbacks keep the macros.
+ * field points at the first byte of the variable, as the _P macros take it. **/
+bool bitfield_test(const void *field, uint8_t bit);
+void bitfield_set(void *field, uint8_t bit);
+void bitfield_clear(void *field, uint8_t bit);
+
 uint8_t popcount(const uint8_t bits);
 uint8_t popcount16(const uint16_t bits);
 uint8_t popcount32(const uint32_t bits);

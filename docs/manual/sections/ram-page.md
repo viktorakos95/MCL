@@ -11,7 +11,7 @@ Open them with:
 | RAM 1 | **[Bank Group] + [Trig 15]** | Track 15 in mono mode. |
 | RAM 2 | **[Bank Group] + [Trig 16]** | Track 16 in mono mode. |
 
-In stereo/link mode, RAM 1 controls the linked track pair 15 and 16.
+In stereo mode, RAM 1 controls the linked track pair 15 and 16.
 
 ## RAM Link Mode
 
@@ -22,7 +22,7 @@ RAM mode is configured from the Machinedrum configuration page:
 | Value | Behavior |
 | --- | --- |
 | `MONO` | RAM 1 and RAM 2 act independently on tracks 15 and 16. Source can be `INT`, `A` or `B`. |
-| `STEREO` / `LINK` | Tracks 15 and 16 are linked as a stereo pair. Main output records as left/right, and external input records as A/B. |
+| `STEREO` | Tracks 15 and 16 are linked as a stereo pair. Main output records as left/right, and external input records as A/B. |
 
 This option moved from the old Page Setup area into the Machinedrum configuration page.
 
@@ -34,8 +34,8 @@ This option moved from the old Page Setup area into the Machinedrum configuratio
 | `Encoder 2` | Dice mode. |
 | `Encoder 3` | Number of slices. |
 | `Encoder 4` | Record/playback length in sequencer steps. |
-| MD **[Yes]** or MCL **[Save/No]** | Queue RAM recording. |
-| MD **[No]** or MCL **[Load/Yes]** | Queue RAM playback or apply normal slicing. |
+| MD **[Yes]** or **`Save | No`** | Queue RAM recording. |
+| MD **[No]** or **`Load | Yes`** | Queue RAM playback or apply normal slicing. |
 | **[Global]** | Apply dice slicing. |
 
 Pressing an encoder button returns to the Grid Page.
@@ -46,7 +46,7 @@ Pressing an encoder button returns to the Grid Page.
 2. Leave tracks 15 and 16 free; RAM pages overwrite their machine and sequence data.
 3. Choose the source with `Encoder 1`.
 4. Set the length with `Encoder 4`.
-5. Press MD **[Yes]** or MCL **[Save/No]** to queue recording.
+5. Press MD **[Yes]** or **`Save | No`** to queue recording.
 
 The display shows `QUEUE` until the quantized transition point, then `RECORD`. Recording continues until playback is queued.
 
@@ -54,7 +54,7 @@ The display shows `QUEUE` until the quantized transition point, then `RECORD`. R
 
 ## Playback
 
-Press MD **[No]** or MCL **[Load/Yes]** to queue RAM playback. If the current RAM playback track has not been set up yet, MCL creates the RAM playback machine, sequence step and track link first.
+Press MD **[No]** or **`Load | Yes`** to queue RAM playback. If the current RAM playback track has not been set up yet, MCL creates the RAM playback machine, sequence step and track link first.
 
 The display shows `QUEUE` until the transition point, then `PLAY`.
 
@@ -69,9 +69,9 @@ In `MONO`, the pages are independent:
 
 Source `INT` samples the Machinedrum mix. Sources `A` and `B` sample the external inputs.
 
-## Stereo / Link Mode
+## Stereo Mode
 
-In `STEREO` / `LINK`, track 15 and 16 work as a pair. MCL creates linked RAM machines, pans them left/right and keeps compatible playback parameter changes synchronized between the pair.
+In `STEREO`, tracks 15 and 16 work as a pair. MCL creates linked RAM machines, pans them left/right and keeps compatible playback parameter changes synchronized between the pair.
 
 For main-output recording, track 15 records the left side and track 16 records the right side. For external-input recording, track 15 records input A and track 16 records input B.
 
@@ -81,7 +81,7 @@ Slicing divides the RAM playback into multiple slices by writing start/end locks
 
 | Action | Result |
 | --- | --- |
-| Set slices with `Encoder 3`, then press MD **[No]** or MCL **[Load/Yes]** | Apply normal slice playback. |
+| Set slices with `Encoder 3`, then press MD **[No]** or **`Load | Yes`** | Apply normal slice playback. |
 | Set dice mode with `Encoder 2`, then press **[Global]** | Apply dice slice playback. |
 
 Dice modes alter slice order or direction:

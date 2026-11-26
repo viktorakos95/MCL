@@ -72,9 +72,13 @@ public:
 
   void delay_progress(uint16_t clock_);
 
-  void draw_microtiming(uint8_t resolution, uint8_t timing);
+  // The popup's label is the timing offset and the step's condition, as
+  // the COND knob prints it.
+  void draw_microtiming(uint8_t resolution, uint8_t timing,
+                        const char *condition);
 #if !defined(__AVR__)
-  void draw_microtiming_spsx(uint8_t speed, int8_t microtiming);
+  void draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
+                             const char *condition);
 #endif
   void clear_leftpane();
   void clear_rightpane();
@@ -86,10 +90,12 @@ public:
   // on the 128x64 panel). Layout per column: label on top, dial in
   // middle, value below (only when show_values[i] is true). Pass nullptr
   // for any unused encoder; nullptr labels print blank. Reuses
-  // draw_md_encoder so the look matches the rest of the GUI.
+  // draw_md_encoder so the look matches the rest of the GUI. `values`, when
+  // given, holds each encoder's value text in place of its number.
   void draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
                           const char *const labels[4],
-                          const bool show_values[4]);
+                          const bool show_values[4],
+                          const char *const values[4] = nullptr);
 
   bool show_encoder_value(Encoder *encoder, int timeout = SHOW_VALUE_TIMEOUT);
 
@@ -220,8 +226,28 @@ public:
 
 extern MCLGUI mcl_gui;
 
+// The display's font and colour setters, out of line: Adafruit_GFX inlines
+// setTextColor, and every setFont call site also loaded the display and the
+// font. The display state they set is unchanged.
+void oled_font_small();    // TomThumb
+void oled_font_default();  // the built-in 5x7 font
+// The text cursor, out of line: a call is smaller than the four stores at
+// every place that sets it. x may be left of the screen (the splash scrolls
+// text in from there).
+void oled_cursor(int8_t x, uint8_t y);
+// A rectangle's outline and a horizontal line, out of line with 8-bit
+// arguments: Adafruit_GFX takes 16-bit ones, loaded at every call.
+void oled_rect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t color);
+void oled_hline(uint8_t x, uint8_t y, uint8_t w, uint8_t color);
+// The text colours (WHITE, BLACK, INVERT), 8-bit for the same reason.
+void oled_text_color(uint8_t c);
+void oled_text_color(uint8_t c, uint8_t bg);
+
 // Helper function for printing PROGMEM strings
 void mcl_print_P(const char* str_P);
+// The cursor and a string in one call (text_at_P: a PROGMEM string).
+void text_at(int8_t x, uint8_t y, const char *str);
+void text_at_P(int8_t x, uint8_t y, const char *str_P);
 void mcl_println_P(const char* str_P);
 
 // 'encoder0', 11x11px

@@ -10,6 +10,7 @@
 #include "MDMessages.h"
 #include "MDParams.h"
 #include "MDSysex.h"
+#include "MDUsr.h"
 
 #ifdef PLATFORM_TBD
 #include "UI/MDUI.h"
@@ -68,6 +69,25 @@ public:
   virtual void on_ui_slot_button(uint8_t slot, bool pressed) override;
 #endif
 
+  // True when setup() asked the peer for extended machine updates ($70/$45):
+  // 38 parameters, LFO-B and the output route in every $63 notification.
+  bool extendedMachineUpdates() const {
+    return x20() && (fw_caps & FW_CAP_MACHINE_UPDATE_EXT) != 0;
+  }
+
+  // The parameter under encoder 0-7 on the page the Machinedrum is showing,
+  // and the encoder holding a parameter there. 255 when there is none.
+  // currentSynthPage is 0-2 for the main pages and 4-6 for the LFO page's
+  // LFO-A, LFO-B and ENV tabs.
+  uint8_t paramForEncoder(uint8_t encoder) const;
+  uint8_t encoderForParam(uint8_t param) const;
+
+  // True when the microtiming popup shows the condition and mode MCL sends
+  // with it, and PAGE on that popup arrives as a key.
+  bool microtimingCondition() const {
+    return (fw_caps & FW_CAP_MICROTIMING_COND) != 0;
+  }
+
   /** Stores the kit settings of the machinedrum (usually set by MDTask). **/
   MDKit kit;
   MDPattern pattern;
@@ -83,24 +103,32 @@ public:
   // device-facing decisions (sysex format, kit param ranges). Does NOT mean
   // the local sequencer is in SPSX mode — see MCLSeq::using_spsx_tracks.
 #if defined(__AVR__)
+  // True when the peer speaks the X.20 kit and machine layouts: kit 65.1 and
+  // 38 parameters per track. The AVR sequencer and patterns stay as they are.
+  bool x20() const {
+    return (fw_caps & (FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37)) ==
+           (FW_CAP_SPSX | FW_CAP_SPSX_PARAMS_37);
+  }
   static constexpr bool is_spsx = false;
   static constexpr bool supportsSpsx37Params() { return false; }
   static constexpr uint8_t spsxWireParamCount() {
-    return SPS_PARAMS_V1_PER_TRACK;
+    return SPS_PARAMS_PER_TRACK;
   }
 #else
   bool is_spsx = false;
+  bool x20() const { return is_spsx; }
 
-  // The device-facing kit/pattern format is negotiated by firmware
-  // capabilities, independently of the host sequencer bridge. Old SPS-X
-  // peers advertise FW_CAP_SPSX only and therefore stay on 34 params/v65;
-  // current peers also advertise FW_CAP_SPSX_PARAMS_37.
+  // Native SPS-X kits use v65 and the complete current parameter row.
   bool supportsSpsx37Params() const {
     return is_spsx && (fw_caps & FW_CAP_SPSX_PARAMS_37) != 0;
   }
   uint8_t spsxWireParamCount() const {
-    return supportsSpsx37Params() ? SPS_PARAMS_PER_TRACK
-                                 : SPS_PARAMS_V1_PER_TRACK;
+    return is_spsx ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+  }
+  bool supportsCompactPattern40() const {
+    static constexpr uint32_t required =
+        (uint32_t)FW_CAP_SPSX | (uint32_t)FW_CAP_SPSX_PARAMS_37;
+    return (fw_caps & required) == required;
   }
 #endif
 
@@ -117,11 +145,17 @@ public:
   virtual void page_select_popup(char *text) override;
   virtual void page_select_cleanup() override;
   PageIndex mixer_fx_page() const;
-#if !defined(__AVR__)
   virtual void requestKit(uint8_t kit) override;
-  virtual void requestPattern(uint8_t pattern) override;
+#if !defined(__AVR__)
   virtual void requestGlobal(uint8_t global) override;
 #endif
+  virtual void requestPattern(uint8_t pattern) override;
+  bool getBlockingKit(uint8_t kit, uint16_t timeout = 3000) override;
+  uint8_t pitchParameter(uint8_t track) const;
+  // The note an X.20 Machinedrum shows for a step-edit note number on a tonal
+  // track (its own base note and octave per machine and tuning; C3 = 60), or
+  // 0 when it shows none.
+  uint8_t mdxTonalNote(uint8_t track, uint8_t note_num);
   virtual void init_grid_devices(DeviceIdx device_idx) override;
 #ifdef PLATFORM_TBD
   virtual bool supports_capability(MidiDeviceCapability capability) const override;
@@ -323,7 +357,8 @@ public:
   /**
    * Send a sysex machine to change the model of the machine on the given track.
    **/
-  void assignMachine(uint8_t track, uint8_t model, uint8_t init = 255);
+  void assignMachine(uint8_t track, uint8_t model, uint8_t init = 255,
+                     uint8_t tuning = MD_TUNING_DEFAULT);
   uint8_t assignMachineBulk(uint8_t track, MDMachine *machine, uint8_t send_level, uint8_t mode = 255, bool send = true);
 #if !defined(__AVR__)
   uint8_t assignMachineBulk(uint8_t track, SPSMachine *machine, uint8_t send_level, uint8_t mode = 255, bool send = true);

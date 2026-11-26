@@ -13,15 +13,16 @@ namespace {
 
 void copy_md_machine_to_spsx(const MDMachine &src, SPSMachine &dest) {
   dest.init();
-  memset(dest.params, 0, sizeof(dest.params));
-  memcpy(dest.params, src.params, MD_PARAMS_PER_TRACK);
+  memcpy(dest.params, src.params, sizeof(dest.params));
   dest.track = src.track;
   dest.level = src.level;
   dest.model = src.model;
   dest.lfos[0] = src.lfo;
   dest.lfos[1].init(src.track);
+  memcpy(&dest.lfos[1].destinationTrack, src.lfoB, sizeof(src.lfoB));
   dest.trigGroup = src.trigGroup;
   dest.muteGroup = src.muteGroup;
+  dest.outputRouting = src.outputRouting;
 }
 
 } // namespace
@@ -117,7 +118,7 @@ bool MDTrack::transition_cache(uint8_t tracknumber, GridSlot slotnumber) {
   bool send = true;
   switch (mcl_actions.transition_level[n]) {
   case 1:
-    DEBUG_PRINTLN("setting transition level to 0");
+    DEBUG_PRINTLN(F("setting transition level to 0"));
     send_level = true;
     machine.level = 0;
     break;
@@ -136,7 +137,7 @@ static void md_apply_mute(uint8_t tracknumber, uint8_t n, bool mute,
 
 void MDTrack::transition_send(uint8_t tracknumber, GridSlot slotnumber) {
   uint8_t n = slotnumber;
-  DEBUG_PRINTLN("transition send");
+  DEBUG_PRINTLN(F("transition send"));
   switch (mcl_actions.transition_level[n]) {
   case TRANSITION_UNMUTE:
     DEBUG_PRINTLN(F("unmuting"));
@@ -159,7 +160,7 @@ void MDTrack::transition_load(uint8_t tracknumber, SeqTrack *seq_track,
 }
 
 void MDTrack::load_immediate(uint8_t tracknumber, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   MD.insertMachineInKit(tracknumber, &(machine), true);
   load_seq_data(seq_track);
 }
@@ -167,20 +168,21 @@ void MDTrack::load_immediate(uint8_t tracknumber, SeqTrack *seq_track) {
 #if !defined(__AVR__)
 void MDTrack::load_immediate_preserve_level(uint8_t tracknumber,
                                             SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   MD.insertMachineInKit(tracknumber, &(machine), false);
   load_seq_data(seq_track);
 }
 #endif
 
 void MDTrack::load_immediate_cleared(uint8_t tracknumber, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   load_seq_data(seq_track);
 }
 
 void MDTrack::get_machine_from_kit(uint8_t tracknumber) {
   //  trackName[0] = '\0';
-  memcpy(machine.params, MD.kit.params[tracknumber], MD_PARAMS_PER_TRACK);
+  memcpy(machine.params, MD.kit.params[tracknumber], SPS_PARAMS_PER_TRACK);
+  MD.kit.get_ext(tracknumber, &machine);
 
   machine.track = tracknumber;
   machine.level = MD.kit.levels[tracknumber];
@@ -192,7 +194,7 @@ void MDTrack::get_machine_from_kit(uint8_t tracknumber) {
    * the new row posiiton*/
 
   /*Copies Lfo data from the kit object into the machine object*/
-  memcpy(&machine.lfo, &MD.kit.lfos[tracknumber], sizeof(machine.lfo));
+  MD.kit.get_lfo(tracknumber, &machine.lfo);
 
   // The memcpy above already copies destinationTrack, and machine.track was
   // assigned tracknumber above; when destinationTrack == tracknumber the
@@ -217,14 +219,32 @@ static void merge_md_pattern_to_seq(MDTrack &track, MDSeqTrack *md_seq_track,
   if (merge == SAVE_MERGE) {
     copy_md_seqdata(temp_seq_track.data(), md_seq_track->data());
   } else if (merge == SAVE_MD_PATTERN_IMPORT) {
+#if !defined(__AVR__)
+    track.link.length = MD.pattern.trackLength(tracknumber);
+    track.link.set_speed(SEQ_SPEED_1X + MD.pattern.trackSpeed(tracknumber));
+#else
     track.link.length = MD.pattern.patternLength;
     track.link.set_speed(SEQ_SPEED_1X + MD.pattern.doubleTempo);
+#endif
     DEBUG_PRINTLN(F("SAVE_MD_PATTERN_IMPORT"));
   }
   temp_seq_track.length = track.link.length;
   temp_seq_track.speed = track.link.speed_value();
   temp_seq_track.merge_from_md(tracknumber, &(MD.pattern));
   copy_md_seqdata(track.seq_data.data(), temp_seq_track.data());
+}
+
+void MDTrack::on_storage_loaded() {
+  if (version >= MD_TRACK_STORAGE_VERSION) {
+    return;
+  }
+  // Older tracks hold the 24-parameter machine record. Move what follows it
+  // up, then widen the record itself.
+  uint8_t *after = reinterpret_cast<uint8_t *>(&machine) + sizeof(MDMachineV1);
+  memmove(&mod_data, after,
+          sizeof(mod_data) + sizeof(seq_data) + sizeof(load_fade));
+  machine.upgrade_v1();
+  version = MD_TRACK_STORAGE_VERSION;
 }
 
 void MDTrack::init() {
@@ -304,7 +324,7 @@ void MDTrack::normalize() {
   scale_seq_vol(scale);
 }
 
-bool MDTrack::store_in_grid(GridSlot column, GridRow row, SeqTrack *seq_track,
+COLD_SMALL() bool MDTrack::store_in_grid(GridSlot column, GridRow row, SeqTrack *seq_track,
                             uint8_t merge, bool online, Grid *grid) {
   active = MD_TRACK_TYPE;
 

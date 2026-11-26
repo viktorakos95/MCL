@@ -14,6 +14,28 @@
 #endif
 #include "Sequencer/MCLSeq.h"
 
+// The Machinedrum's microtiming popup walks the conditions in the
+// Octatrack's order, as MDX does: no condition, FILL !FILL PRE !PRE NEI !NEI
+// 1ST !1ST 1SHOT, the probabilities rising from 10%, then 1:2 to 8:8. Most
+// steps are to the next or previous id; these are the joins between runs,
+// each {from, to} going forward.
+static const uint8_t kCondJoins[][2] = {
+    {SEQ_COND_100PCT, SEQ_COND_FILL},     {SEQ_COND_NOT_NEI, SEQ_COND_FIRST},
+    {SEQ_COND_NOT_FIRST, SEQ_COND_ONESHOT}, {SEQ_COND_ONESHOT, SEQ_COND_10PCT},
+    {SEQ_COND_90PCT, SEQ_COND_ITER_BASE}};
+
+static uint8_t cond_order_step(uint8_t c, bool forward) {
+  for (uint8_t n = 0; n < 5; n++) {
+    if (kCondJoins[n][!forward] == c) {
+      return kCondJoins[n][forward];
+    }
+  }
+  if (forward) {
+    return c < SEQ_COND_ITER_MAX ? (uint8_t)(c + 1) : c;
+  }
+  return c > SEQ_COND_100PCT ? (uint8_t)(c - 1) : c;
+}
+
 namespace {
 
 constexpr uint8_t kStepPageVisibleSteps = 16;
@@ -33,9 +55,9 @@ SeqStepTrackRef active_step_track() { return seq_step_active_track(); }
 
 #ifdef MCL_HAS_EXTENDED_PANEL_INPUT
 void retain_shift_step_selection(SeqStepPage &page, uint8_t track) {
-  SET_BIT16(page.shift_select_latch, track);
-  SET_BIT32(note_interface.notes_on, track);
-  CLEAR_BIT32(note_interface.notes_off, track);
+  bitfield_set(&page.shift_select_latch, track);
+  bitfield_set(&note_interface.notes_on, track);
+  bitfield_clear(&note_interface.notes_off, track);
 }
 
 void clear_shift_step_selection(SeqStepPage &page) {
@@ -44,7 +66,7 @@ void clear_shift_step_selection(SeqStepPage &page) {
     return;
   }
   for (uint8_t n = 0; n < kStepPageVisibleSteps; ++n) {
-    if (IS_BIT_SET16(latch, n)) {
+    if (bitfield_test(&latch, n)) {
       note_interface.clear_note(n);
     }
   }
@@ -126,24 +148,46 @@ void draw_active_step_masks(SeqStepPage &page, SeqStepTrackRef active_track,
   }
 }
 
+// Open or redraw the microtiming popup on the device. A Machinedrum that
+// shows conditions there is sent the step's condition and mode with it, in
+// its own condition numbers.
+void notify_remote_microtiming(SeqStepTrackRef active_track,
+                               uint8_t encoder_value, uint8_t step) NOINLINE();
+void notify_remote_microtiming(SeqStepTrackRef active_track,
+                               uint8_t encoder_value, uint8_t step) {
+  uint8_t condition = MICROTIMING_NO_CONDITION;
+  uint8_t mode = 0;
+  if (step != 255 && active_track.uses_kit_sound() &&
+      MD.microtimingCondition()) {
+    condition = seq_cond_to_md(active_track.conditional_id(step));
+    mode = active_track.condition_mode(step);
+  }
+  active_track.draw_microtiming(encoder_value, condition, mode);
+}
+
+// step is the held step whose popup the device should show, or 255 to draw
+// on MCL's own display only.
 void draw_active_microtiming(SeqStepTrackRef active_track, uint8_t encoder_value,
-                             bool notify_remote) NOINLINE();
+                             bool notify_remote, uint8_t step = 255) NOINLINE();
 void draw_active_microtiming(SeqStepTrackRef active_track, uint8_t encoder_value,
-                             bool notify_remote) {
+                             bool notify_remote, uint8_t step) {
+  // The popup shows the condition as the COND knob prints it.
+  char condition[5];
+  seq_step_page.conditional_str(condition, seq_param1.getValue());
 #if !defined(__AVR__)
   if (active_track.uses_signed_microtiming()) {
     mcl_gui.draw_microtiming_spsx(
         active_track.speed(),
-        active_track.microtiming_from_encoder(encoder_value));
+        active_track.microtiming_from_encoder(encoder_value), condition);
     if (notify_remote) {
-      active_track.draw_microtiming(encoder_value);
+      notify_remote_microtiming(active_track, encoder_value, step);
     }
     return;
   }
 #endif
-  mcl_gui.draw_microtiming(active_track.speed(), encoder_value);
+  mcl_gui.draw_microtiming(active_track.speed(), encoder_value, condition);
   if (notify_remote) {
-    active_track.draw_microtiming(encoder_value);
+    notify_remote_microtiming(active_track, encoder_value, step);
   }
 }
 
@@ -326,7 +370,20 @@ void SeqStepPage::display() {
   if (show_pitch && is_ptc) {
     mclstr_init_dash(K);
     if (seq_param4.cur != 0) {
-      seq_copy_note_label(seq_param4.cur, K);
+      // An X.20 Machinedrum labels tonal notes itself (C3 = 60): show its
+      // octave, two below this label's numbering, -1 at the lowest.
+      const uint8_t mdx_note = active_track.uses_kit_sound()
+          ? MD.mdxTonalNote(seq_primary_track_index(), seq_param4.cur) : 0;
+      if (mdx_note >= 24) {
+        seq_copy_note_label(mdx_note - 24, K);
+      } else if (mdx_note) {
+        seq_copy_note_label(mdx_note - 12, K);
+        K[2] = '-';
+        K[3] = '1';
+        K[4] = '\0';
+      } else {
+        seq_copy_note_label(seq_param4.cur, K);
+      }
     }
     draw_knob(3, mclstr_ptc, K);
   }
@@ -337,7 +394,7 @@ void SeqStepPage::display() {
       !(recording)) {
     uint64_t note_mask[2] = {};
     uint8_t note = seq_param4.cur; // + tuning->base;
-    SET_BIT64(note_mask, note);
+    bitfield_set(&note_mask, note);
     mcl_gui.draw_keyboard(32, 23, 6, 9, kStepPageKeyboardKeys, note_mask);
     SeqPage::display();
   }
@@ -351,8 +408,12 @@ void SeqStepPage::display() {
     MidiUartParent::handle_midi_lock = _midi_lock_tmp;
 
     SeqPage::display();
+    // An X.20 Machinedrum keeps its popup open while the trig is held, also
+    // when UP/DOWN/LEV only change the condition; MCL's ruler stays with it.
+    // Older firmware: the ruler shows while the timing knob counts as used.
     if (microtiming_overlay_active() &&
-        mcl_gui.show_encoder_value(&seq_param2) &&
+        ((MD.microtimingCondition() && active_track.uses_kit_sound()) ||
+         mcl_gui.show_encoder_value(&seq_param2)) &&
         (note_interface.notes_count_on() > 0) && (!show_seq_menu) &&
         (!recording)) {
       draw_active_microtiming(active_track, seq_param2.cur, false);
@@ -399,6 +460,11 @@ void SeqStepPage::loop() {
           bool cond_plock;
           uint8_t condition = active_track.step_conditional_from_knob(
               seq_param1.cur, &cond_plock);
+          // "No condition" is one knob position: the step keeps its own
+          // mode there, for the condition chosen next.
+          if (condition == 0) {
+            cond_plock = active_track.conditional_plock(step);
+          }
 
           if (seq_param1_changed || seq_param2_changed) {
             active_track.clear_step_oneshot(step);
@@ -406,11 +472,18 @@ void SeqStepPage::loop() {
           active_track.set_conditional(step, condition, cond_plock);
           active_track.set_timing_from_encoder(step, seq_param2.cur);
 
+          // A Machinedrum that shows the condition on its microtiming
+          // popup gets it there; an older one gets the short popup text.
+          const bool popup_condition =
+              has_kit_sound && MD.microtimingCondition();
           if (seq_param2_changed) {
             set_microtiming_overlay_active(true);
-            draw_active_microtiming(active_track, seq_param2.cur, true);
+            draw_active_microtiming(active_track, seq_param2.cur, true, step);
+          } else if (seq_param1_changed && popup_condition) {
+            set_microtiming_overlay_active(true);
+            notify_remote_microtiming(active_track, seq_param2.cur, step);
           }
-          if (seq_param1_changed && has_kit_sound) {
+          if (seq_param1_changed && has_kit_sound && !popup_condition) {
             char str[5];
             if (condition > 0) {
               conditional_str(str, seq_param1.getValue(), true);
@@ -559,9 +632,7 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       seq_param1.old = seq_param1.cur;
 
       if (active_track.uses_note_pitch()) {
-        uint8_t pitch_param = active_track.uses_kit_sound()
-                                  ? 0
-                                  : active_track.pitch_lock_param_id();
+        uint8_t pitch_param = active_track.pitch_lock_param_id();
         uint8_t pitch = active_track.get_track_lock_implicit(step, pitch_param);
         if (pitch > 127) {
           pitch = active_track.default_pitch_lock();
@@ -574,6 +645,11 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       seq_param2.old = seq_param2.cur;
       seq_param2.min = active_track.timing_encoder_min();
       seq_param2.max = active_track.timing_encoder_max();
+      // An X.20 Machinedrum's popup is open on another held step: bring it
+      // to this one. Older firmware keeps its popup where it is.
+      if (microtiming_overlay_active() && MD.microtimingCondition()) {
+        notify_remote_microtiming(active_track, seq_param2.cur, step);
+      }
       resetEncoderFocus();
       // While EUC mode is on for this track, pressing a step (whether or
       // not it currently shows a generated trig) never creates a new
@@ -594,20 +670,20 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           active_track.clear_mute(step);
         }
         active_track.set_step(step, mask_type, true);
-        SET_BIT16(ignore_release, track);
+        bitfield_set(&ignore_release, track);
       }
     } else if (event_mask == EVENT_BUTTON_RELEASED) {
 #ifdef MCL_HAS_EXTENDED_PANEL_INPUT
       if (step < length && key_interface.is_key_down(MDX_KEY_FUNC)) {
-        CLEAR_BIT16(ignore_release, track);
+        bitfield_clear(&ignore_release, track);
         retain_shift_step_selection(*this, track);
         return true;
       }
 #endif
       disable_microtiming_overlay();
       show_pitch = false;
-      if (IS_BIT_SET16(ignore_release, track)) {
-        CLEAR_BIT16(ignore_release, track);
+      if (bitfield_test(&ignore_release, track)) {
+        bitfield_clear(&ignore_release, track);
         return true;
       }
       if (step >= length) {
@@ -778,6 +854,18 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
       }
       }
       if (step != 255) {
+        // As in an X.20 Machinedrum's own step edit, the first arrow press
+        // with a step held opens its microtiming popup; later presses edit.
+        if ((key == MDX_KEY_LEFT || key == MDX_KEY_RIGHT ||
+             key == MDX_KEY_UP || key == MDX_KEY_DOWN) &&
+            !microtiming_overlay_active() && active_track.uses_kit_sound() &&
+            MD.microtimingCondition()) {
+          set_microtiming_overlay_active(true);
+          notify_remote_microtiming(active_track, seq_param2.cur, step);
+          // MCL's own ruler shows while the timing knob counts as used.
+          encoders_used_clock[1] = read_clock_ms();
+          return true;
+        }
         switch (key) {
         case MDX_KEY_YES: {
           active_track.preview_step(step);
@@ -788,6 +876,30 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
         case MDX_KEY_UP:
         case MDX_KEY_DOWN: {
           uint8_t num_cond = active_track.condition_count();
+          if (MD.microtimingCondition()) {
+            // On the Machinedrum's popup the arrows pick the condition only,
+            // stopping at both ends; PAGE owns the mode. At "no condition"
+            // the mode is the one the step keeps.
+            bool plock;
+            uint8_t cond =
+                seq_cond_knob_to_step(seq_param1.cur, num_cond, &plock);
+            if (seq_param1.cur == num_cond) {
+              cond = 0;
+              plock = active_track.conditional_plock(step);
+            }
+            // UP steps forward through the Octatrack's order, as on an X.20
+            // Machinedrum's own popup; FUNC steps on to the next category:
+            // the event conditions, the probabilities, the iterations.
+            const bool forward = key == MDX_KEY_UP;
+            do {
+              cond = cond_order_step(cond, forward);
+            } while (func_down && cond != SEQ_COND_100PCT &&
+                     cond != SEQ_COND_FILL && cond != SEQ_COND_10PCT &&
+                     cond != SEQ_COND_ITER_BASE && cond != SEQ_COND_ITER_MAX);
+            seq_param1.cur =
+                cond ? seq_cond_step_to_knob(cond, plock, num_cond) : num_cond;
+            return true;
+          }
           if (func_down) {
             if (seq_param1.cur != num_cond) {
               seq_param1.cur = num_cond * 2 - seq_param1.cur;
@@ -799,6 +911,27 @@ bool SeqStepPage::handleEvent(gui_event_t *event) {
           } else if (seq_param1.cur > 0) {
             seq_param1.cur -= 1;
           }
+          return true;
+        }
+        case MDX_KEY_PAGE: {
+          // PAGE on the Machinedrum's microtiming popup steps the condition
+          // mode of the held steps, and the popup shows the result.
+          if (!MD.microtimingCondition()) {
+            break;
+          }
+          for (uint8_t n = 0; n < kStepPageVisibleSteps; n++) {
+            uint8_t held = n + page_offset;
+            if (note_interface.is_note_on(n) && held < active_track.length()) {
+              active_track.cycle_condition_mode(held);
+            }
+          }
+          // The knob's side follows the mode's lock flag.
+          seq_param1.cur = active_track.knob_conditional_from_step(
+              active_track.conditional_id(step),
+              active_track.conditional_plock(step));
+          seq_param1.old = seq_param1.cur;
+          set_microtiming_overlay_active(true);
+          notify_remote_microtiming(active_track, seq_param2.cur, step);
           return true;
         }
         case MDX_KEY_LEFT: {
@@ -886,7 +1019,9 @@ void SeqStepMidiEvents::onControlChangeCallback_Midi(uint8_t *msg) {
     char str2[4];
     mclstr_init_dash_space(str2);
     active_track.copy_lock_param_label(track_param, str, sizeof(str));
-    mcl_gui.put_value_at(value, str2);
+    if (!active_track.lock_value_text(track_param, value, str2)) {
+      mcl_gui.put_value_at(value, str2);
+    }
     oled_display.textbox(str, str2);
   }
   if (store_lock == 1) {

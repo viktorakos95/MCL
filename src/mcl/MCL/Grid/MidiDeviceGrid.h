@@ -46,7 +46,7 @@ class MidiDeviceGrid : public Grid {
 
   void add_track(uint8_t track_idx, GridDeviceTrack *gdt) {
     if (gdt->mem_slot_idx == 255) { gdt->mem_slot_idx = track_idx; }
-    DEBUG_PRINTLN("adding device track");
+    DEBUG_PRINTLN(F("adding device track"));
     DEBUG_PRINTLN(track_idx);
     DEBUG_PRINTLN(gdt->track_type);
     DEBUG_PRINTLN(gdt->mem_slot_idx);

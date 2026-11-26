@@ -294,15 +294,102 @@ void MCLActions::init_chains() {
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
     chains[n].init();
   }
+  clear_deferred_loads();
 }
 
+// The point a Manual or Auto load made now goes in at: the next QUANT
+// boundary, as manual_transition() takes it.
+static uint16_t quant_load_point(uint8_t q) {
+  return (MidiClock.div16th_counter / q) * q + q;
+}
+
+bool MCLActions::chain_hops_before(GridSlot n, uint16_t point) {
+  return is_grid_chain_load_mode(chains[n].mode) && links[n].loops != 0 &&
+         grid_page.active_slots[n] != SLOT_DISABLED &&
+         next_transitions[n] != (uint16_t)-1 &&
+         MidiClock.clock_less_than(next_transitions[n], point);
+}
+
+void MCLActions::set_pending_load(GridSlot dst, GridRow row, uint16_t at) {
+  transition_level[dst] = 0;
+  next_transitions[dst] = at;
+  transition_offsets[dst] = 0;
+  links[dst].row = row;
+  links[dst].loops = 1;
+}
+
+bool MCLActions::take_deferred_load(GridSlot n) {
+  // The chain's own next hop (the handler's recalculation keeps it).
+  calc_next_slot_transition(n, false);
+  const uint8_t q = get_quant();
+  const uint16_t point =
+      q == QUANT_LEN ? next_transitions[n] : quant_load_point(q);
+  if (chain_hops_before(n, point)) {
+    return false;
+  }
+  const GridRow row = deferred_rows[n];
+  deferred_rows[n] = 255;
+#if MCL_GRID_IO_PANEL
+  load_fade_dir[n] = pick_fade_dir(n, row, deferred_mode);
+#endif
+  set_pending_load(n, row, point);
+  chains[n].init();
+  chains[n].mode = deferred_mode;
+  grid_page.active_slots[n] = SLOT_PENDING;
+#if MCL_GRID_IO_PANEL
+  hold_outin(n);
+#endif
+  return true;
+}
+
+#if MCL_GRID_IO_PANEL
+// Reloading what plays fades it out; a new slot fades the old one out,
+// switches and fades in; a silent column fades back in. A forced direction
+// is its own code (LOAD_FADE_FORCE_IN / _OUT).
+uint8_t MCLActions::pick_fade_dir(GridSlot dst, GridRow row,
+                                  uint8_t load_mode) {
+  if (!(mcl_cfg.load_fade & 1) ||
+      (load_mode != LOAD_MANUAL && load_mode != LOAD_AUTO)) {
+    return LOAD_FADE_DIR_NONE;
+  }
+  const uint8_t dir = mcl_cfg.load_fade >> 1;
+  if (dir != 0) {
+    return dir;
+  }
+  const GridRow playing = grid_page.active_slots[dst];
+  return playing == SLOT_DISABLED || TrackLoadFadeRunner::silenced(dst)
+             ? LOAD_FADE_DIR_IN
+             : playing == row ? LOAD_FADE_DIR_OUT : LOAD_FADE_DIR_OUTIN;
+}
+
+// Each MD slot fades out from its load point and switches when that ends,
+// then fades in. A slot a later non-OUTIN load takes over is let go.
+bool MCLActions::hold_outin(GridSlot dst) {
+  TrackLoadFadeData fade_out;
+  if (load_fade_dir[dst] == LOAD_FADE_DIR_OUTIN &&
+      panel_fade(dst, get_grid_dev_track(dst), &fade_out)) {
+    fade_out.flags |= TRACK_LOAD_FADE_FLAG_OUT | TRACK_LOAD_FADE_FLAG_THEN_IN;
+    const uint16_t at = next_transitions[dst];
+    if (start_load_fade_at(
+            dst, &fade_out,
+            MidiClock.div16th_to_div192(at, transition_offsets[dst])
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+                ,
+            false
+#endif
+            ,
+            false)) {
+      next_transitions[dst] = at + fade_out.duration_q12 / 12;
+      return true;
+    }
+  }
+  TrackLoadFadeRunner::release(dst);
+  return false;
+}
+#endif
+
 void MCLActions::clear_load_fades(bool preserve_armed_prestart) {
   TrackLoadFadeRunner::clear(preserve_armed_prestart);
-#else
-void MCLActions::clear_load_fades() {
-  TrackLoadFadeRunner::clear();
-#endif
 }
 
 #if !defined(__AVR__)
@@ -354,19 +441,57 @@ void MCLActions::clear_tracks(uint8_t *slot_select_array) {
 }
 #endif
 
-void MCLActions::start_load_fade_at(GridSlot slot,
+#if MCL_GRID_IO_PANEL
+bool MCLActions::panel_fade(GridSlot slot, GridDeviceTrack *gdt,
+                            TrackLoadFadeData *fade) {
+  // Used once, so the AUTO chain steps that follow do not fade. The length
+  // is FADE's, else QUANT, else (QUANT "-") the slot's own length.
+  const uint8_t dir = load_fade_dir[slot];
+  if (dir == LOAD_FADE_DIR_NONE || gdt == nullptr) {
+    return false;
+  }
+  load_fade_dir[slot] = LOAD_FADE_DIR_NONE;
+  fade->init();
+  fade->flags = TRACK_LOAD_FADE_FLAG_ENABLED;
+  if (dir == LOAD_FADE_DIR_OUT) {
+    fade->flags |= TRACK_LOAD_FADE_FLAG_OUT;
+  }
+  uint8_t len = mcl_cfg.load_fade_len;
+  uint8_t quant = mcl_cfg.chain_load_quant;
+  if (len != 0) {
+    fade->duration_q12 = 12 * load_fade_steps(len);
+  } else if (quant != 1) {
+    fade->duration_q12 = (uint16_t)quant * 12;
+  } else {
+    fade->duration_q12 = (uint16_t)gdt->seq_track->length *
+                         gdt->seq_track->get_speed_multiplier_int();
+  }
+  return true;
+}
+#endif
+
+bool MCLActions::start_load_fade_at(GridSlot slot,
                                     const TrackLoadFadeData *fade,
                                     uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
                                     ,
                                     bool allow_prestart
 #endif
-                                    ) {
+                                    ,
+                                    bool panel) {
   if (slot >= NUM_SLOTS) {
-    return;
+    return false;
   }
 
   GridDeviceTrack *gdt = get_grid_dev_track(slot);
+#if MCL_GRID_IO_PANEL
+  TrackLoadFadeData panel_data;
+  if (panel && panel_fade(slot, gdt, &panel_data)) {
+    fade = &panel_data;
+  }
+#else
+  (void)panel;
+#endif
   TrackLoadFadeTarget target;
   const bool ok = resolve_track_load_fade_target(slot, gdt, fade, &target);
   // The runner always clears the slot on entry, so an unresolved target still
@@ -376,8 +501,10 @@ void MCLActions::start_load_fade_at(GridSlot slot,
                              allow_prestart, mcl_seq.primary_output,
                              mcl_seq.secondary_output);
 #else
-  TrackLoadFadeRunner::start(slot, target, ok ? fade : nullptr, start_clock);
+  TrackLoadFadeRunner::start(slot, target, ok ? fade : nullptr, start_clock,
+                             mcl_seq.primary_output, mcl_seq.secondary_output);
 #endif
+  return ok;
 }
 
 void MCLActions::kit_reload(uint8_t pattern) {
@@ -680,6 +807,42 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
       ) {
     load_offset = 255;
   }
+  if (load_offset == 255) {
+    // A Manual or Auto load for a column whose chain hops before the load's
+    // point waits (deferred_rows), so the chain keeps going until then. Any
+    // load for a column replaces the one waiting there. A load with a
+    // destination offset (DEST) loads as before.
+    const uint8_t q = get_quant();
+    const bool may_defer =
+        MidiClock.state == 2 && q != QUANT_LEN &&
+        (load_mode == LOAD_MANUAL || load_mode == LOAD_AUTO)
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+        && !immediate
+#endif
+        ;
+    const uint16_t load_point = may_defer ? quant_load_point(q) : 0;
+    bool deferred = false;
+    bool loading = false;
+    for (uint8_t n = 0; n < NUM_SLOTS; ++n) {
+      if (slot_select_array[n] == 0) {
+        continue;
+      }
+      deferred_rows[n] = 255;
+      if (may_defer && row_is_loadable(_row_array[n]) &&
+          chain_hops_before(n, load_point)) {
+        deferred_rows[n] = _row_array[n];
+        deferred_mode = load_mode;
+        slot_select_array[n] = 0;
+        deferred = true;
+        continue;
+      }
+      loading = true;
+    }
+    // Every slot waits behind its chain: nothing to load now.
+    if (deferred && !loading) {
+      return;
+    }
+  }
 #if MCL_FEATURE_HOST_ARRANGER
   if (load_mode != LOAD_ARRANG) {
     if (mcl_arrangement.releasePlaybackTracks(
@@ -695,6 +858,9 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
   }
   bool recache = false;
   GridSlot last_slot = 255;
+#if MCL_GRID_IO_PANEL
+  GridSlot first_slot = 255;
+#endif
   for (uint8_t n = 0; n < NUM_SLOTS; ++n) {
     if (slot_select_array[n] == 0) { continue; }
 
@@ -707,6 +873,17 @@ void MCLActions::load_tracks(uint8_t *slot_select_array,
       slot_select_array[n] = 0;
       continue;
     }
+#if MCL_GRID_IO_PANEL
+    // FADE picks each column's direction now, while the column still shows
+    // what it plays.
+    if (first_slot == 255) {
+      first_slot = n;
+    }
+    GridSlot dst = load_offset == 255 ? n : n - first_slot + load_offset;
+    if (dst < NUM_SLOTS) {
+      load_fade_dir[dst] = pick_fade_dir(dst, row_array[n], load_mode);
+    }
+#endif
 
     if (load_mode == LOAD_QUEUE) {
       chains[n].add(row_array[n], get_chain_length());
@@ -842,6 +1019,10 @@ void MCLActions::manual_transition(uint8_t *slot_select_array,
   // DEBUG_CHECK_STACK();
 
   collect_tracks(slot_select_array, row_array, load_offset);
+#if MCL_GRID_IO_PANEL
+  // The slots this load reaches, for OUTIN once their load points are set.
+  uint8_t loaded[NUM_SLOTS] = {0};
+#endif
 
   uint16_t next_step = q == 255 ? (uint16_t) -1 : (MidiClock.div16th_counter / q) * q + q;
 
@@ -850,7 +1031,7 @@ void MCLActions::manual_transition(uint8_t *slot_select_array,
   bool recalc_latency = true;
   uint8_t headroom = 0;
   //uint8_t headroom = ceil(MidiClock.get_tempo()* 0.133333333333f * 0.200f);
-  ////DEBUG_PRINTLN("manual trans");
+  ////DEBUG_PRINTLN(F("manual trans"));
   GridSlot first_slot = 255;
 again:
   bool overflow = next_step < MidiClock.div16th_counter;
@@ -879,7 +1060,7 @@ again:
           transition_level[dst] = 0;
           if (increase_loops) {
             if (next_transitions[dst] == next_transition) {
-              DEBUG_PRINTLN("increasing loops");
+              DEBUG_PRINTLN(F("increasing loops"));
               links[dst].loops++;
             }
           }
@@ -908,19 +1089,17 @@ again:
           }
         }
       } else {
-        // transition_level[n] = gridio_param3.getValue();
-        transition_level[dst] = 0;
-        next_transitions[dst] = next_step;
-        transition_offsets[dst] = 0;
-        links[dst].row = row;
-        links[dst].loops = 1;
+        set_pending_load(dst, row, next_step);
         // if (grid_page.active_slots[n] < 0) {
-        DEBUG_PRINT("slot man trans ");
+        DEBUG_PRINT(F("slot man trans "));
         DEBUG_PRINT(dst);
-        DEBUG_PRINT(" ");
+        DEBUG_PRINT(F(" "));
         DEBUG_PRINTLN(next_transitions[dst]);
         // }
       }
+#if MCL_GRID_IO_PANEL
+      loaded[dst] = 1;
+#endif
       grid_page.active_slots[dst] = load_offset == 255 ? SLOT_PENDING : SLOT_OFFSET_LOAD;
   }
 
@@ -938,7 +1117,7 @@ again:
   sps_host_arr_bridge.notifyDirty(0xFF, (uint8_t)spsarr::DIRTY_ACTIVE);
 #endif
 
-  DEBUG_PRINTLN("NEXT STEP");
+  DEBUG_PRINTLN(F("NEXT STEP"));
   DEBUG_PRINTLN(next_step);
   DEBUG_PRINTLN(next_transition);
   DEBUG_PRINTLN(MidiClock.div16th_counter);
@@ -970,13 +1149,30 @@ again:
       if (q == 255) {
         increase_loops = 1;
       } else {
-        // DEBUG_PRINTLN("try again");
+        // DEBUG_PRINTLN(F("try again"));
         next_step += q;
       }
       recalc_latency = false;
       goto again;
     }
   }
+
+#if MCL_GRID_IO_PANEL
+  // OUTIN, now the load points are settled (holding slots back inside the
+  // retry above kept it from ever finding a later load point): each MD
+  // slot fades out from its load point and switches when that ends, then
+  // fades in. A slot a later non-OUTIN load takes over is let go.
+  bool held = false;
+  for (uint8_t dst = 0; dst < NUM_SLOTS; dst++) {
+    if (loaded[dst] && hold_outin(dst)) {
+      held = true;
+    }
+  }
+  if (held) {
+    calc_next_transition();
+    calc_latency();
+  }
+#endif
 }
 
 bool MCLActions::load_track_immediate(GridRow row, GridSlot i, GridSlot dst,
@@ -1003,7 +1199,7 @@ bool MCLActions::load_track_immediate(GridRow row, GridSlot i, GridSlot dst,
                                         rebuilt, scratch, dst, dst);
 
   if (ptrack == nullptr) {
-    // DEBUG_PRINTLN("bad read");
+    // DEBUG_PRINTLN(F("bad read"));
     return false;
   } // read failure
 
@@ -1090,7 +1286,7 @@ void MCLActions::send_tracks_to_devices(uint8_t *slot_select_array,
 
   GridRow row = 0;
 
-  // DEBUG_PRINTLN("send tracks 1");
+  // DEBUG_PRINTLN(F("send tracks 1"));
   // DEBUG_PRINTLN((int)SP);
   // DEBUG_CHECK_STACK();
 
@@ -1207,7 +1403,7 @@ void MCLActions::send_tracks_to_devices(uint8_t *slot_select_array,
         } else {
           strcpy_P(dst, mclstr_new_kit);
         }
-        // DEBUG_PRINTLN("SEND NAME");
+        // DEBUG_PRINTLN(F("SEND NAME"));
         // DEBUG_PRINTLN(dst);
       }
       uint16_t deviceLatency =
@@ -1233,6 +1429,9 @@ void MCLActions::send_tracks_to_devices(uint8_t *slot_select_array,
     start_load_fade_at(n, &load_fades[n], load_fade_start_clock,
                        allow_prestart_fades);
   }
+#else
+  // The kit has gone out: fades armed by this load set their starting levels.
+  TrackLoadFadeRunner::prime(mcl_seq.primary_output, mcl_seq.secondary_output);
 #endif
 
   swap_mute_states(mute_states);
@@ -1321,9 +1520,9 @@ void MCLActions::cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_
     ptrack->restore_sound_from_mem_if_type(gdt->mem_slot_idx,
                                            gdt->track_type);
   } else if (ptrack->get_sound_data_ptr() && ptrack->get_sound_data_size()) {
-    DEBUG_PRINTLN("comparing sound");
+    DEBUG_PRINTLN(F("comparing sound"));
     if (ptrack->memcmp_sound(gdt->mem_slot_idx) != 0) {
-      DEBUG_PRINTLN("no match");
+      DEBUG_PRINTLN(F("no match"));
       ptrack->transition_cache(track_idx, n);
       send_machine[n] = 1;
     }
@@ -1333,13 +1532,28 @@ void MCLActions::cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_
 }
 
 
+// How close to a deadline, in 192nd ticks, the UI may still be given a loop
+// pass. A pass can run long (a page draw, a key handler), and one that runs
+// past the deadline makes the load late. One second is tempo * 0.8 ticks, so
+// 80 ms is tempo * 64 / 1000. On the AVR every pass used to take another
+// 12 ms to send its frame; that is gone, so its margin is 69 ms (55). The
+// longest page draw measured is 30 ms.
+#if defined(__AVR__)
+#define UI_PASS_MARGIN 55
+#else
+#define UI_PASS_MARGIN 64
+#endif
+
+uint32_t MCLActions::ui_pass_margin() {
+  uint16_t tempo_uint = (uint16_t)MidiClock.get_tempo();
+  return MidiClock.scale_legacy_div192_to_current(
+      ((uint32_t)tempo_uint * UI_PASS_MARGIN + 999) / 1000);
+}
+
 void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
                                    bool gui_update) {
 
-  uint16_t tempo_uint = (uint16_t)MidiClock.get_tempo();
-  uint32_t gui_threshold =
-      MidiClock.scale_legacy_div192_to_current(
-          ((uint32_t)tempo_uint * 64 + 999) / 1000);
+  uint32_t gui_threshold = ui_pass_margin();
 
   uint8_t n = NUM_SLOTS;
 
@@ -1385,6 +1599,14 @@ void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
 
     update_chain_links(n, gdt);
 
+    // A load waiting behind this column's chain takes the cache this hop
+    // fills, once the chain's next hop is not before the load's point. The
+    // column is then no longer hopping: the handler's recalculation, which
+    // would end a Manual column's pending transition, leaves it alone.
+    if (deferred_rows[n] != 255 && take_deferred_load(n)) {
+      slot_select_array[n] = 0;
+    }
+
     if (links[n].row >= GRID_LENGTH ||
         links[n].row == grid_page.active_slots[n] || links[n].loops == 0)
       continue;
@@ -1396,7 +1618,7 @@ void MCLActions::cache_next_tracks(uint8_t *slot_select_array,
 void MCLActions::calc_next_slot_transition(GridSlot n,
                                            bool ignore_chain_settings,
                                            bool ignore_overflow) {
- DEBUG_PRINTLN("calc_next_slot_transition");
+ DEBUG_PRINTLN(F("calc_next_slot_transition"));
    if (!ignore_chain_settings) {
     switch (chains[n].mode) {
     case LOAD_QUEUE: {
@@ -1430,7 +1652,7 @@ void MCLActions::calc_next_slot_transition(GridSlot n,
 
   GridDeviceTrack *gdt = get_grid_dev_track(n);
   if (gdt == nullptr) {
-    DEBUG_PRINTLN("exit");
+    DEBUG_PRINTLN(F("exit"));
     return;
   }
   uint16_t next_transitions_old = next_transitions[n];
@@ -1463,9 +1685,9 @@ void MCLActions::calc_next_slot_transition(GridSlot n,
     next_transitions[n] += len_steps;
   }
 
-  DEBUG_PRINT("slot ");
+  DEBUG_PRINT(F("slot "));
   DEBUG_PRINT(n);
-  DEBUG_PRINT(" ");
+  DEBUG_PRINT(F(" "));
   DEBUG_PRINTLN(next_transitions[n]);
 }
 
@@ -1608,7 +1830,7 @@ void MCLActions::calc_latency() {
           total_latency > 0xFFFFu ? 0xFFFFu : (uint16_t)total_latency;
     }
   }
-   DEBUG_PRINTLN("total latency");
+   DEBUG_PRINTLN(F("total latency"));
    DEBUG_PRINTLN(div192th_total_latency);
 }
 

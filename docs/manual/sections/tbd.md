@@ -84,7 +84,7 @@ If a TBD device UI is open for the selected device, Track Select follows that UI
 
 ## Grid Page Differences
 
-On TBD-16, Save and Load keep the Grid Page visible instead of opening separate full-screen pages.
+Save and Load open on the Grid Page itself, as on MegaCommand and MegaCMD (see the Load Page). On TBD-16:
 
 | Action | Result |
 | --- | --- |

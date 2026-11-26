@@ -1,7 +1,7 @@
 # MCL
 
 A high-performance MIDI sequencer, controller and live performance system.
-Designed to for use with the Machinedrum and other MIDI devices.
+Designed for use with the Machinedrum and other MIDI devices.
 
 Visit the [releases page](https://github.com/jmamma/MCL/releases) for:
 - Latest firmware binaries
@@ -148,6 +148,22 @@ MCL can now be built to run across different hardware platforms using PlatformIO
     ```
     platformio run -t nobuild -t upload --upload-port <port> -e <environment>
     ```
+## Projects From Before MCL 5.00
+
+MCL 5.10 on MegaCommand and MegaCMD does not convert projects from before MCL 5.00. Back up the SD card, then convert them once with the project upgrader firmware, which asks before it changes anything:
+
+   **MegaCommand DIY:**
+   ```bash
+   platformio run -e megacommand_upgrader -t upload
+   ```
+
+   **MegaCMD:**
+   ```bash
+   platformio run -e megacmd_upgrader -t upload
+   ```
+
+When it reports how many projects are ready, install MCL again. See the manual's Project and Configuration Menu page.
+
 ## Building from Source Code
 
 Building and uploading MCL from Source:

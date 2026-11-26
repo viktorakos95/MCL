@@ -17,12 +17,9 @@ class TrackLoadFadeData;
 // device coupling.
 class TrackLoadFadeRunner {
 public:
-  // Clears every active fade. Call on transport reset/stop.
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  // Clears every active fade, or every one but those waiting for PLAY. A
+  // track a fade left away from its level gets it back on its next load.
   static void clear(bool preserve_armed_prestart = false);
-#else
-  static void clear();
-#endif
 
   // Always clears any state previously held for `slot`. If `fade` is null,
   // transport isn't STARTED, or the fade is disabled, returns after clearing
@@ -34,11 +31,44 @@ public:
                     uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
                     ,
-                    bool allow_prestart = false,
-                    MidiUartClass *uart = nullptr,
-                    MidiUartClass *uart2 = nullptr
+                    bool allow_prestart = false
 #endif
-                    );
+                    ,
+                    MidiUartClass *uart = nullptr,
+                    MidiUartClass *uart2 = nullptr)
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  {
+    start_unlocked(slot, target, fade, start_clock, allow_prestart, uart,
+                   uart2);
+  }
+#else
+      ;
+#endif
+
+  // A fade has taken this slot's track to silence, or is taking it there.
+  static bool silenced(GridSlot slot);
+
+  // A later load took over a slot OUTIN was holding: its fade-out runs to
+  // the end and no longer turns into a fade-in.
+  static void release(GridSlot slot);
+
+#if !MCL_FEATURE_HOST_LOAD_FADE_SEEK
+  // After a load made while stopped has sent its kit: each fade it armed
+  // sets its track's starting level (silent for an IN), and a track an
+  // earlier fade left away from its level gets it back.
+  static void prime(MidiUartClass *uart, MidiUartClass *uart2);
+#endif
+
+  // start() without the interrupt lock the AVR build takes around it.
+  static void start_unlocked(GridSlot slot, const TrackLoadFadeTarget &target,
+                             const TrackLoadFadeData *fade,
+                             uint32_t start_clock
+#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
+                             ,
+                             bool allow_prestart
+#endif
+                             ,
+                             MidiUartClass *uart, MidiUartClass *uart2);
 
   // Advances every active fade by one tick. Output is written through the
   // TrackLoadFadeTarget bridge.

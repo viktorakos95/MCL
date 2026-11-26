@@ -59,6 +59,19 @@ bool Grid::write_header(uint32_t grid_version, uint8_t grid_id) {
   return true;
 }
 
+bool Grid::open_file(const char *gridname) {
+  if (!file.open(gridname, O_RDWR)) {
+    return false;
+  }
+  // SdFat follows the FAT chain cluster by cluster on every seek and at every
+  // cluster boundary of a read, unless it knows the file is in one piece, and
+  // open() does not check. Grid files are preallocated in one piece: check
+  // once here, so slot seeks are a sum. A file in pieces still works, by the
+  // chain.
+  file.contiguousRange(nullptr, nullptr);
+  return true;
+}
+
 bool Grid::new_file(const char *gridname) {
   file.close();
 
@@ -83,7 +96,7 @@ bool Grid::new_file(const char *gridname) {
   DEBUG_PRINTLN(F("extension succeeded, trying to close"));
   file.close();
 
-  ret = file.open(gridname, O_RDWR);
+  ret = open_file(gridname);
 
   if (!ret) {
     file.close();
@@ -187,7 +200,7 @@ bool Grid::clear_slot(GridColumn column, GridRow row, bool update_header) {
     DEBUG_DUMP(column);
     return false;
   }
-  // DEBUG_PRINTLN("Writing");
+  // DEBUG_PRINTLN(F("Writing"));
   // DEBUG_DUMP(sizeof(temptrack.active));
   ret = mcl_sd.write_data(temp_track._this(), temp_track._sizeof(), &file);
   if (!ret) {

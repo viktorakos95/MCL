@@ -30,6 +30,10 @@ Open it from the dynamic device entry in the Configuration menu. When the Machin
 
 Imports can be used to bring existing Machinedrum material into the MCL project grid. Older project data is upgraded on load where supported.
 
+Patterns from MDX import with each track's own length and speed, as the Machinedrum plays them. This includes patterns with an `INF` or long master length, and patterns whose ALL length and speed differ from the master length. Each imported track loops on its own.
+
+From a Machinedrum running MDX X.20 or later, locks on steps without a trig are imported too. From older firmware, a lock is imported only where its step has a trig.
+
 ## RAM Link
 
 `RAM LINK` controls whether the RAM pages act as `MONO` or `STEREO` during recording and playback.
@@ -64,3 +68,12 @@ Machinedrum chromatic, trig and polyphonic input behavior is configured from:
 ```text
 CONFIG > MIDI > CONTROLLER > INPUT
 ```
+
+## MDX X.20 Or Later
+
+With a Machinedrum running MDX X.20 or later, MCL also:
+
+- reads the names of the Machinedrum's USR machines after connecting, and shows them in the grid and on the sequencer pages. Until the names arrive, the grid shows `??` for a USR machine.
+- uses the USR machines' parameter labels as parameter names.
+- keeps each track's parameters 24 to 37, second LFO and output routing when it sends a kit, so a kit sent from MCL does not reset them.
+- reads edits made on the Machinedrum to those settings as they happen.

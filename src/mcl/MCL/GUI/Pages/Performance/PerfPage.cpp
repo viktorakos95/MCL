@@ -9,14 +9,10 @@
 #include "GUI/Pages/Sequencer/SeqPages.h"
 #include "MCLStrings.h"
 
-// AVR/classic MD encoder-interface packets only carry the 24 legacy params.
-// Hosted SPS-X builds can preview the complete negotiated SPS parameter set.
-#if defined(__AVR__)
-static constexpr uint8_t PERF_PARAM_EDITOR_PARAM_COUNT = 24;
-#else
+// The editor buffer holds every parameter; how many are sent to the
+// Machinedrum depends on the peer (24 before X.20, 38 with it).
 static constexpr uint8_t PERF_PARAM_EDITOR_PARAM_COUNT =
     SPS_PARAMS_PER_TRACK;
-#endif
 static constexpr uint8_t PERF_LEARN_OFF = 0;
 
 static PerfEncoder *cur_enc(PerfPage *p) NOINLINE();
@@ -77,12 +73,12 @@ void PerfPage::set_led_mask() {
   PerfEncoder *e = cur_enc(this);
 
   if (show_menu) {
-    SET_BIT16(mask, perf_id);
+    bitfield_set(&mask, perf_id);
   } else {
     for (uint8_t i = 0; i < 2; i++) {
       uint8_t scene = (&e->active_scene_a)[i];
       if (scene < NUM_SCENES) {
-        SET_BIT16(mask, scene);
+        bitfield_set(&mask, scene);
       }
     }
   }
@@ -133,6 +129,12 @@ void PerfPage::config_encoder_range() {
                                              ? 2
                                              : (param_count ? param_count - 1
                                                             : 0);
+  if (learn && page_mode > PERF_DESTINATION) {
+    // A scene lock: 0 shows OFF, then come the parameter's values.
+    ((MCLEncoder *)encoders[3])->max =
+        DeviceParamResolver::perf_value_range(encoders[1]->cur,
+                                              encoders[2]->cur).max + 1;
+  }
 }
 
 void PerfPage::config_encoders(uint8_t show_val) {
@@ -173,7 +175,6 @@ void PerfPage::config_encoders(uint8_t show_val) {
     }
 
     encoders[3]->cur = v;
-    ((MCLEncoder *)encoders[3])->max = 128;
 
     config_encoder_range();
   }
@@ -202,6 +203,17 @@ void PerfPage::update_params() {
       p->dest = encoders[1]->cur;
       p->param = encoders[2]->cur;
       if (encoders[3]->hasChanged() && BUTTON_DOWN(Buttons.ENCODER4)) { GUI.ignoreNextEvent(Buttons.ENCODER4); }
+      Encoder *lock = encoders[3];
+      if (lock->hasChanged() && lock->cur > 0) {
+        // An edit moves the lock into the parameter's range (RTIM starts at
+        // 2); turning down past its lowest value shows OFF. A stored value
+        // below the range stays until it is edited.
+        uint8_t lowest =
+            DeviceParamResolver::perf_value_range(p->dest, p->param).min + 1;
+        if (lock->cur < lowest) {
+          lock->cur = lock->cur < lock->old ? 0 : lowest;
+        }
+      }
       if (encoders[3]->cur > 0) {
         if (p->val == 255) { PerfData::scenes[scene].count++; }
         p->val = encoders[3]->cur - 1;
@@ -232,7 +244,7 @@ void PerfPage::display() {
     return;
   }
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.clearDisplay();
 
   // mcl_gui.draw_vertical_dashline(x, 0, knob_y);
@@ -271,8 +283,20 @@ void PerfPage::display() {
     }
 
     bool show_value = mcl_gui.show_encoder_value(encoders[3]);
+    // Values with a name (RTRG OFF/INF, ENV DEST AMP...) take the label slot.
+    char value_text[4];
+    bool label_is_progmem = true;
+    if (show_value && is_lock &&
+        DeviceParamResolver::perf_value_text(encoders[1]->cur,
+                                             encoders[2]->cur, v,
+                                             value_text)) {
+      lock_label = value_text;
+      label_is_progmem = false;
+      show_value = false;
+    }
     mcl_gui.draw_light_encoder(MCLGUI::knob_x0 + 3 * MCLGUI::knob_w + 7, 6, v,
-                               lock_label, is_lock, show_value);
+                               lock_label, is_lock, show_value,
+                               label_is_progmem);
 
   } else {
     draw_dest(1, encoders[1]->cur, false);
@@ -284,23 +308,22 @@ void PerfPage::display() {
   // oled_display.fillCircle(6, 6, 6, WHITE);
   oled_display.fillRect(0, 0, 10, 12, WHITE);
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(2, 10);
-  // oled_display.setCursor(4, 10);
-  oled_display.setTextColor(BLACK, WHITE);
+  oled_cursor(2, 10);
+  // oled_cursor(4, 10);
+  oled_text_color(BLACK, WHITE);
   oled_display.print((char)(0x3C + perf_id));
 
   if (learn) {
     mcl_gui.draw_panel_number(learn);
   }
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   mcl_gui.draw_panel_labels(info1, info2);
 
   if (PerfPageTargetRef::pressed_scene() < NUM_SCENES) {
-    oled_display.setCursor(54, MCLGUI::pane_info2_y + 4);
-    mcl_print_P(mclstr_select_label);
+    text_at_P(54, MCLGUI::pane_info2_y + 4, mclstr_select_label);
   }
 
-  oled_display.setCursor(80, MCLGUI::pane_info2_y + 4);
+  oled_cursor(80, MCLGUI::pane_info2_y + 4);
   static char scene_label[] = "SCENE: A    B";
   scene_label[7] = e->active_scene_a == 255 ? '-' : '1' + e->active_scene_a;
   scene_label[12] = e->active_scene_b == 255 ? '-' : '1' + e->active_scene_b;
@@ -643,7 +666,7 @@ bool PerfPage::handleEvent(gui_event_t *event) {
         void (*row_func)() = perf_menu_page.menu.get_row_function(
             perf_menu_page.encoders[1]->cur);
         if (row_func != NULL) {
-          DEBUG_PRINTLN("calling menu func");
+          DEBUG_PRINTLN(F("calling menu func"));
           (*row_func)();
         }
         init();

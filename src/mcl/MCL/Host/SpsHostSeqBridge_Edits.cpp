@@ -163,7 +163,8 @@ bool SpsHostSeqBridge::applySetCondition(const uint8_t* b, uint16_t n) {
     grid_task.service_host_arranger_load_before_edit();
     SPSXSeqTrack* tr = spsxTrack(b[0]);
     if (!tr || b[1] >= kNumSteps) return false;
-    uint8_t cond = (uint8_t)(b[2] & 0x3F);
+    // The hosted editor uses the Machinedrum's condition numbers.
+    uint8_t cond = seq_cond_from_md((uint8_t)(b[2] & 0x3F));
     bool plock = (b[2] & 0x80) != 0;
     if (tr->steps[b[1]].cond_id != cond ||
         tr->steps[b[1]].cond_plock != plock) {
@@ -171,6 +172,7 @@ bool SpsHostSeqBridge::applySetCondition(const uint8_t* b, uint16_t n) {
     }
     tr->steps[b[1]].cond_id = cond;
     tr->steps[b[1]].cond_plock = plock;
+    tr->steps[b[1]].cond_explicit = tr->steps[b[1]].cond_explicit && plock;
     markArrangerLocalEdit(b[0]);
     return true;
 }

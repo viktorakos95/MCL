@@ -23,7 +23,47 @@ uint8_t spsx_swing_q14_to_amount(uint32_t swing_q14) {
     return amount > 30 ? 30 : (uint8_t)amount;
 }
 
+// Sequencer ticks between sub-trigs for RTIM. Values below 1/128 play as
+// 1/128, as on the Machinedrum.
+static_assert(MD_RTIM_COUNT == SPSX_RTIM_COUNT,
+              "RTIM range and retrigger time table must match");
+uint16_t spsx_retrig_interval(uint8_t rtim) {
+    rtim = md_param_range(MODEL_RTIM).clamp(rtim);
+    uint16_t base_ticks = SPSX_RTIM_TICKS_96PPQN[rtim];
+    uint16_t interval = (uint16_t)(((uint32_t)base_ticks * SPSX_TICKS_PER_STEP_1X + 12) / 24);
+    return interval < 1 ? 1 : interval;
+}
+
 } // namespace
+
+uint8_t SPSXSeqTrack::pitch_lock_param() const {
+    return MD.pitchParameter(track_number);
+}
+
+void SPSXSeqTrack::set_track_pitch(uint8_t step, uint8_t pitch) {
+    const uint8_t parameter = pitch_lock_param();
+    if (parameter != 255) set_track_locks(step, parameter, pitch);
+}
+
+void SPSXSeqTrack::transpose(int8_t offset) {
+    if (uint8_t(MD.kit.get_model(track_number) - MD_USR_FIRST) >= MD_USR_SLOTS) {
+        SPSXSeqDataTrack::transpose(offset);
+        return;
+    }
+    const uint8_t parameter = pitch_lock_param();
+    if (parameter == 255 || !MD.getKitModelTuning(track_number)) return;
+    const auto shift = [offset](uint8_t value) {
+        const int next = int(value) + int(offset) * 2;
+        const int low = value & 1u;
+        const int high = 126 | low;
+        return uint8_t(next < low ? low : next > high ? high : next);
+    };
+    for (uint8_t step = 0; step < 64; ++step) {
+        const uint8_t value = get_track_lock_implicit(step, parameter);
+        if (value != 255) set_track_pitch(step, shift(value));
+    }
+    MD.setTrackParam(track_number, parameter, shift(MD.kit.params[track_number][parameter]), nullptr, true);
+}
 
 // ============================================================================
 // SPSXSeqTrack — MID Machine Helpers
@@ -151,22 +191,28 @@ void SPSXSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
             bool step_has_trig = SPSX_IS_BIT_SET64(trig_mask, current_step);
             bool step_has_slide = SPSX_IS_BIT_SET64(slide_mask, current_step);
 
-            if (send_trig_result == SPSX_TRIG_TRUE ||
-                (!step.cond_plock && send_trig_result != SPSX_TRIG_ONESHOT)) {
+            const SPSXStepPlan plan = spsx_plan_step(
+                send_trig_result, step.cond_plock, step.cond_lock_only(),
+                step_has_trig, SPSX_IS_BIT_SET64(mute_mask, current_step));
 
-                if (midi_model && send_trig_result == SPSX_TRIG_TRUE && step_has_trig) {
+            if (plan.apply_locks || plan.fire) {
+
+                if (midi_model && plan.fire) {
                     send_notes_off();
                     init_notes();
                 }
 
-                send_parameter_locks_inline(current_step, step_has_trig, lock_idx);
+                // A LOCK step whose condition failed plays the plain kit
+                // sound: its locks are replaced by the kit values.
+                send_parameter_locks_inline(current_step, step_has_trig, lock_idx,
+                                            plan.apply_locks, plan.fire);
 
-                if (step_has_slide) {
+                if (plan.apply_locks && step_has_slide) {
                     locks_slides_recalc = current_step;
                     locks_slides_idx = lock_idx;
                 }
 
-                if (send_trig_result == SPSX_TRIG_TRUE && step_has_trig) {
+                if (plan.fire) {
                     uint8_t velocity = SPSX_IS_BIT_SET64(accent_mask, current_step) ? 0x7F : 0x60;
 
                     if (midi_model) {
@@ -180,15 +226,23 @@ void SPSXSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
                     uint8_t rtim = MD.kit.params[track_number][MODEL_RTIM];
                     uint8_t renv = MD.kit.params[track_number][MODEL_RENV];
 
-                    uint8_t v;
-                    v = get_track_lock_implicit(current_step, MODEL_RTRG);
-                    if (v != 255) rtrg = v;
-                    v = get_track_lock_implicit(current_step, MODEL_RTIM);
-                    if (v != 255) rtim = v;
-                    v = get_track_lock_implicit(current_step, MODEL_RENV);
-                    if (v != 255) renv = v;
+                    // Retrig locks belong to the step's locks: a LOCK step
+                    // whose condition failed retrigs with the kit values.
+                    if (plan.apply_locks) {
+                        uint8_t v;
+                        v = get_track_lock_implicit(current_step, MODEL_RTRG);
+                        if (v != 255) rtrg = v;
+                        v = get_track_lock_implicit(current_step, MODEL_RTIM);
+                        if (v != 255) rtim = v;
+                        v = get_track_lock_implicit(current_step, MODEL_RENV);
+                        if (v != 255) renv = v;
+                    }
 
-                    if (rtrg > 0) {
+                    // An SPS-X Machinedrum retriggers every MIDI trig whose
+                    // track has RTRG on, from the RTRG/RTIM/RENV values the
+                    // step's locks have just set; sub-trigs sent from here
+                    // would double those and re-arm them on every note.
+                    if (rtrg > 0 && !MD.is_spsx) {
                         schedule_retrig(velocity, rtrg, rtim, renv);
                         retrig_scheduled_this_call = true;
                     } else {
@@ -212,12 +266,8 @@ void SPSXSeqTrack::seq(MidiUartClass *uart_, MidiUartClass *uart2_) {
                 retrig.remaining--;
             if (retrig.remaining > 0) {
                 // Re-read RTIM from kit (live value)
-                uint8_t rtim = MD.kit.params[track_number][MODEL_RTIM];
-                if (rtim >= SPSX_RTIM_COUNT) rtim = SPSX_RTIM_COUNT - 1;
-                uint16_t base_ticks = SPSX_RTIM_TICKS_96PPQN[rtim];
-                uint16_t interval = (uint16_t)(((uint32_t)base_ticks * SPSX_TICKS_PER_STEP_1X + 12) / 24);
-                if (interval < 1) interval = 1;
-                retrig.tick_interval = interval;
+                retrig.tick_interval = spsx_retrig_interval(
+                    MD.kit.params[track_number][MODEL_RTIM]);
                 retrig.ticks_countdown = retrig.tick_interval;
             }
         }
@@ -238,7 +288,10 @@ void SPSXSeqTrack::post_seq(MidiUartClass *port_) {
 
 void SPSXSeqTrack::load_cache() {
     SPSXTrack t;
-    t.load_from_mem(track_number, MDSPSX_TRACK_TYPE);
+    if (t.load_from_mem(track_number, MDSPSX_TRACK_TYPE, t.get_track_size()) ==
+        nullptr) {
+        return;
+    }
     t.load_seq_data(static_cast<SeqTrack *>(this));
     if (load_sound) {
         MD.insertMachineInKit(track_number, &(t.machine), false);
@@ -269,11 +322,7 @@ void SPSXSeqTrack::send_trig_inline(uint8_t velocity) {
 
 void SPSXSeqTrack::schedule_retrig(uint8_t velocity, uint8_t rtrg, uint8_t rtim, uint8_t renv) {
     if (rtrg == 0) return;
-    if (rtim >= SPSX_RTIM_COUNT) rtim = SPSX_RTIM_COUNT - 1;
-
-    uint16_t base_ticks = SPSX_RTIM_TICKS_96PPQN[rtim];
-    uint16_t interval = (uint16_t)(((uint32_t)base_ticks * SPSX_TICKS_PER_STEP_1X + 12) / 24);
-    if (interval < 1) interval = 1;
+    uint16_t interval = spsx_retrig_interval(rtim);
 
     retrig.remaining = (rtrg >= 127) ? SPSX_RETRIG_INFINITE : rtrg;
     retrig.tick_interval = interval;
@@ -292,8 +341,10 @@ uint8_t SPSXSeqTrack::trig_conditional(uint8_t step, uint8_t condition) {
     }
 
     if (condition == SPSX_COND_ONESHOT) {
+        // A one-shot that has played fails like any other condition: in TRIG
+        // mode its locks are still sent.
         if (SPSX_IS_BIT_SET64(oneshot_mask, step)) {
-            return SPSX_TRIG_ONESHOT;
+            return SPSX_TRIG_FALSE;
         }
         SPSX_SET_BIT64(oneshot_mask, step);
         return SPSX_TRIG_TRUE;
@@ -382,7 +433,8 @@ void SPSXSeqTrack::send_notes_ccs(uint8_t *ccs, bool send_ccs) {
         case 3: out->sendChannelPressure(channel, ccs[3]); break;
         case 0:
             notes.ccs[0] = ccs[0];
-            out->sendProgramChange(channel, ccs[0]);
+            // PCHG 0 is OFF; 1..127 send programs 0..126.
+            if (ccs[0] != 0) out->sendProgramChange(channel, ccs[0] - 1);
             break;
         default:
             if (!(n & 1)) continue;
@@ -472,7 +524,8 @@ void SPSXSeqTrack::send_parameter_locks(uint8_t step, bool trig, uint16_t lock_i
     send_parameter_locks_inline(step, trig, idx);
 }
 
-void SPSXSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx) {
+void SPSXSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx,
+                                               bool use_locks, bool note_on) {
     uint8_t ccs[spsx_midi_cc_array_size];
     bool send_ccs = false;
     bool midi_model = is_midi_model();
@@ -490,7 +543,7 @@ void SPSXSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig, uint16_t
 
     for (uint8_t c = 0; c < SPSX_NUM_LOCKS; c++) {
         bool lock_bit = steps[step].is_lock_bit(c);
-        bool lock_present = steps[step].is_lock(c);
+        bool lock_present = use_locks && steps[step].is_lock(c);
         bool send = false;
         uint8_t val = 0;
         uint8_t p = locks_params[c] - 1;
@@ -508,7 +561,7 @@ void SPSXSeqTrack::send_parameter_locks_inline(uint8_t step, bool trig, uint16_t
 
         if (send) {
             if (midi_model && p < 21) {
-                process_note_locks(p, val, ccs);
+                if (p >= 5 || note_on) process_note_locks(p, val, ccs);
                 send_ccs |= (p > 4 && p < 8) || ((p > 8) && (p & 1)) || (p == 20);
             } else {
                 MD.setTrackParam(track_number, p, val, port, false);
@@ -535,6 +588,9 @@ void SPSXSeqTrack::dispatch_slide_value(uint8_t param, uint8_t value, uint8_t ch
         MD.setTrackParam(track_number, param, value, port, false);
         return;
     }
+    // NOTE, N2, N3, LEN and VEL do not slide: the sounding note's Note Off
+    // is built from them.
+    if (param < 5) return;
     slide_ctx->send_ccs |= ((param > 4 && param < 8) ||
                             ((param > 8) && (param & 1)) || (param == 20));
     process_note_locks(param, value, slide_ctx->ccs);
@@ -639,8 +695,14 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
 
     // Import lock values from pattern rows. Row indices are int16_t now and
     // can exceed 64; use lock_row() to handle the extended-rows extension array.
+    // MDX X.20 and later play a lock on a step without a trig; a stock
+    // Machinedrum or X.14 only on a step with a trig, so only those locks are
+    // kept from them. Only MDX X.20 or later sends a compact pattern, which
+    // also marks the steps whose locks are switched off.
+    const bool compact = pattern->version == MD_PATTERN_VERSION_SPSX;
+    const bool trigless_locks = (MD.fw_caps & FW_CAP_SPSX) != 0;
     const uint8_t pattern_param_count =
-        mdPatternLockSlotCountForVersion(pattern->version);
+        compact ? MD_PATTERN_LOCK_SLOTS : 24;
     for (uint8_t p = 0; p < pattern_param_count; p++) {
         int16_t row = pattern->paramLocks[trk][p];
         if (row < 0) continue;
@@ -648,14 +710,18 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
         const int8_t *row_data = pattern->lock_row((uint16_t)row);
         for (uint8_t s = 0; s < 64; s++) {
             int8_t lockval = row_data[s];
-            if (lockval >= 0 && SPSX_IS_BIT_SET64(trig_mask, s)) {
-                set_track_locks(s, p, lockval);
+            if (lockval < 0) continue;
+            if (compact ? (pattern->ext_step_flags[trk][s] & 1) == 0
+                        : !trigless_locks &&
+                              !SPSX_IS_BIT_SET64(trig_mask, s)) {
+                continue;
             }
+            set_track_locks(s, p, lockval);
         }
     }
 
     // SPSX extension data (overrides V3 defaults above)
-    if (pattern->version >= 0x40) {
+    if (pattern->version == MD_PATTERN_VERSION_SPSX) {
         // Direct copy: microtiming (both are signed int8_t).
         // Native swing is kept separate and only applies to neutral steps.
         memcpy(microtiming, pattern->ext_microtiming[trk], 64);
@@ -663,22 +729,17 @@ void SPSXSeqTrack::merge_from_md(uint8_t trk, MDPattern *pattern) {
         // Unpack step flags
         for (uint8_t s = 0; s < 64; s++) {
             uint8_t flags = pattern->ext_step_flags[trk][s];
-            steps[s].cond_id = flags >> 2;
+            steps[s].cond_id = seq_cond_from_md(flags >> 2);
             steps[s].cond_plock = (flags >> 1) & 1;
+            steps[s].cond_explicit =
+                (pattern->ext_condition_mode_high[trk] >> s) & 1;
         }
 
-        // Copy full lock-params mapping. MD_PATTERN_LOCK_SLOTS is sized to match
-        // host NUM_LOCKS (== SPSX_NUM_LOCKS), so this is a 1:1 copy.
-        static_assert(MD_PATTERN_LOCK_SLOTS == SPSX_NUM_LOCKS,
-                      "ext_locks_params width must match SPSX track lock slots");
-        const uint8_t lock_slot_count =
-            mdPatternLockSlotCountForVersion(pattern->version);
-        for (uint8_t i = 0; i < lock_slot_count; i++) {
-            locks_params[i] = pattern->ext_locks_params[trk][i];
-        }
-        for (uint8_t i = lock_slot_count; i < SPSX_NUM_LOCKS; ++i) {
-            locks_params[i] = 0;
-        }
+        // set_track_locks() above has already given each imported parameter
+        // its lock slot. Copying the pattern's own slot list over it would
+        // move locks to other parameters wherever a parameter has no lock
+        // left to import (locks switched off), or when merging into a track
+        // that already has locks.
 
         // Per-track length/speed override pattern-level defaults
         if (pattern->ext_track_lengths[trk] != 0) {

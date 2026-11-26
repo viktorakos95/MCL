@@ -19,6 +19,7 @@
 #if !defined(__AVR__)
 
 static constexpr uint8_t SPSX_TRACK_LOCK37_STORAGE_VERSION = 6;
+static constexpr uint8_t SPSX_TRACK_STORAGE_VERSION = 7;
 
 #pragma pack(push, 1)
 
@@ -78,6 +79,10 @@ public:
   }
 
   void init();
+  // A track built for an empty grid slot gets the default swing mask.
+  void init(uint8_t, SeqTrack *) override {
+    seq_storage.seq_data.legacy.set_default_swing();
+  }
   void init_defaults() override {
     machine.init();
     seq_storage.init_storage();
@@ -127,7 +132,7 @@ public:
                                       SeqTrack *seq_track) override;
   virtual uint8_t get_model() override { return machine.get_model(); }
   uint8_t storage_version() const override {
-    return SPSX_TRACK_LOCK37_STORAGE_VERSION;
+    return SPSX_TRACK_STORAGE_VERSION;
   }
   void on_storage_loaded() override;
   TrackLoadFadeData *load_fade_data() override { return &load_fade; }

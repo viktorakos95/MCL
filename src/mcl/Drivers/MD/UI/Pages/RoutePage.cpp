@@ -55,7 +55,7 @@ void RoutePage::draw_routes() {
   mcl_gui.draw_trigs(MCLGUI::seq_x0, MCLGUI::trig_y, 0, 0, -1, 16, mute_mask,
                      slide_mask);
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   /*Display 16 track routes on screen,
    For 16 tracks check to see if there is a route*/
@@ -68,12 +68,12 @@ void RoutePage::draw_routes() {
 
     oled_display.fillRect(x, MCLGUI::trig_y, MCLGUI::seq_w, MCLGUI::trig_h,
                           note_on ? WHITE : BLACK);
-    oled_display.setTextColor(note_on ? BLACK : WHITE);
-    oled_display.setCursor(x + 1, MCLGUI::trig_y + 5);
+    oled_text_color(note_on ? BLACK : WHITE);
+    oled_cursor(x + 1, MCLGUI::trig_y + 5);
     oled_display.print((char)('A' + mcl_cfg.routing[i]));
   }
 
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
 }
 
 void RoutePage::toggle_route(int i, uint8_t routing) {

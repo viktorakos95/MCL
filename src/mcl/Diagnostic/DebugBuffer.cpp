@@ -1,6 +1,12 @@
 #include "DebugBuffer.h"
 #include "platform.h"
 
+#ifdef __AVR__
+#include "MidiUart.h"
+
+size_t DebugBuffer::write(uint8_t c) { return output_uart->write(c); }
+#else
+
 // Private methods
 uint32_t DebugBuffer::atomic_increment(volatile uint32_t &val) {
   uint32_t result;
@@ -107,3 +113,4 @@ size_t DebugBuffer::write(uint8_t c) { return output_stream->write(c); }
 size_t DebugBuffer::write(const uint8_t *buffer, size_t size) {
   return output_stream->write(buffer, size);
 }
+#endif // __AVR__

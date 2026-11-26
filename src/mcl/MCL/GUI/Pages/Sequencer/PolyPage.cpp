@@ -77,7 +77,7 @@ void PolyPage::cleanup() {
 
 void PolyPage::draw_mask() {
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   uint16_t selected_mask = selected_tracks;
   uint8_t x = 0;
@@ -91,11 +91,11 @@ void PolyPage::draw_mask() {
     oled_display.fillRect(x, y, 15, 10, filled ? WHITE : BLACK);
 
     if (!filled) {
-      oled_display.drawRect(x, y, 15, 10, WHITE);
+      oled_rect(x, y, 15, 10, WHITE);
     }
 
-    oled_display.setCursor(ptc_group_text_x(group, x), y + 8);
-    oled_display.setTextColor(filled ? BLACK : WHITE);
+    oled_cursor(ptc_group_text_x(group, x), y + 8);
+    oled_text_color(filled ? BLACK : WHITE);
     print_ptc_group_label(group);
 
     x += 16;
@@ -105,7 +105,7 @@ void PolyPage::draw_mask() {
     }
   }
 
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
   oled_display.setFont(oldfont);
 }
 
@@ -133,7 +133,7 @@ void PolyPage::press_track(uint8_t i) {
     selected_group = editable_group_for_track(i);
     sync_channel_encoder(encoders[0], selected_group);
   }
-  SET_BIT16(selected_tracks, i);
+  bitfield_set(&selected_tracks, i);
   update_selection_leds(selected_tracks);
 }
 
@@ -147,7 +147,7 @@ void PolyPage::apply_selected_group() {
 }
 
 void PolyPage::release_track(uint8_t i) {
-  CLEAR_BIT16(selected_tracks, i);
+  bitfield_clear(&selected_tracks, i);
   if (selected_tracks == 0) {
     first_held_track = 255;
   } else if (i == first_held_track) {
@@ -176,8 +176,7 @@ void PolyPage::loop() {
 void PolyPage::display() {
   oled_display.clearDisplay();
 
-  oled_display.setCursor(0, 2);
-  mcl_print_P(mclstr_channel_select);
+  text_at_P(0, 2, mclstr_channel_select);
   mcl_print_P(mclstr_space);
   print_ptc_group_label(selected_group);
   oled_display.println();

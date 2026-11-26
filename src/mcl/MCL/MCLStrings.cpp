@@ -31,6 +31,10 @@ MCLSTR_DEFINE(cond_caret, "COND^");
 MCLSTR_DEFINE(hex_prefix, "0x");
 MCLSTR_DEFINE(plen, "PLEN");
 MCLSTR_DEFINE(quant, "QUANT");
+MCLSTR_DEFINE(fade, "FADE");
+MCLSTR_DEFINE(flen, "FLEN");
+MCLSTR_DEFINE(fade_in, "IN");
+MCLSTR_DEFINE(fade_out, "OUT");
 MCLSTR_DEFINE(arp, "ARP");
 MCLSTR_DEFINE(rate, "RATE");
 MCLSTR_DEFINE(range, "RANGE");
@@ -118,7 +122,6 @@ MCLSTR_DEFINE(osc_mixer, "OSC MIXER");
 MCLSTR_DEFINE(ply_label, "PLY");
 
 // Common labels
-MCLSTR_DEFINE(utiming_label, "uTIMING: ");
 
 // Common labels
 MCLSTR_DEFINE(v_label, "V");
@@ -254,6 +257,7 @@ MCLSTR_DEFINE(link, "LINK");
 MCLSTR_DEFINE(update, "UPDATE");
 MCLSTR_DEFINE(full, "FULL");
 MCLSTR_DEFINE(machinedrum, "MACHINEDRUM");
+MCLSTR_DEFINE(project, "PROJECT");
 MCLSTR_DEFINE(monomachine, "MONOMACHINE");
 MCLSTR_DEFINE(mirror, "MIRROR");
 MCLSTR_DEFINE(page, "PAGE");

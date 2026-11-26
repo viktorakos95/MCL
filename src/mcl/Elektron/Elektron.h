@@ -245,6 +245,17 @@ public:
 #define FW_CAP_SPSX           FW_CAP_HIGHER(1)
 #define FW_CAP_SAMPLE_BANK    FW_CAP_HIGHER(2)
 #define FW_CAP_SPSX_PARAMS_37 FW_CAP_HIGHER(3)
+#define FW_CAP_USR_QUERY      FW_CAP_HIGHER(4)
+#define FW_CAP_MACHINE_UPDATE_EXT FW_CAP_HIGHER(5)
+// The microtiming popup takes the step's condition and condition mode, and
+// PAGE on that popup arrives as a key.
+#define FW_CAP_MICROTIMING_COND FW_CAP_HIGHER(6)
+// The 0x70/0x44 USR query answers page 5: one slot's parameter labels.
+#define FW_CAP_USR_LABELS     FW_CAP_HIGHEST(0)
+// 0x70/0x46: the MD shows MCL's fill (bit 0 on, bit 1 queued) on its scale LEDs.
+#define FW_CAP_MCL_FILL_STATE FW_CAP_HIGHEST(1)
+// A condition of this value sends no condition with the popup.
+#define MICROTIMING_NO_CONDITION 255
 
 /// Base class for Elektron MidiDevice
 class ElektronDevice : public MidiDevice {
@@ -339,6 +350,8 @@ public:
   void set_seq_page(uint8_t page);
 
   void set_rec_mode(uint8_t mode);
+  // MCL's fill for the MD's indicator (FW_CAP_MCL_FILL_STATE): bit 0 on, bit 1 queued.
+  void setFillState(uint8_t state);
 
   void popup_text(uint8_t action_string, uint8_t persistent = 0);
   void popup_text(char *str, uint8_t persistent = 0);
@@ -349,8 +362,14 @@ public:
   void draw_close_bank();
 
   void draw_close_microtiming();
-  void draw_microtiming(uint8_t speed, uint8_t timing);
-  void draw_microtiming_signed(uint8_t speed, int8_t microtiming);
+  // condition is the Machinedrum's condition number and mode its mode
+  // number (0 TRIG, 1 TRIG+LOCK, 5 LOCK), for the popup's condition line.
+  void draw_microtiming(uint8_t speed, uint8_t timing,
+                        uint8_t condition = MICROTIMING_NO_CONDITION,
+                        uint8_t mode = 0);
+  void draw_microtiming_signed(uint8_t speed, int8_t microtiming,
+                               uint8_t condition = MICROTIMING_NO_CONDITION,
+                               uint8_t mode = 0);
   void draw_pattern_idx(uint8_t idx, uint8_t idx_other, uint8_t chain_mask);
   void draw_open_swing();
   void draw_close_swing();

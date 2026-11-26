@@ -84,8 +84,15 @@ public:
 
   void init();
 
+#if defined(__AVR__)
+  // Kept out of line: handleIncomingMidi() tests for waiting data before it
+  // calls them, so that an empty poll does not pay for their register saves.
+  void processSysex() NOINLINE();
+  void processMidi() NOINLINE();
+#else
   void processSysex();
   void processMidi();
+#endif
 
 #if defined(__AVR__)
   void sysexEnd(uint8_t msg_rd) NOINLINE();

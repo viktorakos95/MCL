@@ -8,19 +8,14 @@ MCLEncoder param4(6, 1, ENCODER_RES_GRID);
 
 GridPage grid_page(&param1, &param2, &param3, &param4);
 
-MCLEncoder gridsave_param1(0, 2, ENCODER_RES_PAT);
 MCLEncoder gridload_param1(1, 3, ENCODER_RES_PAT);
-
 MCLExpEncoder gridio_param2(64, 1, ENCODER_RES_PAT);
-MCLEncoder gridio_param3(0, 64, ENCODER_RES_PAT);
 MCLExpEncoder gridio_param4(64, 1, ENCODER_RES_PAT);
 
-#ifdef PLATFORM_TBD
-GridSavePage grid_save_page(&gridio_param3, &gridsave_param1, &gridio_param2,
-                            &gridio_param4);
-GridLoadPage grid_load_page(&gridio_param3, &gridload_param1, &gridio_param2,
-                            &gridio_param4);
-#else
+#if !MCL_GRID_IO_PANEL
+// AVR and TBD run Load and Save on the Grid page (GridPage::io_*).
+MCLEncoder gridsave_param1(0, 2, ENCODER_RES_PAT);
+MCLEncoder gridio_param3(0, 64, ENCODER_RES_PAT);
 GridSavePage grid_save_page(&gridsave_param1, &gridio_param2, &gridio_param3,
                             &gridio_param4);
 GridLoadPage grid_load_page(&gridload_param1, &gridio_param2, &gridio_param4,

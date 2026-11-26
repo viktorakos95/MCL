@@ -37,7 +37,7 @@ void draw_centered_value(uint8_t x, uint8_t y, uint8_t value) {
   if (value < 100) {
     x += 2;
   }
-  oled_display.setCursor(x, y);
+  oled_cursor(x, y);
   oled_display.print(value);
 }
 
@@ -79,15 +79,13 @@ static void draw_track_type_text_icon(uint8_t x, uint8_t y,
     len = 1;
   }
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setCursor(x + 12 - (len * 2), y + 14);
-  oled_display.print(text);
+  oled_font_small();
+  text_at(x + 12 - (len * 2), y + 14, text);
 }
 
 static void draw_tbd_track_type_icon(uint8_t x, uint8_t y_base) {
-  oled_display.setFont();
-  oled_display.setCursor(x + 3, y_base + 16);
-  oled_display.print("TBD");
+  oled_font_default();
+  text_at(x + 3, y_base + 16, "TBD");
 }
 #endif
 
@@ -139,7 +137,7 @@ void MCLGUI::wait_for_project() {
     mcl.loop();
   }
   if (!proj.project_loaded) { goto again; }
-  DEBUG_PRINTLN("finished");
+  DEBUG_PRINTLN(F("finished"));
 }
 
 void MCLGUI::draw_cross(uint8_t x, uint8_t y, uint8_t color) {
@@ -162,7 +160,7 @@ void MCLGUI::draw_horizontal_dashline(uint8_t y, uint8_t from, uint8_t to) {
 }
 
 void MCLGUI::draw_horizontal_arrow(uint8_t x, uint8_t y, uint8_t w) {
-  oled_display.drawFastHLine(x, y, w, WHITE);
+  oled_hline(x, y, w, WHITE);
   oled_display.drawFastVLine(x + w - 2, y - 1, 3, WHITE);
   oled_display.drawFastVLine(x + w - 3, y - 2, 5, WHITE);
 }
@@ -190,7 +188,7 @@ void MCLGUI::draw_vertical_scrollbar(uint8_t x, uint8_t n_items,
 
   mcl_gui.draw_vertical_separator(x + 1);
   oled_display.fillRect(x + 1, y + 1, 3, length - 1, BLACK);
-  oled_display.drawRect(x, y, 5, length, WHITE);
+  oled_rect(x, y, 5, length, WHITE);
 }
 
 void MCLGUI::draw_knob_frame() {
@@ -236,31 +234,31 @@ void MCLGUI::draw_popup_title(const char *title, uint8_t y_offset) {
   auto len = copy_popup_title(title);
   //m_toupper(title_buf);
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   const uint8_t menu_y = s_menu_y + y_offset;
-  // oled_display.setCursor(s_title_x + 2, s_menu_y + 3);
-  oled_display.drawFastHLine(s_title_x + 2, menu_y, s_title_w - 4, WHITE);
-  oled_display.drawFastHLine(s_title_x + 1, menu_y + 1, s_title_w - 2, WHITE);
+  // oled_cursor(s_title_x + 2, s_menu_y + 3);
+  oled_hline(s_title_x + 2, menu_y, s_title_w - 4, WHITE);
+  oled_hline(s_title_x + 1, menu_y + 1, s_title_w - 2, WHITE);
   oled_display.fillRect(s_menu_x + 1, menu_y + 2, s_menu_w - 2, 5, WHITE);
 
-  oled_display.setTextColor(BLACK);
-  oled_display.setCursor(s_title_x + (s_title_w - len * 4) / 2, menu_y + 6);
+  oled_text_color(BLACK);
+  oled_cursor(s_title_x + (s_title_w - len * 4) / 2, menu_y + 6);
   oled_display.println(title_buf);
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
 
 }
 
 void MCLGUI::draw_popup_title_plain(const char *title, uint8_t y_offset) {
   auto len = copy_popup_title(title);
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   const uint8_t menu_y = s_menu_y + y_offset;
   oled_display.fillRect(s_menu_x + 1, menu_y, s_menu_w - 2, 7, BLACK);
 
-  oled_display.setTextColor(WHITE);
-  oled_display.setCursor(s_title_x + (s_title_w - len * 4) / 2, menu_y + 6);
+  oled_text_color(WHITE);
+  oled_cursor(s_title_x + (s_title_w - len * 4) / 2, menu_y + 6);
   oled_display.println(title_buf);
 }
 
@@ -329,13 +327,25 @@ void MCLGUI::draw_progress_bar(uint8_t cur, uint8_t _max, bool deferred_display,
     }
     ROTATE_LEFT(temp_bitmask, 8);
   }
+#if defined(__AVR__)
+  // The stripes step every 27 ms. They stepped every second draw, and a draw
+  // took a 12 ms frame send; the send is now under 1 ms. s_progress_count
+  // holds the low byte of the clock at the last step.
+  uint8_t now = (uint8_t)read_clock_ms();
+  if ((uint8_t)(now - s_progress_count) >= 27) {
+    s_progress_cookie = bitmask;
+    ROTATE_LEFT(s_progress_cookie, 8);
+    s_progress_count = now;
+  }
+#else
   if (s_progress_count == s_progress_speed * ENCODER_RES_MULTIPLIER) { //hack use ENCODER_RES_MULTIPLIER
     s_progress_cookie = bitmask;
     ROTATE_LEFT(s_progress_cookie, 8);
     s_progress_count = 0;
   }
   s_progress_count++;
-  if (border) oled_display.drawRect(x_pos, y_pos, width, height, WHITE);
+#endif
+  if (border) oled_rect(x_pos, y_pos, width, height, WHITE);
 
   if (!deferred_display) {
     oled_display.display();
@@ -349,9 +359,9 @@ void MCLGUI::draw_infobox(const char *line1, const char *line2,
 
   oled_display.fillRect(dlg_info_x1 - 1, dlg_info_y1 - 1, dlg_info_w + 3,
                         dlg_info_h + 3, BLACK);
-  oled_display.drawRect(dlg_info_x1, dlg_info_y1, dlg_info_w, dlg_info_h,
+  oled_rect(dlg_info_x1, dlg_info_y1, dlg_info_w, dlg_info_h,
                         WHITE);
-  oled_display.drawFastHLine(dlg_info_x1 + 1, dlg_info_y2 + 1, dlg_info_w,
+  oled_hline(dlg_info_x1 + 1, dlg_info_y2 + 1, dlg_info_w,
                              WHITE);
   oled_display.drawFastVLine(dlg_info_x2 + 1, dlg_info_y1 + 1, dlg_info_h - 1,
                              WHITE);
@@ -363,8 +373,8 @@ void MCLGUI::draw_infobox(const char *line1, const char *line2,
   oled_display.fillRect(dlg_circle_x - 1, dlg_circle_y - 3, 3, 4, BLACK);
   oled_display.fillRect(dlg_circle_x - 1, dlg_circle_y + 2, 3, 2, BLACK);
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(BLACK);
+  oled_font_small();
+  oled_text_color(BLACK);
   uint8_t title_len = copy_popup_title(line1);
   m_toupper(title_buf);
   uint8_t title_w = title_len * 4;
@@ -372,16 +382,16 @@ void MCLGUI::draw_infobox(const char *line1, const char *line2,
   if (title_w < dlg_info_w) {
     title_x += (dlg_info_w - title_w) / 2;
   }
-  oled_display.setCursor(title_x, dlg_info_y1 + 6);
+  oled_cursor(title_x, dlg_info_y1 + 6);
   oled_display.println(title_buf);
 
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
   uint8_t line2_w = strlen(line2) * 4;
   uint8_t line2_x = dlg_info_x1;
   if (line2_w < dlg_info_w) {
     line2_x += (dlg_info_w - line2_w) / 2;
   }
-  oled_display.setCursor(line2_x, dlg_info_y1 + 15 + line2_offset);
+  oled_cursor(line2_x, dlg_info_y1 + 15 + line2_offset);
   oled_display.println(line2);
 
   oled_display.setFont(oldfont);
@@ -470,7 +480,8 @@ void MCLGUI::draw_encoder(uint8_t x, uint8_t y, Encoder *encoder) {
 
 void MCLGUI::draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
                                 const char *const labels[4],
-                                const bool show_values[4]) {
+                                const bool show_values[4],
+                                const char *const values[4]) {
   // 128 px wide, four 32-px columns. The bottom 8-px row is shared:
   // value (6x8) when show_values[n] is true, otherwise the label
   // (TomThumb) sits in the same slot. This keeps the dial centred and
@@ -480,7 +491,7 @@ void MCLGUI::draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
   // Both value and label use the default 6x8 font; 5-char label cap.
   oled_display.fillRect(0, y_top, 128, 32, BLACK);
   auto oldfont = oled_display.getFont();
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
 
   constexpr uint8_t kCellW = 32;
   constexpr uint8_t kDialW = 11;
@@ -495,18 +506,23 @@ void MCLGUI::draw_encoder_strip(uint8_t y_top, Encoder *const encoders[4],
 
       if (show_values[n]) {
         char val[4];
-        put_value_at(encoders[n]->cur, val);
+        if (values != nullptr && values[n] != nullptr) {
+          strncpy(val, values[n], sizeof(val) - 1);
+          val[sizeof(val) - 1] = '\0';
+        } else {
+          put_value_at(encoders[n]->cur, val);
+        }
         uint8_t vlen = (uint8_t)strlen(val);
         uint8_t vw = vlen * 6;
-        oled_display.setFont();
-        oled_display.setCursor(cx + (kCellW - vw) / 2, y_top + 18);
+        oled_font_default();
+        oled_cursor(cx + (kCellW - vw) / 2, y_top + 18);
         oled_display.print(val);
       } else if (labels[n] && labels[n][0] != '\0') {
         uint8_t len = (uint8_t)strlen(labels[n]);
         if (len > 5) len = 5;  // 6 px advance × 5 = 30 < 32
         uint8_t lw = len * 6;
-        oled_display.setFont();
-        oled_display.setCursor(cx + (kCellW - lw) / 2, y_top + 18);
+        oled_font_default();
+        oled_cursor(cx + (kCellW - lw) / 2, y_top + 18);
         for (uint8_t k = 0; k < len; k++) {
           oled_display.write(labels[n][k]);
         }
@@ -538,9 +554,10 @@ bool MCLGUI::show_encoder_value(Encoder *encoder, int timeout) {
   return false;
 }
 
-void MCLGUI::draw_text_encoder(uint8_t x, uint8_t y, const char *name,
-                               const char *value, bool highlight,
-                               bool name_is_progmem) {
+NOINLINE() void MCLGUI::draw_text_encoder(uint8_t x, uint8_t y,
+                                          const char *name,
+                                          const char *value, bool highlight,
+                                          bool name_is_progmem) {
 #if !defined(__AVR__)
   char name_buf[8]; // Short labels fit on the encoder caption
   const char *label = name;
@@ -550,9 +567,9 @@ void MCLGUI::draw_text_encoder(uint8_t x, uint8_t y, const char *name,
   }
 #endif
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(WHITE);
-  oled_display.setCursor(x + 4, y + 6);
+  oled_font_small();
+  oled_text_color(WHITE);
+  oled_cursor(x + 4, y + 6);
 #if defined(__AVR__)
   if (name_is_progmem) {
     mcl_print_P(name);
@@ -563,8 +580,8 @@ void MCLGUI::draw_text_encoder(uint8_t x, uint8_t y, const char *name,
   oled_display.print(label);
 #endif
 
-  oled_display.setFont();
-  oled_display.setCursor(x + 4, y + 8);
+  oled_font_default();
+  oled_cursor(x + 4, y + 8);
   oled_display.print(value);
 
   if (highlight) { oled_display.fillRect(x,y,23,16, INVERT); }
@@ -584,8 +601,8 @@ void MCLGUI::draw_md_encoder(uint8_t x, uint8_t y, uint8_t value,
   uint8_t image_w = 11;
   uint8_t image_h = 11;
 
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(WHITE);
+  oled_font_small();
+  oled_text_color(WHITE);
   uint8_t x_offset = x;
   char name_buf[16];
   const char *label = name;
@@ -598,8 +615,7 @@ void MCLGUI::draw_md_encoder(uint8_t x, uint8_t y, uint8_t value,
   if (strlen(label) == 2) {
     x_offset += 2;
   }
-  oled_display.setCursor(x_offset, y);
-  oled_display.print(label);
+  text_at(x_offset, y, label);
 
   y += 5;
 
@@ -628,9 +644,9 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
                                 const char *name, bool highlight,
                                 bool show_value, bool name_is_progmem) {
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
 
   uint8_t x_offset = x;
   char name_buf[16];
@@ -647,8 +663,7 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
     if (strlen(label) == 2) {
       x_offset += 2;
     }
-    oled_display.setCursor(x_offset, y);
-    oled_display.print(label);
+    text_at(x_offset, y, label);
   }
   y += 2;
 
@@ -658,11 +673,25 @@ void MCLGUI::draw_light_encoder(uint8_t x, uint8_t y, uint8_t value,
   oled_display.setFont(oldfont);
 }
 
-void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
-  auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+// The microtiming popup's label: "uTIM:" and "COND:" stay where they are,
+// around the ruler's centre tick (x 64). The offset sits in a field of
+// offset_chars characters ending at x 61; "COND:" starts at x 68.
+static const char kUtimLabel[] PROGMEM = "uTIM: ";  // 20 px in TomThumb
+static const char kCondLabel[] PROGMEM = "COND: ";
+static void print_timing_label(const char *offset, const char *condition,
+                               uint8_t offset_chars) {
+  text_at_P(61 - 20 - 4 * offset_chars, 10, kUtimLabel);
+  oled_display.print(offset);
+  text_at_P(68, 10, kCondLabel);
+  oled_display.print(condition);
+}
 
-  oled_display.setTextColor(WHITE);
+void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing,
+                              const char *condition) {
+  auto oldfont = oled_display.getFont();
+  oled_font_small();
+
+  oled_text_color(WHITE);
   uint8_t timing_center = SeqTrack::get_ticks_per_step(speed);
   uint8_t degrees = timing_center * 2;
   // Triplets
@@ -695,8 +724,10 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
   uint8_t x_w = degree_scalar ? 1 : w / degrees;
 
   uint8_t x = x_pos;
-  char K[4];
-  mclstr_copy_progmem(K, mclstr_dash, sizeof(K));
+  char K[5];
+  K[0] = '-';
+  K[1] = '-';
+  K[2] = '\0';
 
   if (timing != 0) {
     if (timing < timing_center) {
@@ -708,13 +739,11 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
   }
 
   oled_display.fillRect(8, 1, 128 - 16, 32 - 2, BLACK);
-  oled_display.drawRect(8 + 1, 1 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
+  oled_rect(8 + 1, 1 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
 
-  oled_display.setCursor(x_pos + 34, 10);
-  mcl_print_P(mclstr_utiming_label);
-  oled_display.print(K);
+  print_timing_label(K, condition, 3);
   constexpr uint8_t base_h = 11;
-  oled_display.drawFastHLine(x, y_pos + base_h, w + 1, WHITE);
+  oled_hline(x, y_pos + base_h, w + 1, WHITE);
   for (uint8_t n = 0; n <= degrees; n++) {
     uint8_t tick_h = pgm_height_at(h, a);
     oled_display.drawFastVLine(x, y_pos + base_h - tick_h, tick_h + 1, WHITE);
@@ -736,10 +765,11 @@ void MCLGUI::draw_microtiming(uint8_t speed, uint8_t timing) {
 }
 
 #if !defined(__AVR__)
-void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming) {
+void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming,
+                                   const char *condition) {
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
-  oled_display.setTextColor(WHITE);
+  oled_font_small();
+  oled_text_color(WHITE);
 
   uint16_t tps;
   switch (speed) {
@@ -754,13 +784,13 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming) {
   case SPSX_SPEED_1_8X: tps = SPSX_TICKS_PER_STEP_1X * 8; break;
   }
 
-  uint16_t timing_center = tps / 4;
-  if (timing_center < 1) timing_center = 1;
-  if (timing_center > 96) timing_center = 96;
+  uint16_t timing_center = tps > 1u ? tps - 1u : 0u;
+  if (timing_center > 23u) timing_center = 23u;
   uint16_t degrees = timing_center * 2;
 
-  // Convert microtiming (-127..+127) to visual position (0..degrees)
-  int timing = timing_center + (int)microtiming * (int)timing_center / 127;
+  const int16_t timing_offset =
+      spsx_microtiming_to_ticks(microtiming, tps);
+  int timing = timing_center + timing_offset;
   if (timing < 0) timing = 0;
   if (timing > degrees) timing = degrees;
 
@@ -790,25 +820,23 @@ void MCLGUI::draw_microtiming_spsx(uint8_t speed, int8_t microtiming) {
   constexpr uint8_t baseline_y = y_pos + 11;
 
   oled_display.fillRect(popup_x, popup_y, popup_w, popup_h, BLACK);
-  oled_display.drawRect(popup_x + 1, popup_y + 1, popup_w - 2, popup_h - 2, WHITE);
+  oled_rect(popup_x + 1, popup_y + 1, popup_w - 2, popup_h - 2, WHITE);
 
   char K[5];
-  if (microtiming == 0) {
+  if (timing_offset == 0) {
     strcpy(K, "---");
-  } else if (microtiming < 0) {
+  } else if (timing_offset < 0) {
     K[0] = '-';
-    put_value_at(-microtiming, K + 1);
+    put_value_at(-timing_offset, K + 1);
   } else {
     K[0] = '+';
-    put_value_at(microtiming, K + 1);
+    put_value_at(timing_offset, K + 1);
   }
   K[4] = '\0';
 
-  oled_display.setCursor(ruler_x + 34, 10);
-  mcl_print_P(mclstr_utiming_label);
-  oled_display.print(K);
+  print_timing_label(K, condition, 4);
 
-  oled_display.drawFastHLine(ruler_x, baseline_y, ruler_w + 1, WHITE);
+  oled_hline(ruler_x, baseline_y, ruler_w + 1, WHITE);
   for (uint16_t n = 0; n <= degrees; n++) {
     uint8_t dist =
         (n >= timing_center) ? (n - timing_center) : (timing_center - n);
@@ -843,7 +871,7 @@ void MCLGUI::draw_keyboard(uint8_t x, uint8_t y, uint8_t note_width,
 
   uint8_t first_note = 0;
   for (uint8_t n = 0; n < 128; n++) {
-    if (IS_BIT_SET128_P(note_mask, n)) {
+    if (bitfield_test(note_mask, n)) {
       first_note = n;
       break;
     }
@@ -858,12 +886,12 @@ void MCLGUI::draw_keyboard(uint8_t x, uint8_t y, uint8_t note_width,
 
   for (uint8_t n = 0; n < num_of_notes; n++) {
 
-    bool pressed = IS_BIT_SET128_P(note_mask, n + offset);
+    bool pressed = bitfield_test(note_mask, n + offset);
     bool black = chromatic & (1 << note_type);
 
     if (black) {
       // previous '|' has already filled the center col.
-      oled_display.drawRect(x - 1, y + 1, 3, half - 1, WHITE);
+      oled_rect(x - 1, y + 1, 3, half - 1, WHITE);
       if (pressed) {
         oled_display.drawFastVLine(x, y + 1, half - 2, BLACK);
       }
@@ -876,8 +904,8 @@ void MCLGUI::draw_keyboard(uint8_t x, uint8_t y, uint8_t note_width,
         oled_display.fillRect(x, y, note_width, note_height, WHITE);
       } else {
         // draw ']'
-        oled_display.drawFastHLine(x, y, note_width, WHITE);
-        oled_display.drawFastHLine(x, y2, note_width, WHITE);
+        oled_hline(x, y, note_width, WHITE);
+        oled_hline(x, y2, note_width, WHITE);
         oled_display.drawFastVLine(x + wm1, y, note_height, WHITE);
       }
 
@@ -900,7 +928,7 @@ void MCLGUI::draw_trigs(uint8_t x, uint8_t y, const uint16_t &trig_selection) {
       oled_display.fillRect(x, y, seq_w, trig_h, WHITE);
     }
     else{
-      oled_display.drawRect(x, y, seq_w, trig_h, WHITE);
+      oled_rect(x, y, seq_w, trig_h, WHITE);
     }
     x += seq_w + 1;
   }
@@ -924,17 +952,17 @@ void MCLGUI::draw_trigs(uint8_t x, uint8_t y, uint8_t offset,
       // don't draw
     } else {
 
-      oled_display.drawRect(x, y, seq_w, trig_h, WHITE);
+      oled_rect(x, y, seq_w, trig_h, WHITE);
       if ((idx != step_count) || (MidiClock.state != 2)) {
 
-        if (IS_BIT_SET64(slide_mask, idx)) {
+        if (bitfield_test(&slide_mask, idx)) {
           oled_display.drawPixel(x + 2, y + 2, WHITE);
-        } else if (IS_BIT_SET64(mute_mask, idx)) {
+        } else if (bitfield_test(&mute_mask, idx)) {
           oled_display.drawPixel(x + 2, y + 1, WHITE);
           oled_display.drawPixel(x + 1, y + 2, WHITE);
           oled_display.drawPixel(x + 3, y + 2, WHITE);
           oled_display.drawPixel(x + 2, y + 3, WHITE);
-        } else if (IS_BIT_SET64(pattern_mask, idx)) {
+        } else if (bitfield_test(&pattern_mask, idx)) {
           oled_display.fillRect(x + 1, y + 1, seq_w - 1, trig_h - 1, WHITE);
         }
       }
@@ -1019,9 +1047,9 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
     if (select) {
       oled_display.fillRect(x + 1, 10 + y_base, 23, 20, INVERT);
       drawRoundRect(x, 9 + y_base, 24, 21, WHITE);
-      oled_display.drawRect(x + 1, 10 + y_base, 22, 19, BLACK);
+      oled_rect(x + 1, 10 + y_base, 22, 19, BLACK);
     } else {
-      oled_display.drawRect(x, 9 + y_base, 24, 21, WHITE);
+      oled_rect(x, 9 + y_base, 24, 21, WHITE);
     }
 
     x += 26;
@@ -1034,51 +1062,26 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
     uint8_t *icon = nullptr;
     uint8_t offset = 3;
     int8_t icon_y_offset = 0;
-#if defined(__AVR__)
-    uint8_t icon_w = 18;
-    uint8_t icon_h = 9;
-#else
     MCLGIF *gif;
-#endif
     if (i < 2) {
       MidiDeviceLogoGif logo = devs[i]->logo_gif();
-#if defined(__AVR__)
-      icon = logo.data;
-#else
       gif = logo.gif;
       icon = logo.data;
-#endif
       offset = i + 3;
     } else {
       switch (i) {
       case 2:
-#if defined(__AVR__)
-        icon = R.icons_logo->perf_gif_data;
-#else
         gif = R.icons_logo->perf_gif;
         icon = R.icons_logo->perf_gif_data;
-#endif
         break;
       case 3:
-#if defined(__AVR__)
-        icon = R.icons_logo->route_gif_data;
-        icon_w = 14;
-        icon_h = 10;
-#else
         gif = R.icons_logo->route_gif;
         icon = R.icons_logo->route_gif_data;
-#endif
         offset = 5;
         break;
       case 4:
-#if defined(__AVR__)
-        icon = R.icons_logo->metronome_gif_data;
-        icon_w = 17;
-        icon_h = 15;
-#else
         gif = R.icons_logo->metronome_gif;
         icon = R.icons_logo->metronome_gif_data;
-#endif
         offset = 4;
         icon_y_offset = -3;
         break;
@@ -1086,33 +1089,23 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
     }
 
     //icon = select ? gif->get_frame(0) : gif->get_next_frame();
-#if defined(__AVR__)
-    // AVR uses a static first frame here to avoid pulling in GIF animation.
-#else
     gif->set_bmp(icon);
     icon = gif->get_next_frame();
-#endif
 
     if (icon) {
       oled_display.drawBitmap(x + offset, 15 + y_base + icon_y_offset, icon,
-#if defined(__AVR__)
-                              icon_w, icon_h, WHITE);
-#else
                               gif->w, gif->h, WHITE);
-#endif
     }
 
-#if !defined(__AVR__)
     if (note_interface.is_note_on(i)) { gif->reset(); }
-#endif
 
     if (select) {
    //   gif->reset();
       oled_display.fillRect(x + 1, 10 + y_base, 23, 20, INVERT);
       drawRoundRect(x, 9 + y_base, 24, 21, WHITE);
-      oled_display.drawRect(x + 1, 10 + y_base, 22, 19, BLACK);
+      oled_rect(x + 1, 10 + y_base, 22, 19, BLACK);
 } else {
-      oled_display.drawRect(x, 9 + y_base, 24, 21, WHITE);
+      oled_rect(x, 9 + y_base, 24, 21, WHITE);
 }
 
 /*
@@ -1120,9 +1113,9 @@ void MCLGUI::draw_track_type_select(uint8_t track_type_select,
    //   gif->reset();
       oled_display.fillRect(x, 9, 24, 21, INVERT);
 
-       oled_display.drawRect(x + 1, 10, 22, 19, BLACK);
+       oled_rect(x + 1, 10, 22, 19, BLACK);
     } else {
-       oled_display.drawRect(x, 9, 24, 21, WHITE);
+       oled_rect(x, 9, 24, 21, WHITE);
     }
       oled_display.drawPixel(x,9,!select);
       oled_display.drawPixel(x + 23,9,!select);
@@ -1143,10 +1136,10 @@ void MCLGUI::draw_leds(uint8_t x, uint8_t y, uint8_t offset,
     bool in_range = idx < length;
     bool current =
         show_current_step && step_count == idx && MidiClock.state == 2;
-    bool locked = in_range && IS_BIT_SET64(lock_mask, idx);
+    bool locked = in_range && bitfield_test(&lock_mask, idx);
 
     // TI feedback
-    //     oled_display.drawRect(x, y, seq_w, led_h, WHITE);
+    //     oled_rect(x, y, seq_w, led_h, WHITE);
     if (!in_range) {
       // don't draw
     } else if (current ^ locked) {
@@ -1154,7 +1147,7 @@ void MCLGUI::draw_leds(uint8_t x, uint8_t y, uint8_t offset,
       oled_display.fillRect(x, y, seq_w, led_h, WHITE);
     } else {
       // (current && locked) or (not current && not locked), frame only
-      oled_display.drawRect(x, y, seq_w, led_h, WHITE);
+      oled_rect(x, y, seq_w, led_h, WHITE);
     }
 
     x += seq_w + 1;
@@ -1162,32 +1155,28 @@ void MCLGUI::draw_leds(uint8_t x, uint8_t y, uint8_t offset,
 }
 
 void MCLGUI::draw_panel_toggle(const char *s1, const char *s2, bool s1_active) {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   uint8_t active_y = s1_active ? pane_label_md_y : pane_label_ex_y;
   oled_display.fillRect(pane_label_x, active_y, pane_label_w, pane_label_h,
                         WHITE);
 
-  oled_display.setCursor(pane_label_x + 1, pane_label_md_y + 6);
-  oled_display.setTextColor(s1_active ? BLACK : WHITE);
-  oled_display.print(s1);
+  oled_text_color(s1_active ? BLACK : WHITE);
+  text_at(pane_label_x + 1, pane_label_md_y + 6, s1);
 
-  oled_display.setCursor(pane_label_x + 1, pane_label_ex_y + 6);
-  oled_display.setTextColor(s1_active ? WHITE : BLACK);
-  oled_display.print(s2);
-  oled_display.setTextColor(WHITE);
+  oled_text_color(s1_active ? WHITE : BLACK);
+  text_at(pane_label_x + 1, pane_label_ex_y + 6, s2);
+  oled_text_color(WHITE);
 }
 
 void MCLGUI::draw_panel_labels(const char *info1, const char *info2) {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.fillRect(0, pane_info1_y, pane_w, pane_info_h, WHITE);
-  oled_display.setTextColor(BLACK);
-  oled_display.setCursor(1, pane_info1_y + 6);
-  oled_display.print(info1);
+  oled_text_color(BLACK);
+  text_at(1, pane_info1_y + 6, info1);
   oled_display.fillRect(0, pane_info2_y, pane_w, pane_info_h, BLACK);
-  oled_display.setTextColor(WHITE);
-  oled_display.setCursor(1, pane_info2_y + 6);
-  oled_display.print(info2);
+  oled_text_color(WHITE);
+  text_at(1, pane_info2_y + 6, info2);
 }
 
 void MCLGUI::draw_panel_status(bool recording, bool playing) {
@@ -1214,9 +1203,9 @@ void MCLGUI::clear_rightpane() {
 }
 
 void MCLGUI::draw_panel_number(uint8_t number) {
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(pane_trackid_x, pane_trackid_y);
+  oled_cursor(pane_trackid_x, pane_trackid_y);
   if (number < 10) {
     oled_display.print('0');
   }
@@ -1224,8 +1213,8 @@ void MCLGUI::draw_panel_number(uint8_t number) {
 }
 
 void MCLGUI::drawRoundRect(uint8_t x, uint8_t y, uint8_t w, uint8_t h, uint8_t color) {
-  oled_display.drawFastHLine(x + 1, y, w - 2, color);         // top edge
-  oled_display.drawFastHLine(x + 1, y + h - 1, w - 2, color); // bottom edge
+  oled_hline(x + 1, y, w - 2, color);         // top edge
+  oled_hline(x + 1, y + h - 1, w - 2, color); // bottom edge
   oled_display.drawFastVLine(x, y + 1, h - 2, color);         // left edge
   oled_display.drawFastVLine(x + w - 1, y + 1, h - 2, color); // right edge
 }
@@ -1236,7 +1225,7 @@ void MCLGUI::draw_bank_cell(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
   // letter just clip — caller is expected to size 10x10 or larger.
   uint8_t letter_x = x + (w - 6) / 2;
   uint8_t letter_y = y + (h - 8) / 2;
-  oled_display.setFont();
+  oled_font_default();
   oled_display.setTextSize(1);
   if (active) {
     // Filled interior; punch out the 4 corner pixels so the cell has the
@@ -1246,12 +1235,12 @@ void MCLGUI::draw_bank_cell(uint8_t x, uint8_t y, uint8_t w, uint8_t h,
     oled_display.drawPixel(x + w - 1, y,         BLACK);
     oled_display.drawPixel(x,         y + h - 1, BLACK);
     oled_display.drawPixel(x + w - 1, y + h - 1, BLACK);
-    oled_display.setTextColor(BLACK, WHITE);
+    oled_text_color(BLACK, WHITE);
   } else {
     drawRoundRect(x, y, w, h, WHITE);
-    oled_display.setTextColor(WHITE, BLACK);
+    oled_text_color(WHITE, BLACK);
   }
-  oled_display.setCursor(letter_x, letter_y);
+  oled_cursor(letter_x, letter_y);
   oled_display.write(letter);
 }
 
@@ -1277,3 +1266,37 @@ void MCLGUI::reset_trigleds() {
 }
 
 MCLGUI mcl_gui;
+
+__attribute__((noinline)) void oled_font_small() {
+  oled_display.setFont(&TomThumb);
+}
+__attribute__((noinline)) void oled_font_default() { oled_display.setFont(); }
+__attribute__((noinline)) void oled_cursor(int8_t x, uint8_t y) {
+  oled_display.setCursor(x, y);
+}
+__attribute__((noinline)) void oled_rect(uint8_t x, uint8_t y, uint8_t w,
+                                         uint8_t h, uint8_t color) {
+  oled_hline(x, y, w, color);
+  oled_hline(x, y + h - 1, w, color);
+  oled_display.drawFastVLine(x, y, h, color);
+  oled_display.drawFastVLine(x + w - 1, y, h, color);
+}
+__attribute__((noinline)) void text_at(int8_t x, uint8_t y, const char *str) {
+  oled_cursor(x, y);
+  oled_display.print(str);
+}
+__attribute__((noinline)) void text_at_P(int8_t x, uint8_t y,
+                                         const char *str_P) {
+  oled_cursor(x, y);
+  mcl_print_P(str_P);
+}
+__attribute__((noinline)) void oled_hline(uint8_t x, uint8_t y, uint8_t w,
+                                          uint8_t color) {
+  oled_display.drawFastHLine(x, y, w, color);
+}
+__attribute__((noinline)) void oled_text_color(uint8_t c) {
+  oled_display.setTextColor(c);
+}
+__attribute__((noinline)) void oled_text_color(uint8_t c, uint8_t bg) {
+  oled_display.setTextColor(c, bg);
+}

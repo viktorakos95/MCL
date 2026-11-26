@@ -115,14 +115,16 @@ menu_t<midi_config_page_N> midiconfig_menu_layout = {
   #define SEQ_EDIT_OPTIONS_OFFSET 48
 #endif
 
+#define LOAD_SAVE_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 1)
+
 #if defined(__AVR__)
   #define SEQ_CHANNEL_OPTIONS_COUNT 16
-  #define SEQ_CHANNEL_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 1)
+  #define SEQ_CHANNEL_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 4)
   #define MANUAL_STEP_PORT_OPTIONS_OFFSET (SEQ_CHANNEL_OPTIONS_OFFSET + SEQ_CHANNEL_OPTIONS_COUNT)
 #else
   #define SEQ_CHANNEL_OPTIONS_COUNT 0
   #define SEQ_CHANNEL_OPTIONS_OFFSET 0
-  #define MANUAL_STEP_PORT_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 1)
+  #define MANUAL_STEP_PORT_OPTIONS_OFFSET (SAMPLE_BANK_OPTIONS_OFFSET + 4)
 #endif
 #define ROLL_IGNORES_MUTE_OPTIONS_OFFSET (MANUAL_STEP_PORT_OPTIONS_OFFSET + 2)
 
@@ -319,9 +321,10 @@ menu_t<mcl_config_page_N> mclconfig_menu_layout = {
         {"DISPLAY:", 0, 2, 2, 13, NULL_PAGE, 0, 23},
         {"PROJ CFG:", 0, 2, 2, 72, NULL_PAGE, 0, 25},
         {"GRID ENCOD:", 0, 2, 2, 62, NULL_PAGE, 0, 114},
-        {"ROLL ACTIVE:", 0, 2, 2, 80, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
-        {"ROLL IF MUTED:", 0, 2, 2, 78, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
-        {"ROLL TRIPLETS:", 0, 2, 2, 79, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
+        {"LOAD/SAVE:", 0, 3, 3, 75, NULL_PAGE, 0, LOAD_SAVE_OPTIONS_OFFSET},
+        {"ROLL ACTIVE:", 0, 2, 2, 81, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
+        {"ROLL IF MUTED:", 0, 2, 2, 79, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
+        {"ROLL TRIPLETS:", 0, 2, 2, 80, NULL_PAGE, 0, ROLL_IGNORES_MUTE_OPTIONS_OFFSET},
     },
     1
 };
@@ -374,9 +377,9 @@ menu_t<seq_menu_page_N> seq_menu_layout = {
         {"CC REC:",     0, 2,                   2,                   30, NULL_PAGE,  0,  25},
         {"SOUND",       0, 0,                   0,                   0,  SOUND_BROWSER, 0,  0},
         {"LFO MULT:",   0, 8,                   8,                   70, NULL_PAGE,  0,  LFO_MULT_OPTIONS_OFFSET},
-        {"STEP MODE:",  0, 2,                   2,                   75, NULL_PAGE,  0, 25},
-        {"STEP CC:",    0, 128,                 0,                   76, NULL_PAGE,  0, 0},
-        {"STEP PORT:",  0, 2,                   2,                   77, NULL_PAGE,  0, MANUAL_STEP_PORT_OPTIONS_OFFSET},
+        {"STEP MODE:",  0, 2,                   2,                   76, NULL_PAGE,  0, 25},
+        {"STEP CC:",    0, 128,                 0,                   77, NULL_PAGE,  0, 0},
+        {"STEP PORT:",  0, 2,                   2,                   78, NULL_PAGE,  0, MANUAL_STEP_PORT_OPTIONS_OFFSET},
         {"EUCLIDEAN",   0, 0,                   0,                   0,  EUC_PAGE, 0,  0},
     },
     14

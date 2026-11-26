@@ -229,7 +229,9 @@ void MCLSeqMidiEvents::onControlChangeCallback_Midi(uint8_t *msg) {
   uint8_t control_ch = channel - MD.global.baseChannel;
   if (fill_track < 4 && control_ch < 4) {
     uint8_t track = (control_ch << 2) + fill_track;
-    mcl_seq.set_fill_track(DeviceIdx::Primary, track, value);
+    // An MCL-fill MD sends its FILL view changes as a key ($70/$33 re-read);
+    // its fill CCs are for other gear.
+    if (!mcl_seq.fill_model) mcl_seq.set_fill_track(DeviceIdx::Primary, track, value);
 #if MCL_FEATURE_HOST_ARRANGER_RECORD_HOOKS
     record_arranger_fill_cc(DeviceIdx::Primary, track, value);
 #endif

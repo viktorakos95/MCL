@@ -40,6 +40,19 @@ const uint32_t _bvmasks32[] = {
     0x40000000, 0x80000000,
 };
 
+__attribute__((noinline)) bool bitfield_test(const void *field, uint8_t bit) {
+  return IS_BIT_SET_RADDR_P(field, bit);
+}
+
+__attribute__((noinline)) void bitfield_set(void *field, uint8_t bit) {
+  SET_BIT_RADDR_P(field, bit);
+}
+
+__attribute__((noinline)) void bitfield_clear(void *field, uint8_t bit) {
+  CLEAR_BIT_RADDR_P(field, bit);
+}
+
+
 const uint8_t _popcount_lut[] PROGMEM = {
     0, 1, 1, 2, 1, 2, 2, 3, 1, 2, 2, 3, 2, 3, 3, 4, 1, 2, 2, 3, 2, 3, 3, 4,
     2, 3, 3, 4, 3, 4, 4, 5, 1, 2, 2, 3, 2, 3, 3, 4, 2, 3, 3, 4, 3, 4, 4, 5,

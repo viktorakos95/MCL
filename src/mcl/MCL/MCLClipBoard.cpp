@@ -195,7 +195,7 @@ bool MCLClipBoard::paste_sequencer_track(GridSlot source_track, GridSlot track) 
     return false;
   }
 
-  DEBUG_PRINTLN("getting ready to paste");
+  DEBUG_PRINTLN(F("getting ready to paste"));
   device_track->on_copy(source_track_idx, track_idx, true);
   device_track->paste_track(source_track_idx, track_idx, gdt->seq_track);
 
@@ -225,7 +225,7 @@ bool MCLClipBoard::copy(GridSlot col, GridRow row, GridSpan w, GridSpan h) {
   bool ret = true;
   GridRowHeader header;
 
-  DEBUG_PRINTLN("copy");
+  DEBUG_PRINTLN(F("copy"));
   DEBUG_PRINTLN(col);
   DEBUG_PRINTLN(row);
   DEBUG_PRINTLN(w);
@@ -248,7 +248,7 @@ bool MCLClipBoard::copy(GridSlot col, GridRow row, GridSpan w, GridSpan h) {
         DEBUG_PRINTLN(header.name);
         last_hdr_grid = cur_grid;
       }
-      DEBUG_PRINT("Copy: "); DEBUG_PRINT(full_col); DEBUG_PRINT(" "); DEBUG_PRINT(dst_row); DEBUG_PRINT(" "); DEBUG_PRINTLN(cur_grid);
+      DEBUG_PRINT(F("Copy: ")); DEBUG_PRINT(full_col); DEBUG_PRINT(F(" ")); DEBUG_PRINT(dst_row); DEBUG_PRINT(F(" ")); DEBUG_PRINTLN(cur_grid);
       auto *ptrack = temp_track.load_from_grid_512(full_col, dst_row);
       DEBUG_DUMP(temp_track.active);
       if (ptrack != nullptr) {
@@ -260,20 +260,20 @@ bool MCLClipBoard::copy(GridSlot col, GridRow row, GridSpan w, GridSpan h) {
         }
       }
       else {
-        DEBUG_PRINTLN("ptrack null");
+        DEBUG_PRINTLN(F("ptrack null"));
         ret = false;
       }
     }
   }
   return close() && ret;
 }
-bool MCLClipBoard::paste(GridSlot col, GridRow row) {
+COLD_SMALL() bool MCLClipBoard::paste(GridSlot col, GridRow row) {
   DEBUG_PRINT_FN();
   if (!open()) {
     DEBUG_PRINTLN(F("error could not open clipboard"));
     return false;
   }
-  DEBUG_PRINTLN("paste here");
+  DEBUG_PRINTLN(F("paste here"));
   bool ret = true;
   bool destination_same = (col == t_col || t_w == 1);
 
@@ -329,7 +329,7 @@ bool MCLClipBoard::paste(GridSlot col, GridRow row) {
 
       ptrack = materialize_clipboard_track(ptrack, gdt, track_idx);
       if (ptrack == nullptr) {
-        DEBUG_PRINTLN("track not supported");
+        DEBUG_PRINTLN(F("track not supported"));
         // Don't allow paste in to unsupported slots
         continue;
       }
@@ -343,7 +343,7 @@ bool MCLClipBoard::paste(GridSlot col, GridRow row) {
       }
       GridIndex d_grid = d_col >> 4;
 
-      DEBUG_PRINT("PASTE: "); DEBUG_PRINT(s_col); DEBUG_PRINT("->"); DEBUG_PRINT(d_col); DEBUG_PRINT(" "); DEBUG_PRINTLN(d_grid);
+      DEBUG_PRINT(F("PASTE: ")); DEBUG_PRINT(s_col); DEBUG_PRINT(F("->")); DEBUG_PRINT(d_col); DEBUG_PRINT(F(" ")); DEBUG_PRINTLN(d_grid);
       ptrack->link.row = (uint8_t)new_link_row;
       ptrack->on_copy(s_col, track_idx, destination_same);
       if (ptrack->store_in_grid(d_col, dst_row)) {

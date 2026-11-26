@@ -9,7 +9,9 @@
 #define IS_MEGACMD() IS_BIT_CLEAR(PINK,PK2)
 #define SET_USB_MODE(x) { PORTK = ((x)); }
 
-#define LOCAL_SPI_ENABLE() { DDRB = 0xFF; PORTL |= _BV(PL4); }
+// This processor's side of the SPI bus on: its level shifter (PL4), with the
+// display deselected (chip select PL7 high).
+#define LOCAL_SPI_ENABLE() { DDRB = 0xFF; PORTL |= _BV(PL7) | _BV(PL4); }
 #define LOCAL_SPI_DISABLE() { DDRB = 0; PORTB = 0; }
 
 #define EXTERNAL_SPI_ENABLE() { PORTL |= _BV(PL3); }
@@ -53,6 +55,8 @@ extern volatile uint32_t interrupt_lock_count;
     #define FORCED_INLINE() __attribute__((always_inline))
 #endif
 #define NOINLINE() __attribute__((noinline))
+// Cold, loop-heavy code: skip loop-invariant hoisting to save flash.
+#define COLD_SMALL() __attribute__((optimize("no-move-loop-invariants")))
 
 // C++ specific functionality
 #ifdef __cplusplus

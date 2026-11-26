@@ -18,7 +18,7 @@ class A4MixerCapability final
     : public ExtMixerCapability {
 #endif
 public:
-  explicit A4MixerCapability(A4Class &device)
+  constexpr explicit A4MixerCapability(A4Class &device)
 #if !defined(__AVR__)
       : MidiSeqMixerCapability(device, device.mixer_levels) {}
 #else

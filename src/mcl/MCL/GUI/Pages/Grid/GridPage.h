@@ -11,6 +11,19 @@
 #define MAX_VISIBLE_ROWS 4
 #define MAX_VISIBLE_COLS 8
 
+// AVR and TBD: Load and Save arm on the Grid page itself. The left info
+// column becomes the Load/Save panel and the grid stays visible. The hosted
+// builds keep the GridLoadPage / GridSavePage pages.
+#if defined(__AVR__) || defined(PLATFORM_TBD)
+#define MCL_GRID_IO_PANEL 1
+#else
+#define MCL_GRID_IO_PANEL 0
+#endif
+
+#define GRID_IO_OFF 0
+#define GRID_IO_LOAD 1
+#define GRID_IO_SAVE 2
+
 #define SLOT_DISABLED 255
 #define SLOT_PENDING 254
 #define SLOT_OFFSET_LOAD 253
@@ -76,6 +89,32 @@ public:
 
   bool draw_encoders;
   uint16_t draw_encoders_lastclock;
+
+#if MCL_GRID_IO_PANEL
+  uint8_t io_mode;          // GRID_IO_OFF / GRID_IO_LOAD / GRID_IO_SAVE
+  GridIndex io_saved_grid;  // grid shown when Load/Save was armed
+  // Pending-transition animation: slots whose pending load fired within the
+  // last 420 ms (set by GridTask when the load happens), one bit per slot.
+  union {
+    uint32_t settle_mask;
+    uint8_t settle_bits[4];
+  };
+  uint16_t settle_clock;
+
+  bool io_armed() const { return io_mode != GRID_IO_OFF; }
+  void io_begin(uint8_t mode);
+  void io_end(bool reinit = true);
+  bool io_handleEvent(gui_event_t *event);
+  void io_loop();
+  void io_action(bool groups);
+  void io_group_select();
+  void io_toggle_grid();
+  void io_set_view(GridColumn base);
+  uint16_t io_visible_mask();
+  void io_display_panel();
+#else
+  bool io_armed() const { return false; }
+#endif
   GridPage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL,
            Encoder *e4 = NULL)
       : LightPage(e1, e2, e3, e4) {}
@@ -98,6 +137,7 @@ public:
   void display_slot_menu();
   void display_counters();
   void display_grid_info();
+  void display_position();
   void display_grid();
   void display_row_info();
   void display() override;

@@ -116,11 +116,33 @@ void FileBrowserPage::set_entry_type(uint16_t n, uint8_t type) {
   put_bank3(ptr, &type, 1);
 }
 
+// The selected row's entry, if it is a file or folder that delete, rename,
+// move and clone can act on: not the save row, nor "..".
+bool FileBrowserPage::get_selected_entry(char *entry, uint8_t &type) {
+  uint16_t n = encoders[1]->getValue();
+  if (n >= (uint16_t)numEntries || (show_save && n == 0)) {
+    return false;
+  }
+  get_entry(n, entry, type);
+  return strcmp(entry, "..") != 0;
+}
+
 bool FileBrowserPage::can_show_parent_entry() const {
   return show_parent && strcmp(lwd, "/") != 0;
 }
 
 uint8_t FileBrowserPage::entry_type_for_dir(const char *entry) {
+#ifdef MCL_HAS_FILE_MOVE
+  // The DEST view leaves out the folder being moved: it cannot go inside
+  // itself.
+  if (move_destination_mode) {
+    char path[PRJ_PATH_LEN];
+    if (!MCLSd::join_path(path, sizeof(path), lwd, entry) ||
+        path_starts_with_dir(path, move_source_path)) {
+      return SKIP_TYPE;
+    }
+  }
+#endif
   (void)entry;
   return DIR_TYPE;
 }
@@ -170,7 +192,7 @@ void FileBrowserPage::query_filesystem() {
   file_menu_encoder.cur = file_menu_encoder.old = 0;
   file_menu_encoder.max = file_menu_page.menu.get_number_of_items() - 1;
 
-  DEBUG_PRINTLN("query");
+  DEBUG_PRINTLN(F("query"));
   DEBUG_PRINTLN(lwd);
   DEBUG_PRINTLN(file_menu_encoder.max);
 
@@ -241,6 +263,18 @@ void FileBrowserPage::reset_browser_options() {
   draw_dirs = false;
 }
 
+// A browser of folders and files: [Yes] opens a folder; the save row, "..",
+// NEW DIR and the file menu are shown.
+void FileBrowserPage::folder_browser_options() {
+  show_dirs = true;
+  select_dirs = false;
+  show_save = true;
+  show_parent = true;
+  show_new_folder = true;
+  show_filemenu = true;
+  draw_dirs = true;
+}
+
 void FileBrowserPage::init() {
   reset_browser_options();
   focus_match[0] = '\0';
@@ -249,13 +283,7 @@ void FileBrowserPage::init() {
   SD.chdir(lwd);
 #ifdef MCL_HAS_FILE_MOVE
   if (move_destination_mode) {
-    show_dirs = true;
-    select_dirs = false;
-    show_save = true;
-    show_parent = true;
-    show_new_folder = true;
-    show_filemenu = true;
-    draw_dirs = true;
+    folder_browser_options();
     strcpy(title, "DEST");
     strcpy(str_save, "[ MOVE ]");
   }
@@ -264,7 +292,7 @@ void FileBrowserPage::init() {
 
 void FileBrowserPage::draw_menu() {
   oled_display.fillRect(0, 3, 45, 29, BLACK);
-  oled_display.drawRect(1, 4, 43, 27, WHITE);
+  oled_rect(1, 4, 43, 27, WHITE);
   file_menu_page.draw_menu(6, 12, 34, 2);
   oled_display.display();
 }
@@ -277,11 +305,16 @@ void FileBrowserPage::open_filemenu() {
   file_menu_page.init();
 }
 
+void FileBrowserPage::open_filemenu(uint16_t disabled) {
+  set_file_menu_disabled_mask(disabled);
+  open_filemenu();
+}
+
 void FileBrowserPage::draw_sidebar() {
   constexpr uint8_t x_offset = 43;
   oled_display.clearDisplay();
-  oled_display.setCursor(0, 8);
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_cursor(0, 8);
+  oled_text_color(WHITE, BLACK);
   oled_display.println(title);
   mcl_gui.draw_vertical_dashline(x_offset - 6);
 }
@@ -289,7 +322,7 @@ void FileBrowserPage::draw_sidebar() {
 void FileBrowserPage::draw_filebrowser() {
 
   constexpr uint8_t x_offset = 43, y_offset = 8, width = MENU_WIDTH;
-  oled_display.setCursor(x_offset, 8);
+  oled_cursor(x_offset, 8);
   uint8_t max_items = min(MAX_VISIBLE_ROWS, numEntries);
   uint16_t first_entry = encoders[1]->cur - cur_row;
 
@@ -297,28 +330,33 @@ void FileBrowserPage::draw_filebrowser() {
 
   for (uint8_t n = 0; n < max_items; n++) {
     uint8_t y_pos = y_offset + 8 * n;
-    oled_display.setCursor(x_offset, y_pos);
+    oled_cursor(x_offset, y_pos);
     bool color = n == cur_row;
     if (color) {
-      oled_display.setTextColor(BLACK, WHITE);
+      oled_text_color(BLACK, WHITE);
       oled_display.fillRect(oled_display.getCursorX() - 3,
                             oled_display.getCursorY() - 6, width, 7, WHITE);
     } else {
-      oled_display.setTextColor(WHITE, BLACK);
+      oled_text_color(WHITE, BLACK);
     }
     uint16_t entry_num = first_entry + n;
     if (entry_num == cur_file) {
-      oled_display.setCursor(x_offset - 4, y_pos);
-      mcl_print_P(mclstr_arrow_right);
+      text_at_P(x_offset - 4, y_pos, mclstr_arrow_right);
     }
     if (entry_num < (uint16_t)numEntries) {
       uint8_t type;
       get_entry(entry_num, temp_entry, type);
       type = resolve_entry_type(entry_num, temp_entry, type);
       if (type == DIR_TYPE && draw_dirs) {
-        oled_display.drawRect(x_offset, y_pos - 4, 6, 4, !color);
-        oled_display.drawFastHLine(x_offset + 1, y_pos - 1 - 4, 3, !color);
-        oled_display.setCursor(x_offset + 8, y_pos);
+        oled_rect(x_offset, y_pos - 4, 6, 4, !color);
+        oled_hline(x_offset + 1, y_pos - 1 - 4, 3, !color);
+        oled_cursor(x_offset + 8, y_pos);
+      }
+      if (type == FILE_TYPE && hide_suffix) {
+        char *suffix = strrchr(temp_entry, '.');
+        if (suffix != nullptr) {
+          *suffix = '\0';
+        }
       }
       oled_display.println(temp_entry);
     }
@@ -329,7 +367,7 @@ void FileBrowserPage::draw_filebrowser() {
 }
 
 void FileBrowserPage::display() {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   if (filemenu_active) {
     draw_menu();
     return;
@@ -382,7 +420,7 @@ void FileBrowserPage::_calcindices(int &saveidx) {
 
 void FileBrowserPage::_cd_up() {
   file.close();
-  DEBUG_PRINTLN("cd_up");
+  DEBUG_PRINTLN(F("cd_up"));
   // don't cd up if we are at the root
 #ifndef __AVR__
   if (mcl_sd.mcl_root[0] == '\0') {
@@ -431,19 +469,32 @@ void FileBrowserPage::_cd_up() {
   }
   DEBUG_PRINTLN(lwd);
   if (!SD.chdir(lwd)) {
-    DEBUG_PRINTLN("bad directory change");
+    DEBUG_PRINTLN(F("bad directory change"));
   }
   init();
   uint16_t pos = 0;
   uint8_t row = 0;
   position.pop(pos, row);
-  encoders[1]->cur = pos;
-  encoders[1]->old = pos;
+  set_cursor(pos, row);
+}
+
+// Puts the cursor on entry `pos`, drawn on screen row `row`. The encoder's
+// old value moves with it, or loop() would scroll the list by the jump.
+void FileBrowserPage::set_cursor(uint16_t pos, uint8_t row) {
+  Encoder *list = encoders[1];
+  list->cur = list->old = pos;
   cur_row = row;
 }
 
+// The cursor on the row after the first ("..", or the first entry), with
+// the first row ([SAVE], [ MOVE ] ...) still in view.
+void FileBrowserPage::cursor_to_first_entry() {
+  uint8_t n = numEntries > 1;
+  set_cursor(n, MAX_VISIBLE_ROWS > 1 ? n : 0);
+}
+
 bool FileBrowserPage::_cd(const char *child) {
-  DEBUG_PRINTLN("_cd");
+  DEBUG_PRINTLN(F("_cd"));
   DEBUG_PRINTLN(child);
 
   DEBUG_PRINTLN(lwd);
@@ -478,7 +529,7 @@ bool FileBrowserPage::_cd(const char *child) {
   }
 
   if (!SD.chdir(ptr)) {
-    DEBUG_PRINTLN("cd failed");
+    DEBUG_PRINTLN(F("cd failed"));
     init();
     return false;
   }
@@ -496,7 +547,7 @@ bool FileBrowserPage::_cd(const char *child) {
   uint16_t pos = encoders[1]->getValue();
   uint8_t row = cur_row;
   init();
-  encoders[1]->cur = 1;
+  cursor_to_first_entry();
   position.push(pos, row);
   return true;
 }
@@ -591,6 +642,7 @@ bool FileBrowserPage::start_move_destination(const char *source_path) {
   move_destination_mode = true;
   position.reset();
   init();
+  cursor_to_first_entry();
   return true;
 }
 
@@ -756,13 +808,10 @@ bool FileBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
 #ifdef __AVR__
-      bool can_clone = false;
-      if (show_copy && encoders[1]->getValue() < numEntries) {
-        char entry[FILE_ENTRY_SIZE];
-        uint8_t entry_type;
-        get_entry(encoders[1]->getValue(), entry, entry_type);
-        can_clone = strcmp(entry, "..") != 0 && entry_type == FILE_TYPE;
-      }
+      char entry[FILE_ENTRY_SIZE];
+      uint8_t entry_type;
+      bool can_clone = show_copy && get_selected_entry(entry, entry_type) &&
+                       entry_type == FILE_TYPE;
       file_menu_page.menu.enable_entry(FM_DUPLICATE, can_clone);
 #endif
       open_filemenu();

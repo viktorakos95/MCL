@@ -3,6 +3,8 @@
 #include "Devices/DeviceManager.h"
 #include "Midi.h"
 #include "MCLGUI.h"
+
+extern uint8_t enhanced_mask_scope;  // GUI/Pages/Sequencer/SeqPage.cpp
 /*
 KeyInterfaceTask key_interface_task;
 
@@ -147,8 +149,14 @@ void KeyInterface::post_key_event(uint8_t key, bool key_release) {
   GUI.putEvent(&event);
 }
 
+// MCL.cpp: SCALE and the fill chords with an MCL-fill Machinedrum.
+bool mcl_fill_key(uint8_t key, bool key_release);
+
 void KeyInterface::key_event(uint8_t key, bool key_release) {
   set_key_state(key, !key_release);
+  if (mcl_fill_key(key, key_release)) {
+    return;
+  }
   post_key_event(key, key_release);
 }
 
@@ -158,6 +166,11 @@ void KeyInterface::end() {
   //  return;
   //}
   if (sysex->getByte(0) != ids[0]) {
+    return;
+  }
+  if (sysex->getByte(1) == 0x0F) {
+    // An X.20 Machinedrum's Swing/Slide window scope: bit 0 ALL, bit 1 Slide.
+    enhanced_mask_scope = sysex->getByte(2);
     return;
   }
   if (sysex->getByte(1) != ids[1]) {

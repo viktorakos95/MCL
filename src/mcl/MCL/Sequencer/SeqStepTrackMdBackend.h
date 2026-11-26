@@ -75,10 +75,13 @@ public:
   }
 
   bool begin_param_editor(uint8_t *params, uint8_t count) const {
-    if (params == nullptr || count < MD_PARAMS_PER_TRACK) {
+    // An X.20 peer shows locks on all 38 parameters.
+    const uint8_t wanted =
+        MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+    if (params == nullptr || count < wanted) {
       return false;
     }
-    MD.activate_encoder_interface(params);
+    MD.activate_encoder_interface(params, wanted);
     return true;
   }
 
@@ -88,8 +91,10 @@ public:
     }
   }
 
-  void draw_microtiming(uint8_t encoder_value) const {
-    MD.draw_microtiming(speed(), encoder_value);
+  void draw_microtiming(uint8_t encoder_value,
+                        uint8_t condition = MICROTIMING_NO_CONDITION,
+                        uint8_t mode = 0) const {
+    MD.draw_microtiming(speed(), encoder_value, condition, mode);
   }
   void close_microtiming() const { MD.draw_close_microtiming(); }
   void clear_step_edit_popup() const { MD.popup_text(127, 2); }
@@ -97,11 +102,13 @@ public:
     MD.popup_text(text, persistent);
   }
 
-  uint8_t lock_param_count() const { return MD_PARAMS_PER_TRACK; }
+  // Parameters 24-37 arrive only from an X.20 peer (parseCC and
+  // paramForEncoder stop at 23 for any other), so no capability test here.
+  uint8_t lock_param_count() const { return SPS_PARAMS_PER_TRACK; }
   uint8_t lock_slot_count() const { return NUM_LOCKS; }
 
   bool lock_param_info(uint8_t param_id, SeqStepLockParamInfo &info) const {
-    if (param_id >= MD_PARAMS_PER_TRACK) {
+    if (param_id >= SPS_PARAMS_PER_TRACK) {
       return false;
     }
     info = SeqStepLockParamInfo();
@@ -115,20 +122,24 @@ public:
   }
 
   uint8_t current_lock_value(uint8_t param_id) const {
-    return param_id < MD_PARAMS_PER_TRACK && track_index() < NUM_MD_TRACKS
+    return param_id < SPS_PARAMS_PER_TRACK && track_index() < NUM_MD_TRACKS
                ? MD.kit.params[track_index()][param_id]
                : 0;
   }
 
   bool copy_lock_param_label(uint8_t param_id, char *dst,
                              size_t dst_len) const {
-    if (dst == nullptr || dst_len == 0 || param_id >= MD_PARAMS_PER_TRACK ||
+    if (dst == nullptr || dst_len == 0 || param_id >= SPS_PARAMS_PER_TRACK ||
         track_index() >= NUM_MD_TRACKS) {
       return false;
     }
     const char *label = model_param_name(MD.kit.get_model(track_index()),
                                          param_id);
     return copy_short_label(label, dst, (uint8_t)dst_len, 3);
+  }
+  // Four bytes; false when the value shows as its plain number.
+  bool lock_value_text(uint8_t param_id, uint8_t value, char *dst) const {
+    return md_param_value_text(param_id, value, dst);
   }
 
   uint8_t length() const { return track_->length; }
@@ -213,6 +224,17 @@ public:
     track_->steps[step].cond_plock = plock;
   }
   void clear_conditional(uint8_t step) { set_conditional(step, 0, false); }
+  // The Machinedrum's mode number: 0 TRIG, 1 TRIG+LOCK. An MD track has no
+  // LOCK mode.
+  uint8_t condition_mode(uint8_t step) const {
+    return track_->steps[step].cond_plock ? 1 : 0;
+  }
+  // Also on a step with no condition, as on the Machinedrum: the mode stays
+  // with the step and the condition chosen next takes it.
+  void cycle_condition_mode(uint8_t step) {
+    track_->steps[step].cond_plock = !track_->steps[step].cond_plock;
+    track_->clear_step_oneshot(step);
+  }
 
   void set_timing_from_encoder(uint8_t step, uint8_t encoder_value) {
     track_->microtiming[step] =
@@ -257,7 +279,7 @@ public:
     return lock_idx == 255 ? -1 : (int8_t)lock_idx;
   }
 
-  uint8_t pitch_lock_param_id() const { return 0; }
+  uint8_t pitch_lock_param_id() const { return MD.pitchParameter(track_index()); }
   uint8_t get_track_lock_implicit(uint8_t step, uint8_t param_id) {
     return track_->get_track_lock_implicit(step, param_id);
   }
@@ -328,19 +350,17 @@ private:
     }
     if (pitch_max != nullptr) {
       if (tuning) {
-        *pitch_max = TUNING_LEN(tuning) - 1 + TUNING_BASE(tuning);
+        const uint8_t tb = TUNING_BASE(tuning);
+        const uint8_t base = uint8_t(model - MD_USR_FIRST) < MD_USR_SLOTS
+            ? tb % 12 : tb;
+        *pitch_max = TUNING_LEN(tuning) - 1 + base;
       } else if (midi_model) {
         *pitch_max = 127;
       } else {
         *pitch_max = 1;
       }
     }
-    const char *str1 = getMDMachineNameShort(model, 1);
-    const char *str2 = getMDMachineNameShort(model, 2);
-    copyMachineNameShort(str1, info);
-    info[2] = '>';
-    copyMachineNameShort(str2, info + 3);
-    info[5] = '\0';
+    copyMDTrackLabel(model, info, info_len);
     return true;
   }
 
@@ -354,7 +374,8 @@ private:
   }
 
   uint8_t md_kit_default_pitch() const {
-    return track_index() < NUM_MD_TRACKS ? MD.kit.params[track_index()][0] : 0;
+    const uint8_t parameter = MD.pitchParameter(track_index());
+    return parameter != 255 ? MD.kit.params[track_index()][parameter] : 0;
   }
 
   uint8_t md_kit_note_from_pitch(uint8_t pitch) const {
@@ -394,8 +415,8 @@ private:
         key > 0x17) {
       return false;
     }
-    uint8_t value = MD.currentSynthPage * 8 + key - 0x10;
-    if (value >= MD_PARAMS_PER_TRACK) {
+    uint8_t value = MD.paramForEncoder(key - 0x10);
+    if (value >= SPS_PARAMS_PER_TRACK) {
       return false;
     }
     *param = value;
@@ -404,14 +425,14 @@ private:
 
   bool md_key_for_param(uint8_t param, uint8_t *key) const {
     if (key == nullptr || track_index() >= NUM_MD_TRACKS ||
-        param >= MD_PARAMS_PER_TRACK) {
+        param >= SPS_PARAMS_PER_TRACK) {
       return false;
     }
-    int8_t value = (int8_t)param - (int8_t)MD.currentSynthPage * 8 + 0x10;
-    if (value < 0x10 || value > 0x17) {
+    uint8_t encoder = MD.encoderForParam(param);
+    if (encoder > 7) {
       return false;
     }
-    *key = (uint8_t)value;
+    *key = 0x10 + encoder;
     return true;
   }
 
