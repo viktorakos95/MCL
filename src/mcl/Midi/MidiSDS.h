@@ -41,19 +41,12 @@ public:
   uint8_t bytes_per_word;
   int32_t sample_offset;
 
+  // midi_sds is the only instance and starts zeroed in .bss: set only the
+  // non-zero fields (state and use_hand_shake have member initialisers).
   MidiSDSClass() {
-    deviceID = 0x00;
-    packetNumber = 0;
-    sampleNumber = 0;
     sampleFormat = 16;
     setSampleRate(44100);
-    sampleLength = 0;
-    loopStart = 0;
-    loopEnd = 0;
     loopType = SDS_LOOP_OFF;
-    state = SDS_READY;
-    hand_shake_state = false;
-    user_cancelled = false;
   }
 
   void setSampleRate(uint32_t hz) { samplePeriod = (uint32_t)1000000000 / hz; }

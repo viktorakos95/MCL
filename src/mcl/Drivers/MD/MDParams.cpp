@@ -2,6 +2,7 @@
 
 #include "helpers.h"
 #include "MD.h"
+#include "MCLGUI.h"
 #include "ResourceManager.h"
 
 /**
@@ -36,6 +37,10 @@ const char *MDLFONames[8] = {
 
 /// Caller is responsible to make sure machine_names_short is loaded in RM
 const char* getMDMachineNameShort(uint8_t machine, uint8_t type) {
+  if (uint8_t(machine - MD_USR_FIRST) < MD_USR_SLOTS) {
+    const char *name = md_usr.name(machine);
+    return name ? name + (type == 1 ? 0 : 4) : "??";
+  }
   if (machine == 0) {
     if (type == 1) {
       return R.machine_names_short->md_machine_names_short[0].name2;
@@ -47,8 +52,24 @@ const char* getMDMachineNameShort(uint8_t machine, uint8_t type) {
       R.machine_names_short->countof_md_machine_names_short);
 }
 
+/// Caller is responsible to make sure machine_names_short is loaded in RM
+void copyMDTrackLabel(uint8_t model, char *out, uint8_t len) {
+  if (len >= 7) {
+    const char *name = md_usr.name(model);
+    if (name) {
+      memcpy(out, name, 7);
+      return;
+    }
+  }
+  copyMachineNameShort(getMDMachineNameShort(model, 1), out);
+  out[2] = '>';
+  copyMachineNameShort(getMDMachineNameShort(model, 2), out + 3);
+  out[5] = '\0';
+}
+
 /// Caller is responsible to make sure machine_names_long is loaded in RM
 const char* MDClass::getMachineName(uint8_t machine) {
+  if (uint8_t(machine - MD_USR_FIRST) < MD_USR_SLOTS) return md_usr.name(machine);
   for (uint8_t i = 0; i < R.machine_names_long->countof_machine_names; i++) {
     if (R.machine_names_long->machine_names[i].id == machine) {
       return R.machine_names_long->machine_names[i].name;
@@ -170,16 +191,17 @@ static uint16_t get_model_param_names(uint8_t model) {
 }
 
 #if !defined(__AVR__)
-// Extended param names (params 24-37) — hardcoded to avoid resource changes
+// Extended param names (params 24-37) — hardcoded to avoid resource changes.
+// The Machinedrum's own names, with RTRG/RTIM/RENV/BUSn cut to three letters.
 static const char* ext_param_name(uint8_t param) {
   switch (param) {
     case MODEL_ENVATT:  return "ATK";
     case MODEL_ENVHLD:  return "HLD";
     case MODEL_ENVDCY:  return "DCY";
-    case MODEL_ENVMIX:  return "MIX";
-    case MODEL_LFO2SPD: return "SP2";
-    case MODEL_LFO2DEP: return "DP2";
-    case MODEL_LFO2MIX: return "MX2";
+    case MODEL_ENVMIX:  return "EMX";
+    case MODEL_LFO2SPD: return "SPD";
+    case MODEL_LFO2DEP: return "DEP";
+    case MODEL_LFO2MIX: return "SHP";
     case MODEL_RTRG:    return "RTG";
     case MODEL_RTIM:    return "RTM";
     case MODEL_RENV:    return "REN";
@@ -190,6 +212,17 @@ static const char* ext_param_name(uint8_t param) {
     default:            return NULL;
   }
 }
+#else
+// Names of parameters 24-37, three letters each. Kept in flash and copied
+// to one small buffer, because string literals would occupy main RAM.
+static const char ext_param_names[] PROGMEM =
+    "ATKHLDDCYEMXSPDDEPSHPRTGRTMRENBS1BS2BS3DST";
+
+static const char *ext_param_name(uint8_t param) {
+  static char name[4];
+  memcpy_P(name, ext_param_names + (param - MD_PARAMS_PER_TRACK) * 3, 3);
+  return name;
+}
 #endif
 
 /// Caller is responsible to make machine_param_names is loaded in RM
@@ -198,10 +231,11 @@ const char* model_param_name(uint8_t model, uint8_t param) {
     return "MUT";
   } else if (param == MODEL_LEVEL) {
     return "LEV";
-#if !defined(__AVR__)
   } else if (param >= MD_PARAMS_PER_TRACK && param < SPS_PARAMS_PER_TRACK) {
     return ext_param_name(param);
-#endif
+  }
+  if (const char *label = md_usr.label(model, param)) {
+    return label;
   }
 
   uint16_t model_idx;
@@ -237,6 +271,59 @@ const char* model_param_name(uint8_t model, uint8_t param) {
         R.machine_param_names->md_model_param_names + model_idx, 
         param);
   }
+}
+
+// Words for RTRG (OFF, INF), RENV (OFF, ON) and ENV DEST (AMP, FLF, FLW),
+// four bytes each.
+static const char md_value_words[] PROGMEM =
+    "OFF\0INF\0ON\0\0AMP\0FLF\0FLW";
+static constexpr uint8_t MD_WORD_OFF = 0;
+static constexpr uint8_t MD_WORD_INF = 1;
+static constexpr uint8_t MD_WORD_ON = 2;
+static constexpr uint8_t MD_WORD_AMP = 3;
+
+// N of the retrigger time 1/N for RTIM 2-14.
+static const uint8_t md_rtim_denominators[MD_RTIM_COUNT -
+                                          MD_RTIM_FASTEST_INDEX] PROGMEM = {
+    128, 96, 64, 48, 32, 24, 16, 12, 8, 6, 4, 3, 2};
+
+bool md_param_value_text(uint8_t param, uint8_t value, char *out) {
+  uint8_t word = 255;
+  if (param == MODEL_RTIM) {
+    value = pgm_read_byte(md_rtim_denominators +
+                          md_param_range(MODEL_RTIM).clamp(value) -
+                          MD_RTIM_FASTEST_INDEX);
+  } else if (param == MODEL_RTRG) {
+    if (value == 0) {
+      word = MD_WORD_OFF;
+    } else if (value >= 127) {
+      word = MD_WORD_INF;
+    }
+  } else if (param == MODEL_RENV) {
+    word = value ? MD_WORD_ON : MD_WORD_OFF;
+  } else if (param == MODEL_ENVDEST) {
+    word = MD_WORD_AMP + (value > 2 ? 0 : value);
+  }
+  if (word == 255) {
+    mcl_gui.put_value_at(value, out);
+    return param == MODEL_RTIM;
+  }
+  strcpy_P(out, md_value_words + word * 4);
+  return true;
+}
+
+// Not a switch: AVR GCC turns that into lookup tables in main RAM.
+MidiDeviceParamRange md_param_range(uint8_t param) {
+  MidiDeviceParamRange range = {0, 127};
+  if (param == MODEL_RTIM) {
+    range.min = MD_RTIM_FASTEST_INDEX;
+    range.max = MD_RTIM_COUNT - 1;
+  } else if (param == MODEL_RENV) {
+    range.max = 1;
+  } else if (param == MODEL_ENVDEST) {
+    range.max = 2;
+  }
+  return range;
 }
 
 uint8_t map_fx_to_model(uint8_t fx_type) {
@@ -354,6 +441,7 @@ static const uint8_t tonal_tuning[] PROGMEM = {
 };
 
 static const tuning_t rom_tonal_tuning_t = { ROM_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning };
+static const tuning_t usr_tonal_tuning_t = { MD_USR_FIRST, 37, sizeof(tonal_tuning), 0, tonal_tuning };
 
 
 static const tuning_t tunings_tonal[] = {
@@ -371,6 +459,8 @@ static const tuning_t tunings_tonal[] = {
   { TRX_SD_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_XT_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_RS_MODEL, MIDI_NOTE_CS2, sizeof(tonal_tuning), 0, tonal_tuning },
+  // Tonal on stock, X.14 and MDX; MDX's base octave matches TRX-BD's.
+  { TRX_CB_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_XC_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_B2_MODEL, MIDI_NOTE_CS0, sizeof(tonal_tuning), 0, tonal_tuning },
   { TRX_S2_MODEL, MIDI_NOTE_CS1, sizeof(tonal_tuning), 0, tonal_tuning },
@@ -410,6 +500,12 @@ static const tuning_t tunings[] = {
 
 const tuning_t PROGMEM *MDClass::getModelTuning(uint8_t model, bool tonal) {
   uint8_t i;
+
+  if (uint8_t(model - MD_USR_FIRST) < MD_USR_SLOTS) {
+    const uint8_t descriptor = md_usr.descriptor(model);
+    return tonal && (descriptor & (MD_USR_PRESENT | MD_USR_TONAL)) ==
+                   (MD_USR_PRESENT | MD_USR_TONAL) ? &usr_tonal_tuning_t : nullptr;
+  }
 
   if ((model >= 128) && (model <= 191)) {
     //if (tonal) {

@@ -173,7 +173,7 @@ bool ElektronHelper::checkSysexChecksum(uint8_t *data, uint16_t len) {
   cksum &= 0x3FFF;
   uint16_t realcksum = ElektronHelper::to16Bit7(data[len - 4], data[len - 3]);
   if (cksum != realcksum) {
-   DEBUG_PRINTLN("chksum bad");
+   DEBUG_PRINTLN(F("chksum bad"));
    DEBUG_PRINTLN(cksum);
    DEBUG_PRINTLN(realcksum);
 #ifdef HOST_MIDIDUINO
@@ -201,7 +201,7 @@ bool ElektronHelper::checkSysexChecksum(const SysexView &sysex, uint16_t offset,
       sysex.getByte(offset + len - 4),
       sysex.getByte(offset + len - 3));
   if (cksum != realcksum) {
-   DEBUG_PRINTLN("chksum bad");
+   DEBUG_PRINTLN(F("chksum bad"));
    DEBUG_PRINTLN(cksum);
    DEBUG_PRINTLN(realcksum);
 #ifdef HOST_MIDIDUINO

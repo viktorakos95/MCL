@@ -29,7 +29,7 @@ The vertical keyboard on the left shows the note range currently in view. In aut
 | `Encoder 2` | Move the note cursor. | Move the lock value cursor. |
 | `Encoder 3` | Change note width. | Change edit width. |
 | `Encoder 4` | Change zoom. | Change zoom. |
-| **[Yes]** / **[Load/Yes]** | Add or remove the note at the cursor. | Add or remove a lock at the cursor. |
+| **[Yes]** / **`Load | Yes`** | Add or remove the note at the cursor. | Add or remove a lock at the cursor. |
 | **[Scale]** | Move to the next 16-step page. | Move to the next 16-step page. |
 | Hold **[Global]** | Open the Track Menu. | Open the Track Menu. |
 

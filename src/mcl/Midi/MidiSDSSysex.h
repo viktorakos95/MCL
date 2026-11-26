@@ -17,12 +17,13 @@ class MidiSDSSysexListenerClass : public MidiSysexListenerClass {
    **/
 
 public:
-  bool isSDSMessage;
-  uint8_t packetNumber;
-  uint8_t sds_slot;
-  char sds_name[5];
+  bool isSDSMessage = false;
+  uint8_t packetNumber = 0;
+  uint8_t sds_slot = 0;
+  char sds_name[5] = {};
   bool sds_name_rec = false;
-  MidiSDSSysexListenerClass() : MidiSysexListenerClass(NULL, 0x7E, 0x00, 0x01) {}
+  constexpr MidiSDSSysexListenerClass()
+      : MidiSysexListenerClass(NULL, 0x7E, 0x00, 0x01) {}
 
   virtual void start();
   virtual void end();

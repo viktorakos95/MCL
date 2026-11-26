@@ -3,6 +3,8 @@
 #ifndef MD_PARAMS_H__
 #define MD_PARAMS_H__
 
+#include "../MidiDeviceParam.h"
+
 /**
  * \addtogroup MD Elektron MachineDrum
  *
@@ -790,23 +792,22 @@
 #define MODEL_RENV    33
 
 #define SPS_PARAMS_V1_PER_TRACK 34
-#if !defined(__AVR__)
 #define MODEL_BUS1    34
 #define MODEL_BUS2    35
 #define MODEL_BUS3    36
 #define MODEL_ENVDEST 37
 #define SPS_PARAMS_PER_TRACK    38
-#else
-// The AVR product retains its existing storage and packet dimensions. The
-// 38-parameter SPS-X contract is implemented only by the hosted/RP2040 build.
-#define SPS_PARAMS_PER_TRACK    SPS_PARAMS_V1_PER_TRACK
-#endif
 #define MD_PARAMS_PER_TRACK     24
 #define SPS_EXTENDED_PARAM_COUNT (SPS_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK)
 #define SPS_EXTENDED_CC_MAX      (SPS_EXTENDED_PARAM_COUNT * 4 - 1)
 #define SPS_MAX_LOCK_ROWS        (16 * SPS_PARAMS_PER_TRACK)
 
-#if !defined(__AVR__)
+// RTIM selects one of 15 retrigger times, 1/384 (0) to 1/2 (14). 1/128 is
+// the fastest a Machinedrum edit selects; stored values below it play and
+// read as it.
+#define MD_RTIM_COUNT         15
+#define MD_RTIM_FASTEST_INDEX 2
+
 struct SpsExtendedCcAddress {
   uint8_t channel = 0;
   uint8_t cc = 0;
@@ -825,8 +826,13 @@ constexpr bool spsExtendedParamToCc(uint8_t baseChannel, uint8_t track,
     return false;
   }
   const unsigned channel = unsigned(baseChannel) + 4u + (track >> 2);
+  // The Machinedrum puts every hardware control before the reserved groups:
+  // ENV DEST takes wire slot 34 and parameters 34-36 follow it. Stored kit
+  // and lock parameter IDs keep their own order.
+  const unsigned wireParam = param == MODEL_ENVDEST ? MODEL_BUS1
+      : param >= MODEL_BUS1 ? unsigned(param) + 1u : param;
   const unsigned cc =
-      unsigned(param - MD_PARAMS_PER_TRACK) * 4u + (track & 3u);
+      (wireParam - MD_PARAMS_PER_TRACK) * 4u + (track & 3u);
   if (channel > 15 || cc > SPS_EXTENDED_CC_MAX)
     return false;
   result.channel = (uint8_t)channel;
@@ -843,7 +849,9 @@ constexpr bool spsExtendedCcToParam(uint8_t baseChannel, uint8_t channel,
   if (channel < first || channel >= first + 4u)
     return false;
   result.track = (uint8_t)((channel - first) * 4u + cc % 4u);
-  result.param = (uint8_t)(MD_PARAMS_PER_TRACK + cc / 4u);
+  const unsigned wireParam = MD_PARAMS_PER_TRACK + cc / 4u;
+  result.param = (uint8_t)(wireParam == MODEL_BUS1 ? MODEL_ENVDEST
+      : wireParam > MODEL_BUS1 ? wireParam - 1u : wireParam);
   return result.track < 16 && result.param < SPS_PARAMS_PER_TRACK;
 }
 
@@ -887,20 +895,29 @@ constexpr bool spsExtendedCcContractIsBijective() {
 
 static_assert(spsExtendedCcContractIsBijective(),
               "SPS-X extended CC mapping must round-trip uniquely");
-#endif
+
+// Fixed points of the Machinedrum's table: ENV DEST is CC 40+b, RENV 36+b.
+constexpr uint8_t spsExtendedCcOf(uint8_t param) {
+  SpsExtendedCcAddress address{};
+  return spsExtendedParamToCc(0, 0, param, address) ? address.cc : 255;
+}
 
 // Virtual param IDs (not array indices, used by parseCC/setTrackParam)
 #define MODEL_MUTE  40
 #define MODEL_LEVEL 41
 
-#if !defined(__AVR__)
+static_assert(spsExtendedCcOf(MODEL_ENVATT) == 0 &&
+                  spsExtendedCcOf(MODEL_RENV) == 36 &&
+                  spsExtendedCcOf(MODEL_ENVDEST) == 40 &&
+                  spsExtendedCcOf(MODEL_BUS1) == 44 &&
+                  spsExtendedCcOf(MODEL_BUS3) == 52,
+              "extended CC table differs from the Machinedrum's");
 static_assert(MODEL_BUS1 == SPS_PARAMS_V1_PER_TRACK,
               "BUS parameters must append the SPS-X v1 layout");
 static_assert(MODEL_ENVDEST + 1 == SPS_PARAMS_PER_TRACK,
               "current SPS-X parameter count must include ENV DEST");
 static_assert(MODEL_ENVDEST < MODEL_MUTE,
               "real track parameters must not overlap virtual IDs");
-#endif
 
 #define MD_ECHO_TIME 0
 #define MD_ECHO_MOD 1
@@ -1036,9 +1053,23 @@ static_assert(MODEL_ENVDEST < MODEL_MUTE,
 
 extern const char* model_param_name(uint8_t model, uint8_t param);
 
+// Track parameter values as the Machinedrum shows them: RTRG OFF/1-126/INF,
+// RTIM as N of the fraction 1/N, RENV OFF/ON, ENV DEST AMP/FLF/FLW. Writes
+// at most three characters and a NUL to `out` (four bytes); every other
+// parameter gets its number. Returns false when the text is that number.
+bool md_param_value_text(uint8_t param, uint8_t value, char *out);
+
+// The values an edit of a track parameter may set: RTIM 2-14, RENV 0-1,
+// ENV DEST 0-2, everything else 0-127.
+MidiDeviceParamRange md_param_range(uint8_t param);
+
 extern const char *MDLFONames[8];
 
 extern const char* getMDMachineNameShort(uint8_t machine, uint8_t type);
+// A track's machine as the sequencer pages show it: a USR machine's full
+// name ("TXZ-LB") when len has room for it, else the two short-name parts
+// ("BD>EF"). out needs at least 6 bytes.
+void copyMDTrackLabel(uint8_t model, char *out, uint8_t len);
 extern const char* fx_param_name(uint8_t fx_type, uint8_t param);
 
 /** This structure stores the tuning information of a melodic machine on the

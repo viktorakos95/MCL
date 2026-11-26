@@ -13,9 +13,7 @@ void ProjectVersionPage::set_project(const char *project) {
 
 void ProjectVersionPage::setup() {
   oled_display.clearDisplay();
-  encoders[1]->cur = 0;
-  encoders[1]->old = 0;
-  cur_row = 0;
+  set_cursor(0, 0);
 }
 
 void ProjectVersionPage::init() {
@@ -94,8 +92,7 @@ bool ProjectVersionPage::handleEvent(gui_event_t *event) {
     if (!can_delete) {
       disabled |= FM_MASK(FM_DELETE);
     }
-    set_file_menu_disabled_mask(disabled);
-    open_filemenu();
+    open_filemenu(disabled);
     return true;
   }
   return FileBrowserPage::handleEvent(event);

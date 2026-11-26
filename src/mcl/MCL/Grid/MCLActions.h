@@ -67,14 +67,34 @@ public:
   uint16_t next_transitions[NUM_SLOTS];
   uint8_t transition_offsets[NUM_SLOTS];
   uint8_t send_machine[NUM_SLOTS];
+  // FADE's direction for each column's pending load, decided when it is
+  // asked for and used once, by that load's own fade.
+  uint8_t load_fade_dir[NUM_SLOTS];
   uint8_t transition_level[NUM_SLOTS];
 
   GridSlot dev_sync_slot[NUM_DEVS];
 
   GridChain chains[NUM_SLOTS];
+
+  // A Manual or Auto load for a column whose chain hops before the load's
+  // own point waits here (its row; 255 none), so the chain keeps going: at
+  // the chain's last hop before that point, take_deferred_load() gives the
+  // column to it, in the mode of the latest load that waited
+  // (deferred_mode).
+  GridRow deferred_rows[NUM_SLOTS];
+  uint8_t deferred_mode;
+  void clear_deferred_loads() {
+    memset(deferred_rows, 255, sizeof(deferred_rows));
+  }
 };
 
 #define QUANT_LEN 255
+
+// FADE's direction for a column's load (MCLActions::load_fade_dir).
+#define LOAD_FADE_DIR_NONE 0
+#define LOAD_FADE_DIR_IN LOAD_FADE_FORCE_IN
+#define LOAD_FADE_DIR_OUT LOAD_FADE_FORCE_OUT
+#define LOAD_FADE_DIR_OUTIN 3
 
 class MCLActions : public LinkModeData {
 public:
@@ -117,6 +137,19 @@ public:
   GridDeviceTrack *get_grid_dev_track(GridSlot slot_number);
 
   void init_chains();
+  // At a hop of column n's chain (cache_next_tracks): once the chain's next
+  // hop is not before the waiting load's point, the load takes the column,
+  // its next transition and the cache this hop fills. Returns whether it did.
+  bool take_deferred_load(GridSlot n);
+  // Column dst loads row at step at, once (a QUANT load's pending state).
+  void set_pending_load(GridSlot dst, GridRow row, uint16_t at) NOINLINE();
+  // FADE's direction for a load of row into column dst (Grid page panel).
+  uint8_t pick_fade_dir(GridSlot dst, GridRow row, uint8_t load_mode);
+  // OUTIN for a column loading at its next transition (Grid page panel);
+  // returns whether it held the switch back by the fade's length.
+  bool hold_outin(GridSlot dst);
+  // Whether column n's chain hops before point (a load point, in steps).
+  bool chain_hops_before(GridSlot n, uint16_t point) NOINLINE();
 
   void send_globals();
   void switch_global(uint8_t global_page);
@@ -154,22 +187,27 @@ public:
   void update_chain_links(GridSlot n, GridDeviceTrack *gdt);
   void cache_track(GridSlot n, GridDeviceTrack* gdt, GridColumn track_idx);
   void cache_next_tracks(uint8_t *slot_select_array, bool gui_update = false);
+  static uint32_t ui_pass_margin() NOINLINE();
   void calc_next_slot_transition(GridSlot n, bool ignore_chain_settings = false,
                                  bool ignore_overflow = false);
   void calc_next_transition();
   void calc_latency();
-#if MCL_FEATURE_HOST_LOAD_FADE_SEEK
   void clear_load_fades(bool preserve_armed_prestart = false);
-#else
-  void clear_load_fades();
-#endif
-  void start_load_fade_at(GridSlot slot, const TrackLoadFadeData *fade,
+  // panel: the LOAD panel's FADE replaces the slot's own (see panel_fade).
+  // False when the slot's track cannot fade (it is not a Machinedrum track).
+  bool start_load_fade_at(GridSlot slot, const TrackLoadFadeData *fade,
                           uint32_t start_clock
 #if MCL_FEATURE_HOST_LOAD_FADE_SEEK
                           ,
                           bool allow_prestart = false
 #endif
-                          );
+                          ,
+                          bool panel = true);
+  // The fade FADE chose for this slot's pending load (load_fade_dir), used
+  // up here: false when there is none. OUTIN gives its IN. Defined where the
+  // panel exists (MCL_GRID_IO_PANEL).
+  bool panel_fade(GridSlot slot, GridDeviceTrack *gdt,
+                  TrackLoadFadeData *fade);
 
 private:
   static uint16_t clear_runtime_fade_elapsed(DeviceTrack *track);

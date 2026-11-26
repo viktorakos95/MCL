@@ -6,7 +6,9 @@
 #define TOM 3
 #define HATS 4
 #define SOUND_ID 0xFFFA
-#define SOUND_VERSION 2000
+// 2001 widened both machine records to 38 parameters with LFO-B settings and
+// output routing. Version 2000 files are widened as they are read.
+#define SOUND_VERSION 2001
 
 #include "MD.h"
 

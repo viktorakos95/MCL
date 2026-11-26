@@ -11,8 +11,21 @@
 #include "GUI/Pages/Project/ProjectPages.h"
 
 #define PROJ_MIN_READABLE_VERSION 3000
-#define PROJ_VERSION 3013
+// 3013 is MCL 5.0x. Its headers and grid files are laid out like 3014, but
+// its MD tracks hold the 24-parameter machine record, which 5.0x would read
+// a version-6 track as. 3014 keeps 5.0x from opening such a project. A 3013
+// project opens directly and is restamped as 3014.
+#define PROJ_PREV_VERSION 3013
+#define PROJ_VERSION 3014
 #define PRJ_DIR "/Projects"
+
+#ifdef MCL_PROJECT_UPGRADER
+// What a scan found in a folder (Project::upgrade_state).
+#define UPGRADE_NOT_PROJECT 0 // no project file
+#define UPGRADE_UNREADABLE 1  // a project file MCL cannot read
+#define UPGRADE_CURRENT 2     // opens in this MCL as it is
+#define UPGRADE_NEEDED 3      // from before MCL 5.00: its tracks convert
+#endif
 
 class ATTR_PACKED() ProjectHeader {
 public:
@@ -40,6 +53,16 @@ public:
   bool new_project(const char *newprj);
   bool new_project_prompt(const char *parent = nullptr) NOINLINE();
   bool load_project(const char *projectname);
+#ifdef MCL_PROJECT_UPGRADER
+  // Conversions the card's free space still has room for, and the projects
+  // left unconverted because it ran out.
+  uint16_t upgrade_room;
+  uint8_t upgrade_skipped;
+  // Set, load_project only reads the project's versions into upgrade_state
+  // (UPGRADE_*) and returns, writing nothing.
+  bool upgrade_scan;
+  uint8_t upgrade_state;
+#endif
 #ifdef MCL_HAS_PROJECT_BACKUP
   bool load_project_version(const char *projectname, uint8_t pair);
 #endif

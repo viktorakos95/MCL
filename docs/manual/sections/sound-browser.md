@@ -18,16 +18,24 @@ Sound files use the `.snd` extension and are stored in the logical folder:
 
 If your SD card uses an `/MCL` folder, sounds are stored under `/MCL/Sounds`.
 
+## Folders
+
+Sounds can be kept in folders inside `/Sounds`. Select a folder and press **[Yes]** to open it; `..` returns to the folder above. The browser stays inside `/Sounds`, so `..` is not shown there.
+
+Until MCL is restarted, the browser reopens in the folder last used.
+
+When the browser or a folder opens, the cursor is on the row under `[SAVE]`, with `[SAVE]` in view.
+
 ## Browser Controls
 
 | Control | Action |
 | --- | --- |
-| **[Up]** / **[Down]** | Move through folders and `.snd` files. |
-| **[Yes]** / **[Load/Yes]** | Enter a folder, save from `[SAVE]`, or load the selected sound. |
+| **[Up]** / **[Down]** | Move through folders and sounds. |
+| **[Yes]** / **`Load | Yes`** | Enter a folder, save from `[SAVE]`, or load the selected sound. |
 | **[No]** | Cancel or return from the browser. |
 | Hold **[Global]** | Open the file menu. |
 
-The Sound Manager filters the file list to `.snd` files and folders.
+The Sound Manager lists folders and `.snd` files only, and shows sound names without the `.snd` extension.
 
 ## Saving A Sound
 
@@ -36,16 +44,30 @@ The Sound Manager filters the file list to `.snd` files and folders.
 3. Select `[SAVE]`.
 4. Enter a sound name.
 
-MCL suggests a short name from the kit name and machine type. The sound is written to the current `/Sounds` folder.
+MCL suggests a short name from the kit name and machine type. The sound is written to the folder shown.
 
 ## Loading A Sound
 
-Select a `.snd` file and press **[Yes]**. MCL loads the sound into the current Machinedrum track.
+Select a sound and press **[Yes]**. MCL loads the sound into the current Machinedrum track.
 
 If the sound contains a linked Trig Group pair and the destination has a following track available, MCL also loads the linked track data so the paired sound is restored together. Loading a paired sound onto track 16 cannot restore the linked second track.
 
 ## File Menu
 
-Hold **[Global]** to create folders, rename sounds or delete entries.
+Hold **[Global]** to open the file menu.
 
-![file menu](../assets/images/file_menu.png)
+![sound file menu](../assets/images/sound_file_menu.png)
+
+| Entry | Function |
+| --- | --- |
+| `CANCEL` | Close the file menu without action. |
+| `NEW DIR` | Create a folder in the current folder. Offered on every row, including in an empty folder. |
+| `RENAME` | Rename the selected sound or folder. |
+| `MOVE` | Move the selected sound or folder to another folder. |
+| `DELETE` | Delete the selected sound or folder. Deleting a folder also deletes everything in it. |
+
+`RENAME`, `MOVE` and `DELETE` are not offered on `[SAVE]` or `..`.
+
+`MOVE` opens the `DEST` view, which lists folders only, with the cursor under `[ MOVE ]`. Open the destination folder and select `[ MOVE ]`; **[No]** cancels the move.
+
+![sound move](../assets/images/sound_move.png)

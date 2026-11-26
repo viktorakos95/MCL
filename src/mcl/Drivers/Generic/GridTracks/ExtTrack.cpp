@@ -41,7 +41,7 @@ void ExtTrack::transition_load_device(uint8_t tracknumber, SeqTrack *seq_track, 
 }
 
 void ExtTrack::load_immediate(uint8_t tracknumber, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate, ext");
+  DEBUG_PRINTLN(F("load immediate, ext"));
   load_seq_data(seq_track);
 }
 
@@ -182,7 +182,7 @@ bool ExtTrack::store_in_grid(GridSlot column, GridRow row, SeqTrack *seq_track, 
   * object*/
   bool ret;
 
-  if (grid == nullptr) { DEBUG_PRINTLN("grid is nullptr"); }
+  if (grid == nullptr) { DEBUG_PRINTLN(F("grid is nullptr")); }
 
   ExtSeqTrack *ext_track = (ExtSeqTrack *) seq_track;
   uint8_t tracknumber = column & 0x0F;

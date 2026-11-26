@@ -25,7 +25,7 @@ For example, controller A can fade from Scene 1 to Scene 2. Scene 1 might store 
 | `Encoder 2` | Choose the external control source. |
 | `Encoder 3` | Choose the source parameter. |
 | `Encoder 4` | Set the external-control threshold. |
-| **[Load/Yes]** / panel button 4 | Cycle through controller setup and scene-lock subpages. |
+| **`Load | Yes`** | Cycle through controller setup and scene-lock subpages. |
 | Hold **[Global]** | Open the controller menu. |
 
 The active controller is shown as `A`, `B`, `C` or `D`. Hold **[Global]** and press **[Trig 1]** through **[Trig 4]** to choose the active controller. The controller menu also supports renaming the selected controller.
@@ -45,6 +45,8 @@ Performance targets follow the current device setup, so learning and target sele
 The Performance Page has eight scenes, selected with **[Trig 1]** through **[Trig 8]**. A scene stores up to 16 parameter locks.
 
 Scene locks can target device parameters, Machinedrum track and FX parameters, external MIDI parameters, TBD parameters, and LFO parameters exposed as performance targets.
+
+With a Machinedrum running MDX X.20 or later, controllers and scene locks can also target parameters 24 to 37 (envelope, second LFO, retrig, bus sends and envelope destination), and scene autofill captures them.
 
 Each controller has two scene assignments:
 

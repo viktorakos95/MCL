@@ -6,6 +6,7 @@
 #include "helpers.h"
 
 #include "MD.h"
+#include "MCLMemory.h"
 
 const int8_t md_standard_drum_mapping[16] PROGMEM = {
     36, 38, 40, 41, 43, 45, 47, 48,
@@ -87,10 +88,10 @@ bool MDGlobal::fromSysex(MidiClass *midi) {
 
   uint8_t version = sysex.getByte(offset + 1);
   // Minimum encoded lengths, including the four-byte message envelope and
-  // checksum/length trailer: v1-4=188, v5-6=190, v7+=192.
+  // checksum/length trailer: v1-4=188, v5-6=190, extended=192.
   uint16_t min_len = 188;
   if (version >= 5) min_len += 2;
-  if (version >= 7) min_len += 2;
+  if (version == SPSX_GLOBAL_VERSION) min_len += 2;
   if (len < min_len) {
     return false;
   }
@@ -99,6 +100,8 @@ bool MDGlobal::fromSysex(MidiClass *midi) {
     return false;
   }
 #endif
+
+  if (!mdGlobalWireVersionSupported(version)) return false;
 
   origPosition = sysex.getByte(offset + 3);
   ElektronSysexDecoder decoder(sysex, offset + 4);
@@ -137,7 +140,7 @@ bool MDGlobal::fromSysex(MidiClass *midi) {
     trigMode = 0;
   }
 
-  if (version >= 7) {
+  if (version == SPSX_GLOBAL_VERSION) {
     decoder.get8(&seqTempoMode);
     decoder.get8(&channelMode);
   } else {
@@ -219,7 +222,7 @@ uint16_t MDGlobal::toSysex(ElektronDataToSysexEncoder *encoder) {
 
 uint8_t MDMachine::get_model() { return model; }
 bool MDMachine::get_tonal() {
-  if (model >= 0x20000) {
+  if ((model & 0x20000UL) != 0) {
     return true;
   }
   return false;
@@ -263,11 +266,12 @@ float SPSMachine::normalize_level() {
 
 uint8_t SPSMachine::get_model() { return model; }
 bool SPSMachine::get_tonal() {
-  if (model >= 0x20000) {
+  if ((model & 0x20000UL) != 0) {
     return true;
   }
   return false;
 }
+#endif
 
 // ---- Compact LFO state pack/unpack (SPS-X v65+ kits) ----
 // State layout matches host/elektron/MDTypes.cpp (pack/unpack_compact_lfo_state).
@@ -317,12 +321,18 @@ static void unpack_compact_lfo_state(MDLFO &lfo, const uint8_t in[4], int track)
     memcpy(&lfo.state[15], &hold1, sizeof(int32_t));
   }
 }
-#endif
 
+void MDKit::get_lfo(uint8_t track, MDLFO *lfo) const {
+  memcpy(lfo, &lfos[track], sizeof(MDLFO));
+}
+
+void MDKit::set_lfo(uint8_t track, const MDLFO *lfo) {
+  memcpy(&lfos[track], lfo, sizeof(MDLFO));
+}
 
 uint8_t MDKit::get_model(uint8_t track) { return models[track]; }
 bool MDKit::get_tonal(uint8_t track) {
-  if (models[track] >= 0x20000) {
+  if ((models[track] & 0x20000UL) != 0) {
     return true;
   }
   return false;
@@ -343,21 +353,98 @@ uint8_t *MDKit::fx_params(uint8_t fx) {
   }
 }
 
+#if defined(__AVR__)
+// Kit 65.1 fields that only kit transfers and track load/save touch live in
+// the bank-one tail: the nine-byte LFO-B record of each track (five settings
+// and four bytes of run state, as the kit carries them), sixteen output
+// routes and the reserved bytes, which go back as received.
+static constexpr uint8_t kKit65LfoB = 9;
+static constexpr uint8_t kKit65Routes = 16 * kKit65LfoB;
+static constexpr uint8_t kKit65Reserved = kKit65Routes + 16;
+static_assert(BANK1_KIT65_LEN == kKit65Reserved +
+                  (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT,
+              "kit 65.1 store differs from the reserved SRAM region");
+
+static volatile uint8_t *kit65_ptr(uint8_t at) {
+  return reinterpret_cast<volatile uint8_t *>(uint16_t(BANK1_KIT65_START + at));
+}
+
+// One bank switch around the copy, not one for each byte.
+static void kit65_write(uint8_t at, const uint8_t *src, uint8_t count) NOINLINE();
+static void kit65_write(uint8_t at, const uint8_t *src, uint8_t count) {
+  memcpy_bank1(kit65_ptr(at), src, count);
+}
+
+static void kit65_read(uint8_t at, uint8_t *dst, uint8_t count) NOINLINE();
+static void kit65_read(uint8_t at, uint8_t *dst, uint8_t count) {
+  memcpy_bank1(dst, kit65_ptr(at), count);
+}
+#endif
+
+// The Machinedrum's defaults for a new Kit or machine: envelope open
+// (ATK 0, HLD 0, DCY 127, EMX 127), LFO-B speed centred, retrig off at the
+// fastest time (1/128) with envelope reset on, no bus sends, ENV DEST AMP.
+static const uint8_t md_extended_param_defaults[SPS_PARAMS_PER_TRACK -
+                                                MD_PARAMS_PER_TRACK] PROGMEM = {
+    0, 0, 127, 127, 64, 0, 0, 0, MD_RTIM_FASTEST_INDEX, 1, 0, 0, 0, 0};
+
+void MDMachine::init_extended() {
+  memcpy_P(&params[MD_PARAMS_PER_TRACK], md_extended_param_defaults,
+           sizeof(md_extended_param_defaults));
+  memset(lfoB, 0, sizeof(lfoB));
+  lfoB[0] = track;
+  outputRouting = MD_KIT_ROUTE_GLOBAL;
+}
+
+void MDMachine::upgrade_v1() {
+  // Everything after the parameter row moves up by the 14 new parameters.
+  memmove(&track, &params[MD_PARAMS_PER_TRACK],
+          sizeof(MDMachineV1) - MD_PARAMS_PER_TRACK);
+  init_extended();
+}
+
+void MDKit::get_ext(uint8_t track, MDMachine *machine) const {
+#if defined(__AVR__)
+  kit65_read(track * kKit65LfoB, machine->lfoB, 5);
+  kit65_read(kKit65Routes + track, &machine->outputRouting, 1);
+#else
+  memcpy(machine->lfoB, &lfosB[track].destinationTrack, 5);
+  machine->outputRouting = outputRouting[track];
+#endif
+}
+
+void MDKit::set_ext(uint8_t track, const MDMachine *machine) {
+#if defined(__AVR__)
+  // The run state stays with the track, as it does in the full record. It is
+  // kept in the kit's packed form, where FREE and HOLD share the same bytes,
+  // so a change between them starts the new mode from rest.
+  uint8_t record[kKit65LfoB];
+  kit65_read(track * kKit65LfoB, record, sizeof(record));
+  if (record[4] % 3 != machine->lfoB[4] % 3) {
+    memset(record + 5, 0, 4);
+  }
+  memcpy(record, machine->lfoB, 5);
+  kit65_write(track * kKit65LfoB, record, sizeof(record));
+  kit65_write(kKit65Routes + track, &machine->outputRouting, 1);
+#else
+  memcpy(&lfosB[track].destinationTrack, machine->lfoB, 5);
+  outputRouting[track] = machine->outputRouting;
+#endif
+}
+
 bool MDKit::fromSysex(MidiClass *midi) {
   SysexView sysex(midi->midiSysex);
 #if defined(__AVR__)
   uint16_t len = sysex.get_recordLen() - 5;
   uint16_t offset = 5;
 
-  // Preserve the established AVR decoder contract. SPS-X v65 payloads
-  // are hosted-only and are rejected by the version check below.
   if (len < 420) {
     DEBUG_PRINTLN(F("kit too short"));
     return false;
   }
 
   if (!ElektronHelper::checkSysexChecksum(sysex, offset, len)) {
-    DEBUG_PRINTLN("wrong checksum");
+    DEBUG_PRINTLN(F("wrong checksum"));
     return false;
   }
 #else
@@ -372,17 +459,15 @@ bool MDKit::fromSysex(MidiClass *midi) {
   uint8_t version = sysex.getByte(1 + offset);
 
   // Accept stock (1-4), MDX (64), and SPS-X v65.
-#if !defined(__AVR__)
   bool is_spsx_kit = false;
-#endif
   if ((version >= 1 && version <= 4) || version == MDX_KIT_VERSION) {
     /* legacy/MDX layout: 24 params/track, full 36-byte LFO-A, no LFO-B */
   } else if (version == SPSX_KIT_VERSION) {
-#if !defined(__AVR__)
     is_spsx_kit = true;
-#else
-    DEBUG_PRINTLN(F("SPS-X kit on AVR — reject"));
-    return false;
+#if defined(__AVR__)
+    if (len != mdKitChecksumLengthForVersion(SPSX_KIT_VERSION)) {
+      return false;
+    }
 #endif
   } else {
     DEBUG_PRINTLN(F("unknown kit version"));
@@ -397,11 +482,11 @@ bool MDKit::fromSysex(MidiClass *midi) {
   }
 
   if (!ElektronHelper::checkSysexChecksum(sysex, offset, len)) {
-    DEBUG_PRINTLN("wrong checksum");
+    DEBUG_PRINTLN(F("wrong checksum"));
     return false;
   }
   if (is_spsx_kit) {
-    const uint16_t routes = record_len - 4u - 16u;
+    const uint16_t routes = record_len - 4u - 16u - (SPS_USER_BUS_FX_COUNT + 1u) * SPS_USER_FX_PARAM_COUNT;
     for (uint8_t track = 0; track < 16; ++track)
       if (!mdKitRouteValid(sysex.getByte(routes + track))) return false;
   }
@@ -415,12 +500,8 @@ bool MDKit::fromSysex(MidiClass *midi) {
   decoder.get((uint8_t *)name, 16);
   name[16] = '\0';
 
-#if defined(__AVR__)
-  const uint8_t params_per_track = MD_KIT_PARAMS_PER_TRACK;
-#else
   const uint8_t params_per_track =
       version == SPSX_KIT_VERSION ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
-#endif
   for (uint8_t i = 0; i < 16; i++) {
     decoder.get((uint8_t *)params[i], params_per_track);
   }
@@ -432,7 +513,6 @@ bool MDKit::fromSysex(MidiClass *midi) {
   decoder.stop7Bit();
 
   // LFO-A section: compact 9 bytes/track for SPS-X, full 36 for legacy/MDX
-#if !defined(__AVR__)
   if (is_spsx_kit) {
     decoder.start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
@@ -449,9 +529,7 @@ bool MDKit::fromSysex(MidiClass *midi) {
       lfos[i].mix = 0;
     }
     decoder.stop7Bit();
-  } else
-#endif
-  {
+  } else {
     decoder.start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
       decoder.get((uint8_t *)&lfos[i], 5 + 31);
@@ -489,31 +567,44 @@ bool MDKit::fromSysex(MidiClass *midi) {
     }
     decoder.stop7Bit();
 
+    decoder.get(outputRouting, sizeof(outputRouting));
     decoder.get(&userBusFx[0][0], sizeof(userBusFx));
     decoder.get(userPostFx, sizeof(userPostFx));
-    decoder.get(outputRouting, sizeof(outputRouting));
   } else {
     // Legacy/MDX kit: synthesize SPS-X side state with safe defaults so a
     // later toSysex(SPS-X) round-trips cleanly. Mirrors host MDTypes.cpp
     // (versions <65 fallback) — envelope bypass-on, retrig off + RENV on.
     for (uint8_t i = 0; i < 16; i++) {
-      memset(&params[i][MD_PARAMS_PER_TRACK], 0, SPS_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK);
-      params[i][MODEL_ENVATT]  = 0;
-      params[i][MODEL_ENVHLD]  = 0;
-      params[i][MODEL_ENVDCY]  = 127;
-      params[i][MODEL_ENVMIX]  = 127;
-      params[i][MODEL_LFO2SPD] = 64;
-      params[i][MODEL_LFO2DEP] = 0;
-      params[i][MODEL_LFO2MIX] = 0;
-      params[i][MODEL_RTRG]    = 0;
-      params[i][MODEL_RTIM]    = 0;
-      params[i][MODEL_RENV]    = 1;   // envelope reset ON
-      params[i][MODEL_BUS1]    = 0;
-      params[i][MODEL_BUS2]    = 0;
-      params[i][MODEL_BUS3]    = 0;
+      memcpy_P(&params[i][MD_PARAMS_PER_TRACK], md_extended_param_defaults,
+               sizeof(md_extended_param_defaults));
       lfosB[i].init(i);
     }
     init_user_fx();
+  }
+#else
+  {
+    // LFO-B records, then routing and the reserved bytes. A legacy kit gets
+    // the defaults.
+    uint8_t ext[kKit65Reserved - kKit65Routes +
+                (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT];
+    decoder.start7Bit();
+    for (uint8_t i = 0; i < 16; i++) {
+      uint8_t compact[kKit65LfoB] = {i, 0, 0, 0, 0, 0, 0, 0, 0};
+      if (is_spsx_kit) {
+        decoder.get(compact, sizeof(compact));
+      } else {
+        memcpy_P(&params[i][MD_PARAMS_PER_TRACK], md_extended_param_defaults,
+                 sizeof(md_extended_param_defaults));
+      }
+      kit65_write(i * kKit65LfoB, compact, sizeof(compact));
+    }
+    decoder.stop7Bit();
+    memset(ext, MD_KIT_ROUTE_GLOBAL, 16);
+    memset(ext + 16, SPS_USER_FX_DEFAULT_PARAM, sizeof(ext) - 16);
+    if (is_spsx_kit) {
+      decoder.get(ext, sizeof(ext));
+    }
+    kit65_write(kKit65Routes, ext, sizeof(ext));
   }
 #endif
 
@@ -536,7 +627,8 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
   const uint8_t kit_ver =
       emit_spsx ? SPSX_KIT_VERSION : MDX_KIT_VERSION;
 #else
-  const uint8_t kit_ver = MDX_KIT_VERSION;
+  const bool emit_spsx = MD.x20();
+  const uint8_t kit_ver = emit_spsx ? SPSX_KIT_VERSION : MDX_KIT_VERSION;
 #endif
 
 #if !defined(__AVR__)
@@ -552,24 +644,23 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
   encoder->pack((uint8_t *)name, 16);
   name[16] = '\0';
 
-#if defined(__AVR__)
-  const uint8_t params_per_track = MD_KIT_PARAMS_PER_TRACK;
-#else
   const uint8_t params_per_track =
-      emit_spsx ? MD.spsxWireParamCount()
-                : MD_PARAMS_PER_TRACK;
-#endif
+      emit_spsx ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
   for (uint8_t i = 0; i < 16; i++) {
     encoder->pack((uint8_t *)params[i], params_per_track);
   }
   encoder->pack(levels, 16);
 
   encoder->start7Bit();
-  encoder->pack32(models, 16);
+  for (uint8_t track = 0; track < 16; ++track) {
+    // Legacy kit recipients understand tonal on/off, but not octave flags.
+    const uint32_t model = kit_ver == SPSX_KIT_VERSION ? models[track]
+                                                     : models[track] & ~0xc0000UL;
+    encoder->pack32(model);
+  }
   encoder->stop7Bit();
 
   // LFO-A section: compact 9 bytes/track for SPS-X, full 36 for MDX/legacy.
-#if !defined(__AVR__)
   if (emit_spsx) {
     encoder->start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
@@ -579,9 +670,7 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
       encoder->pack(compact_state, 4);
     }
     encoder->stop7Bit();
-  } else
-#endif
-  {
+  } else {
     encoder->start7Bit();
     for (uint8_t i = 0; i < 16; i++) {
       // Ensure LFSR magic marker is set for firmware compat
@@ -614,9 +703,22 @@ uint16_t MDKit::toSysex(ElektronDataToSysexEncoder *encoder) {
     }
     encoder->stop7Bit();
 
+    encoder->pack(outputRouting, sizeof(outputRouting));
     encoder->pack(&userBusFx[0][0], sizeof(userBusFx));
     encoder->pack(userPostFx, sizeof(userPostFx));
-    encoder->pack(outputRouting, sizeof(outputRouting));
+  }
+#else
+  if (emit_spsx) {
+    uint8_t ext[kKit65Reserved - kKit65Routes +
+                (SPS_USER_BUS_FX_COUNT + 1) * SPS_USER_FX_PARAM_COUNT];
+    encoder->start7Bit();
+    for (uint8_t i = 0; i < 16; i++) {
+      kit65_read(i * kKit65LfoB, ext, kKit65LfoB);
+      encoder->pack(ext, kKit65LfoB);
+    }
+    encoder->stop7Bit();
+    kit65_read(kKit65Routes, ext, sizeof(ext));
+    encoder->pack(ext, sizeof(ext));
   }
 #endif
 

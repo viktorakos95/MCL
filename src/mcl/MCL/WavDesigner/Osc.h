@@ -88,12 +88,20 @@ public:
 
 };
 
+// One of each oscillator at the same sample rate: what a render or a preview
+// of a waveform works with.
+struct OscSet {
+  SineOsc sine;
+  TriOsc tri;
+  PulseOsc pulse;
+  SawOsc saw;
+  UsrOsc usr;
+  OscSet(float sample_rate);
+};
+
 float render_osc_sample(uint8_t osc_type, float width,
                         const uint8_t *sine_levels,
                         const uint8_t *usr_values, uint16_t sine_level_sum,
-                        uint32_t sample_number, float freq,
-                        SineOsc &sine_osc, TriOsc &tri_osc,
-                        PulseOsc &pulse_osc, SawOsc &saw_osc,
-                        UsrOsc &usr_osc);
+                        uint32_t sample_number, float freq, OscSet &oscs);
 
 #endif /* OSC_H__ */

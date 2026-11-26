@@ -24,24 +24,6 @@ uint16_t LightPage::encoders_used_clock[4];
 
 void Page::update() {}
 
-LightPage::LightPage(Encoder *e1, Encoder *e2, Encoder *e3, Encoder *e4) {
-  encoders[0] = e1;
-  encoders[1] = e2;
-  encoders[2] = e3;
-  encoders[3] = e4;
-  encoder_focus = ENCODER_FOCUS_NONE;
-  encoder_key_control_mask = 0x0F;
-#if defined(MCL_HAS_DESKTOP_MOUSE)
-  mouse_encoder_focus = ENCODER_FOCUS_NONE;
-  mouse_encoder_drag_origin_y = 0;
-  mouse_encoder_drag_last_ticks = 0;
-  mouse_encoder_press_buttons = 0;
-  mouse_encoder_was_dragged = false;
-  clearPageEncoderHits();
-#endif
-  isSetup = false;
-}
-
 void LightPage::update() {
   encoder_t _encoders[GUI_NUM_ENCODERS];
 #if defined(PLATFORM_WASM)

@@ -119,14 +119,17 @@ void MenuPageBase::init() {
 }
 
 void MenuPageBase::init(bool generate_row_names) {
-  DEBUG_PRINTLN("MenuPageBase::init");
+  DEBUG_PRINTLN(F("MenuPageBase::init"));
   DevicePanelRef::set_primary_key_repeat(1);
   R.Clear();
   R.use_machine_names_short(); // for grid page
   R.use_icons_knob(); // for grid page
   R.use_menu_options();
   R.use_menu_layouts();
-  DEBUG_PRINT("R.Size() = ");
+  // gen_menu_device_names() adds one option row for each device.
+  RM_REQUIRE(sizeof(menu_option_t) * NUM_DEVS, __T_machine_names_short,
+             __T_icons_knob, __T_menu_options, __T_menu_layouts);
+  DEBUG_PRINT(F("R.Size() = "));
   DEBUG_PRINTLN(R.Size());
   R.restore_menu_layout_deps();
   (void)generate_row_names;
@@ -243,7 +246,7 @@ void MenuPageBase::draw_item(MenuBase *m, uint8_t item_n) {
 
 uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
                                 uint8_t width, uint8_t scrollbar_width) {
-  oled_display.setCursor(x_offset, y_offset);
+  oled_cursor(x_offset, y_offset);
   MenuBase *m = get_menu();
   uint8_t number_of_items = m->get_number_of_items();
   bool show_scrollbar = scrollbar_width > 0 && number_of_items > visible_rows;
@@ -260,14 +263,14 @@ uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
   uint8_t first_item = encoders[1]->cur - cur_row;
   for (uint8_t n = 0; n < max_items; n++) {
 
-    oled_display.setCursor(x_offset, y_offset + 8 * n);
+    oled_cursor(x_offset, y_offset + 8 * n);
     if (n == cur_row) {
-      oled_display.setTextColor(BLACK, WHITE);
+      oled_text_color(BLACK, WHITE);
       oled_display.fillRect(max(0, oled_display.getCursorX() - 3),
                             max(0, oled_display.getCursorY() - 6),
                             item_width, 7, WHITE);
     } else {
-      oled_display.setTextColor(WHITE, BLACK);
+      oled_text_color(WHITE, BLACK);
     }
     draw_item(m, first_item + n);
   }
@@ -289,12 +292,12 @@ uint8_t MenuPageBase::draw_menu(uint8_t x_offset, uint8_t y_offset,
 
   // draw_item.read(getRow());
 
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   return number_of_items;
 }
 
 void MenuPageBase::draw_right_menu(uint8_t width) {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.fillRect(128 - width - 2, 0, width + 2, 32, BLACK);
   draw_menu(128 - width, 8, width);
 }
@@ -304,9 +307,9 @@ void MenuPageBase::display() {
   MenuBase *m = get_menu();
   uint8_t x_offset = 43;
   oled_display.clearDisplay();
-  oled_display.setTextColor(WHITE, BLACK);
-  oled_display.setFont(&TomThumb);
-  oled_display.setCursor(0, 8);
+  oled_text_color(WHITE, BLACK);
+  oled_font_small();
+  oled_cursor(0, 8);
   oled_display.println(m->get_name());
   mcl_gui.draw_vertical_dashline(x_offset - 6);
 
@@ -323,7 +326,7 @@ bool MenuPageBase::enter() {
   void (*row_func)() = m->get_row_function(encoders[1]->cur);
   PageIndex page_callback = m->get_page_callback(encoders[1]->cur);
   if (page_callback != NULL_PAGE) {
-    DEBUG_PRINTLN("menu pushing page");
+    DEBUG_PRINTLN(F("menu pushing page"));
     DEBUG_PRINTLN((uint16_t)page_callback);
     mcl.pushPage(page_callback);
     return true;
@@ -386,7 +389,7 @@ bool MenuPageBase::handleEvent(gui_event_t *event) {
     if (EVENT_PRESSED(event, Buttons.BUTTON4)) {
       GUI.ignoreNextEvent(event->source);
     YES:
-      DEBUG_PRINTLN("YES");
+      DEBUG_PRINTLN(F("YES"));
       enter();
       return true;
     }

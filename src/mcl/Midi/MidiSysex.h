@@ -27,15 +27,11 @@ public:
   volatile uint8_t msgType;
   volatile uint8_t msg_rd;
 
-  MidiSysexListenerClass(MidiSysexClass *_sysex = NULL, uint8_t id0 = 0,
-                         uint8_t id1 = 0, uint8_t id2 = 0) {
-    sysex = _sysex;
-    ids[0] = id0;
-    ids[1] = id1;
-    ids[2] = id2;
-    msgType = 255;
-    msg_rd = 255;
-  }
+  // constexpr: global listeners are constant-initialised (no start-up code).
+  constexpr MidiSysexListenerClass(MidiSysexClass *_sysex = NULL,
+                                   uint8_t id0 = 0, uint8_t id1 = 0,
+                                   uint8_t id2 = 0)
+      : ids{id0, id1, id2}, sysex(_sysex), msgType(255), msg_rd(255) {}
 
   virtual void start() {}
   virtual void end() {}

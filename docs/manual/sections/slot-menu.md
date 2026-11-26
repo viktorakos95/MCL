@@ -1,6 +1,6 @@
 # Slot Menu
 
-The Slot Menu edits one slot or a rectangular range of slots from the Grid Page. It is the fastest way to adjust length, loop, jump and sequence-only load behavior without entering the full Save or Load page.
+The Slot Menu edits one slot or a rectangular range of slots from the Grid Page. It is the fastest way to adjust length, loop, jump and sequence-only load behavior without opening Save or Load.
 
 Open it by holding **[No/Exit]** on the Grid Page.
 

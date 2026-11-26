@@ -49,7 +49,7 @@ bool A4Sound::fromSysex_impl(ElektronSysexDecoder *decoder) {
   decoder->skip(sizeof(a4sound_footer));
   decoder->stop7Bit();
 
-  DEBUG_PRINTLN("A4Sound fromSysex_impl");
+  DEBUG_PRINTLN(F("A4Sound fromSysex_impl"));
   DEBUG_DUMP(name);
   DEBUG_DUMP(origPosition);
   return true;

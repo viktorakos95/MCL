@@ -10,7 +10,6 @@
 #include "GUI/Pages/BankPopupPage.h"
 #include "Devices/DeviceManager.h"
 #include "GUI/Pages/Project/FileBrowserPage.h"
-#include "GUI/Pages/Grid/GridIOOverlay.h"
 #include "GUI/Pages/Grid/GridPage.h"
 #include "GUI/Pages/Grid/GridPages.h"
 #include "GUI_hardware.h"
@@ -221,7 +220,7 @@ static bool tbd_bank_popup_tap_allowed(PageIndex pg) {
   if (pg == BANK_POPUP_PAGE) return true;
   if (pg == PAGE_SELECT_PAGE || pg == GRID_LOAD_PAGE ||
       pg == GRID_SAVE_PAGE || pg == TEXT_INPUT_PAGE ||
-      pg == QUESTIONDIALOG_PAGE || grid_io_overlay.is_active()) {
+      pg == QUESTIONDIALOG_PAGE || grid_page.io_armed()) {
     return false;
   }
   if (is_tbd_menu_page(pg) || is_tbd_file_browser_page(pg)) return false;
@@ -230,7 +229,7 @@ static bool tbd_bank_popup_tap_allowed(PageIndex pg) {
 }
 
 static bool tbd_consume_unavailable_primary_ui(PageIndex pg) {
-  if (grid_io_overlay.is_active()) return false;
+  if (grid_page.io_armed()) return false;
   switch (pg) {
   case PAGE_SELECT_PAGE:
   case BANK_POPUP_PAGE:
@@ -362,7 +361,7 @@ bool TbdPanel::handle_grid_trig_preview(gui_event_t *event, uint8_t trig_idx) {
   if (event->mask != EVENT_BUTTON_PRESSED) return false;
   if (trig_idx >= 16) return false;
   if (mcl.currentPage() != GRID_PAGE) return false;
-  if (grid_page.bank_popup || grid_io_overlay.is_active()) return false;
+  if (grid_page.bank_popup || grid_page.io_armed()) return false;
 
   MidiDevice *device = grid_trig_preview_device();
   if (device == nullptr) {
@@ -464,16 +463,16 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
       orig_src == ButtonsClass::FUNC_BUTTON2 ||
       orig_src == ButtonsClass::FUNC_BUTTON3;
   if (arrow_trace) {
-    DEBUG_PRINT("arrow ");
+    DEBUG_PRINT(F("arrow "));
     DEBUG_PRINT((unsigned)orig_src);
     DEBUG_PRINT(is_press ? " P" : (is_release ? " R" : " ?"));
-    DEBUG_PRINT(" pg=");
+    DEBUG_PRINT(F(" pg="));
     DEBUG_PRINT((unsigned)pg);
-    DEBUG_PRINT(" tbd_ui=");
+    DEBUG_PRINT(F(" tbd_ui="));
     DEBUG_PRINT((unsigned)TBD.is_ui_active());
-    DEBUG_PRINT(" dm_ui=");
+    DEBUG_PRINT(F(" dm_ui="));
     DEBUG_PRINT((unsigned)ui_active);
-    DEBUG_PRINT(" collapsed=");
+    DEBUG_PRINT(F(" collapsed="));
     DEBUG_PRINTLN((unsigned)ui_collapsed);
   }
 
@@ -660,11 +659,11 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
   const bool grid_select_context =
       !sps_collapsed_active && !ui_expanded && !is_local_nav_page &&
       grid_page_active && !grid_page.show_slot_menu &&
-      !grid_io_overlay.is_active();
+      !grid_page.io_armed();
   const bool track_select_context =
       grid_select_context ||
       (!sps_collapsed_active && !ui_expanded && !is_local_nav_page &&
-       !grid_io_overlay.is_active() &&
+       !grid_page.io_armed() &&
        (pg == SEQ_PTC_PAGE || pg == MIXER_PAGE));
 
   if (tempo_track_select_down_ &&
@@ -751,7 +750,7 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
   }
 
   if (tbd_tempo_page.is_active() && tbd_tempo_page.handleEvent(event)) {
-    if (arrow_trace) DEBUG_PRINTLN("  arrow eaten by tempo_page");
+    if (arrow_trace) DEBUG_PRINTLN(F("  arrow eaten by tempo_page"));
     return true;
   }
 
@@ -776,25 +775,22 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
     return true;
   }
 
-  const bool can_open_grid_io_overlay =
+  const bool can_arm_grid_io =
       !ui_expanded && !is_local_nav_page &&
       grid_page_active && !grid_page.show_slot_menu &&
-      !grid_io_overlay.is_active();
-  auto open_grid_io_overlay = [](GridIOOverlay::Mode mode,
-                                 uint8_t button) {
+      !grid_page.io_armed();
+  auto arm_grid_io = [](uint8_t mode, uint8_t button) {
     GUI.ignoreNextEvent(button);
-    grid_io_overlay.begin(mode);
+    grid_page.io_begin(mode);
     return true;
   };
 
-  if (can_open_grid_io_overlay && is_press) {
+  if (can_arm_grid_io && is_press) {
     if (orig_src == ButtonsClass::BUTTON4) {
-      return open_grid_io_overlay(GridIOOverlay::MODE_LOAD,
-                                  ButtonsClass::BUTTON4);
+      return arm_grid_io(GRID_IO_LOAD, ButtonsClass::BUTTON4);
     }
     if (orig_src == ButtonsClass::BUTTON1) {
-      return open_grid_io_overlay(GridIOOverlay::MODE_SAVE,
-                                  ButtonsClass::BUTTON1);
+      return arm_grid_io(GRID_IO_SAVE, ButtonsClass::BUTTON1);
     }
   }
 
@@ -847,17 +843,17 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
       (!TBD.is_ui_collapsed() ||
        (orig_src >= ButtonsClass::FUNC_BUTTON6 &&
         orig_src <= ButtonsClass::FUNC_BUTTON9))) {
-    if (arrow_trace) DEBUG_PRINTLN("  -> TBD.handle_ui_event");
+    if (arrow_trace) DEBUG_PRINTLN(F("  -> TBD.handle_ui_event"));
     if (TBD.handle_ui_event(event)) {
-      if (arrow_trace) DEBUG_PRINTLN("  TBD.handle_ui_event consumed");
+      if (arrow_trace) DEBUG_PRINTLN(F("  TBD.handle_ui_event consumed"));
       return true;
     }
-    if (arrow_trace) DEBUG_PRINTLN("  TBD.handle_ui_event did NOT consume");
+    if (arrow_trace) DEBUG_PRINTLN(F("  TBD.handle_ui_event did NOT consume"));
   }
 
   if (!is_local_nav_page && ui_expanded &&
       device_manager.handle_ui_event(event)) {
-    if (arrow_trace) DEBUG_PRINTLN("  device_manager.handle_ui_event consumed");
+    if (arrow_trace) DEBUG_PRINTLN(F("  device_manager.handle_ui_event consumed"));
     return true;
   }
 
@@ -1052,13 +1048,13 @@ bool TbdPanel::handleEvent(gui_event_t *event) {
 
   if (key != 255) {
     if (arrow_trace) {
-      DEBUG_PRINT("  arrow fell through to MDX_KEY ");
+      DEBUG_PRINT(F("  arrow fell through to MDX_KEY "));
       DEBUG_PRINTLN((unsigned)key);
     }
     key_interface.key_event(key, is_release);
     return true;
   }
-  if (arrow_trace) DEBUG_PRINTLN("  arrow returned false (unhandled)");
+  if (arrow_trace) DEBUG_PRINTLN(F("  arrow returned false (unhandled)"));
   return false;
 }
 

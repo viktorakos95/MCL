@@ -31,8 +31,8 @@ static uint8_t portToLogicalIdx(uint8_t port) {
 static bool resource_loaded = false;
 static void prepare_display() {
   oled_display.clearDisplay();
-  oled_display.setFont();
-  oled_display.setCursor(60, 10);
+  oled_font_default();
+  oled_cursor(60, 10);
   mcl_println_P(mclstr_peering);
   if (!resource_loaded) {
     R.Clear();
@@ -79,7 +79,7 @@ static DriverList drivers_for_slot(uint8_t slot_idx, bool force_generic) {
 #endif
 
 void MidiActivePeering::disconnect(uint8_t port) {
-  DEBUG_PRINTLN("disconnect");
+  DEBUG_PRINTLN(F("disconnect"));
   DEBUG_PRINTLN(port);
   MidiClass *pmidi_class = midi_class_for_port(port);
   if (!pmidi_class) {
@@ -152,7 +152,7 @@ static void probePort(uint8_t port, DriverList drivers) {
   if (!pmidi)
     return;
   uint8_t id = pmidi->device.get_id();
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   if (id != DEVICE_NULL && port != UARTUSB_PORT &&
 #ifdef PLATFORM_TBD
       port != UARTP4_PORT &&
@@ -166,7 +166,7 @@ static void probePort(uint8_t port, DriverList drivers) {
       MidiClock.init();
     }
     pmidi->set_speed((uint32_t)31250);
-    DEBUG_PRINTLN("disconnecting");
+    DEBUG_PRINTLN(F("disconnecting"));
     DeviceIdx device_idx =
         static_cast<DeviceIdx>(device_manager.logical_idx_for_port(port));
     if (device_idx == DeviceIdx::None) {
@@ -195,7 +195,7 @@ static void probePort(uint8_t port, DriverList drivers) {
       mcl_gui.delay_progress(0);
       for (uint8_t probe_retry = 0; probe_retry < 6 && !probe_success;
            ++probe_retry) {
-        DEBUG_PRINTLN("probing...");
+        DEBUG_PRINTLN(F("probing..."));
         driver->in_probe = true;
         probe_success = driver->probe();
         driver->in_probe = false;

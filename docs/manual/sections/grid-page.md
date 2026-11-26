@@ -36,12 +36,12 @@ Empty slots are shown as empty or placeholder cells.
 | **[Left]** / **[Right]** | Move across columns. |
 | **[Up]** / **[Down]** | Move across rows. |
 | **[Scale]** | Toggle Grid X / Grid Y. |
-| **[Yes/Enter]** | Open Load. |
-| **[Function]** + **[Yes/Enter]** | Open Save. |
+| **[Yes/Enter]**, **`Load | Yes`** | Open Load. |
+| **[Function]** + **[Yes/Enter]**, **`Save | No`** | Open Save. |
 | **[No/Exit]** | Hold to open the Slot Menu. |
 | **[Bank]** + **[Trig]** | Load or queue rows by bank position. |
 
-On TBD, Save and Load keep the Grid Page visible rather than replacing the whole page.
+On MegaCommand, MegaCMD and TBD, Load and Save open on the Grid Page itself: the left column becomes their panel and the grid stays visible. While they are open, an arrow beside the grid marks the row they act on.
 
 ## Active Grid
 
@@ -58,8 +58,8 @@ Use **[Scale]** to toggle grids. Save, load, slot editing and range selection ap
 
 | Action | Result |
 | --- | --- |
-| **[Function]** + **[Yes/Enter]** | Opens Save. |
-| **[Yes/Enter]** | Opens Load. |
+| **[Function]** + **[Yes/Enter]**, **`Save | No`** | Opens Save. |
+| **[Yes/Enter]**, **`Load | Yes`** | Opens Load. |
 | **[No/Exit]** held, then **[Yes/Enter]** | Loads the selected Slot Menu range from the grid page. |
 
 Save and Load can act on individual slots or on groups. Group selection is described in the Save and Load pages.

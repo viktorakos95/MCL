@@ -11,6 +11,10 @@
 
 #define LOCK_AMOUNT 256
 
+// Version 6 widened the machine record to 38 parameters with LFO-B settings
+// and output routing. Older tracks are widened as they are loaded.
+#define MD_TRACK_STORAGE_VERSION 6
+
 #define SAVE_SEQ 0
 #define SAVE_MD_PATTERN_IMPORT 1
 #define SAVE_MERGE 2
@@ -59,11 +63,16 @@ public:
   TrackLoadFadeData load_fade;
   MDTrack() {
     active = MD_TRACK_TYPE;
+    // A track built in RAM is in the current layout; a loaded one carries
+    // the version it was stored with.
+    version = MD_TRACK_STORAGE_VERSION;
   }
   size_t _sizeof() const {
     return sizeof(MDTrack) - sizeof(void*);
   }
   void init();
+  // A track built for an empty grid slot gets the default swing mask.
+  void init(uint8_t, SeqTrack *) override { seq_data.set_default_swing(); }
   void init_defaults() override {
     machine.init();
     mod_data.init();
@@ -118,7 +127,8 @@ public:
                               SeqTrack *seq_track) override;
 #endif
   uint8_t get_model() override { return machine.get_model(); }
-  uint8_t storage_version() const override { return SEQ_TRACK_LOAD_FADE_STORAGE_VERSION; }
+  uint8_t storage_version() const override { return MD_TRACK_STORAGE_VERSION; }
+  void on_storage_loaded() override;
   TrackLoadFadeData *load_fade_data() override { return &load_fade; }
   const TrackLoadFadeData *load_fade_data() const override { return &load_fade; }
 

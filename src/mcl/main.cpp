@@ -16,7 +16,7 @@
 
 void setup() {
   DEBUG_INIT();
-  DEBUG_PRINTLN("debug mode online");
+  DEBUG_PRINTLN(F("debug mode online"));
   GUI_hardware.init();
   delay(2000);
 #if !defined(DEBUGMODE) || !defined(__AVR__)

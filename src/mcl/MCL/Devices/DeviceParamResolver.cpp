@@ -68,4 +68,12 @@ uint8_t primary_perf_editor_dest(uint8_t target) {
   return perf_dest_for_target(DeviceIdx::Primary, target);
 }
 
+bool perf_value_text(uint8_t dest, uint8_t param, uint8_t value, char *out) {
+  return perf(dest).params.value_text(param, value, out);
+}
+
+MidiDeviceParamRange perf_value_range(uint8_t dest, uint8_t param) {
+  return perf(dest).params.value_range(param);
+}
+
 } // namespace DeviceParamResolver

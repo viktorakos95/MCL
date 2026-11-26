@@ -3,10 +3,33 @@
 #include "R.h"
 
 #if defined(__AVR__)
-#define RM_BUFSIZE 6500
+// The largest set a page loads together is the menu page's: short machine
+// names, knob icons, menu options, menu layouts and one option row for each
+// device, 5,633 bytes.
+#define RM_BUFSIZE 5633
+#elif defined(PLATFORM_TBD)
+// Every rp2040 resource set loaded at once, plus one menu option row for each
+// device, is 14,344 + NUM_DEVS * sizeof(menu_option_t) bytes (checked in
+// ResourceManager.cpp).
+#define RM_BUFSIZE 16384
 #else
 #define RM_BUFSIZE 32768
 #endif
+
+// The unpacked size of a set of resources.
+template <typename... T> struct rm_set_size {
+  static constexpr size_t value = 0;
+};
+template <typename T, typename... Rest> struct rm_set_size<T, Rest...> {
+  static constexpr size_t value = T::__total_size + rm_set_size<Rest...>::value;
+};
+
+// Resources are unpacked into the buffer without a bounds check. A page that
+// loads several states its set here, with the bytes it takes with Allocate(),
+// and the build stops if the set outgrows the buffer.
+#define RM_REQUIRE(extra, ...)                                                 \
+  static_assert(rm_set_size<__VA_ARGS__>::value + (extra) <= RM_BUFSIZE,      \
+                "resource set does not fit RM_BUFSIZE")
 
 class ResourceManager {
 private:
@@ -24,7 +47,9 @@ private:
 
 public:
 	ResourceManager() = default;
-	void Clear();
+	// Out of line: every page's init() calls it, and a call is smaller than
+	// its body at each of them.
+	void Clear() NOINLINE();
 	void SetPersistent();
 	void Save(uint8_t* buf, size_t* sz);
 	void Restore(uint8_t* buf, size_t sz);

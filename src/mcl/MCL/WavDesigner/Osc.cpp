@@ -151,13 +151,14 @@ float UsrOsc::get_sample(uint32_t sample_number, float freq,
   return v_start + (v_end - v_start) * phase;
 }
 
+OscSet::OscSet(float sample_rate)
+    : sine(sample_rate), tri(sample_rate), pulse(sample_rate),
+      saw(sample_rate), usr(sample_rate) {}
+
 float render_osc_sample(uint8_t osc_type, float width,
                         const uint8_t *sine_levels,
                         const uint8_t *usr_values, uint16_t sine_level_sum,
-                        uint32_t sample_number, float freq,
-                        SineOsc &sine_osc, TriOsc &tri_osc,
-                        PulseOsc &pulse_osc, SawOsc &saw_osc,
-                        UsrOsc &usr_osc) {
+                        uint32_t sample_number, float freq, OscSet &oscs) {
   float osc_sample = 0;
   switch (osc_type) {
   case SIN_OSC:
@@ -167,7 +168,7 @@ float render_osc_sample(uint8_t osc_type, float width,
       for (uint8_t h = 1; h <= 16; h++) {
         uint8_t sine_level = sine_levels[h - 1];
         if (sine_level != 0) {
-          osc_sample += sine_osc.get_sample(sample_number, freq * (float)h) *
+          osc_sample += oscs.sine.get_sample(sample_number, freq * (float)h) *
                         (float)sine_level;
         }
       }
@@ -175,19 +176,19 @@ float render_osc_sample(uint8_t osc_type, float width,
     }
     break;
   case TRI_OSC:
-    tri_osc.width = width;
-    osc_sample = tri_osc.get_sample(sample_number, freq);
+    oscs.tri.width = width;
+    osc_sample = oscs.tri.get_sample(sample_number, freq);
     break;
   case PUL_OSC:
-    pulse_osc.width = width;
-    osc_sample = pulse_osc.get_sample(sample_number, freq);
+    oscs.pulse.width = width;
+    osc_sample = oscs.pulse.get_sample(sample_number, freq);
     break;
   case SAW_OSC:
-    saw_osc.width = width;
-    osc_sample = saw_osc.get_sample(sample_number, freq);
+    oscs.saw.width = width;
+    osc_sample = oscs.saw.get_sample(sample_number, freq);
     break;
   case USR_OSC:
-    osc_sample = usr_osc.get_sample(sample_number, freq, usr_values);
+    osc_sample = oscs.usr.get_sample(sample_number, freq, usr_values);
     break;
   }
   return osc_sample;

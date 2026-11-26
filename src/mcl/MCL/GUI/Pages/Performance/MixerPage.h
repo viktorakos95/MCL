@@ -90,7 +90,7 @@ public:
   uint16_t redraw_mask;
   bool redraw_mutes;
   bool show_mixer_menu;
-  bool fill_edit_mode = false;
+  bool fill_edit_mode; // mixer_page is the only instance: zero from .bss
 
   bool draw_encoders;
 

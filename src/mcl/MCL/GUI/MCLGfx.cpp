@@ -13,26 +13,29 @@
 
 void MCLGfx::draw_evil(unsigned char* evil) {
   auto oldfont = oled_display.getFont();
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   for (int8_t x = -45; x < 128 - 45; x += 2) {
   oled_display.fillScreen(WHITE);
-  oled_display.setCursor(x - 60, 10);
-  oled_display.setTextColor(BLACK, WHITE);
+  oled_cursor(x - 60, 10);
+  oled_text_color(BLACK, WHITE);
   mcl_println_P(mclstr_this_piece_of);
-  oled_display.setCursor(x - 60, 20);
+  oled_cursor(x - 60, 20);
   mcl_println_P(mclstr_machine_is_ok);
 
   oled_display.drawBitmap(x, 1, evil, 33, 31, BLACK);
   oled_display.display();
+#ifdef __AVR__
+  delay(11); // what the frame send took before its waits were removed
+#endif
 }
   delay(2000);
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   oled_display.setFont(oldfont);
 }
 
 void MCLGfx::splashscreen(unsigned char* bitmap) {
   oled_display.clearDisplay();
-  oled_display.setFont();
+  oled_font_default();
 
 #ifdef MCL_SPLASH_128_64
   constexpr uint8_t logo_y = (OLED_HEIGHT - BITMAP_MCL_LOGO_H) / 2;
@@ -43,10 +46,10 @@ void MCLGfx::splashscreen(unsigned char* bitmap) {
   oled_display.drawBitmap(35, logo_y, bitmap, BITMAP_MCL_LOGO_W,
                           BITMAP_MCL_LOGO_H, WHITE);
   /* oled_display.println("MEGA");
-   oled_display.setCursor(22, 15);
+   oled_cursor(22, 15);
    oled_display.println("COMMAND");
    */
-  oled_display.setCursor(90, logo_y);
+  oled_cursor(90, logo_y);
   oled_display.setTextSize(1);
   mcl_print_P(mclstr_v_label);
   oled_display.print(VERSION_STR);
@@ -58,18 +61,16 @@ void MCLGfx::splashscreen(unsigned char* bitmap) {
 #ifdef MCL_SPLASH_128_64
     constexpr uint8_t wipe_top = (OLED_HEIGHT - 32) / 2;
     constexpr uint8_t wipe_bottom = wipe_top + 31;
-    oled_display.drawFastHLine(35, wipe_top + a, BITMAP_MCL_LOGO_W + 34,
+    oled_hline(35, wipe_top + a, BITMAP_MCL_LOGO_W + 34,
                                BLACK);
-    oled_display.drawFastHLine(35, wipe_bottom - a, BITMAP_MCL_LOGO_W + 34,
+    oled_hline(35, wipe_bottom - a, BITMAP_MCL_LOGO_W + 34,
                                BLACK);
 #else
-    oled_display.drawFastHLine(35, a, BITMAP_MCL_LOGO_W + 34, BLACK);
-    oled_display.drawFastHLine(35, 32 - a, BITMAP_MCL_LOGO_W + 34, BLACK);
+    oled_hline(35, a, BITMAP_MCL_LOGO_W + 34, BLACK);
+    oled_hline(35, 32 - a, BITMAP_MCL_LOGO_W + 34, BLACK);
 #endif
     oled_display.display();
-#ifndef __AVR__
     delay(10);
-#endif
   }
 
 }

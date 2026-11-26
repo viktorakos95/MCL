@@ -25,7 +25,7 @@ uint8_t _findchar(char chr) {
 }
 
 void TextInputPage::init() {
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   mcl_gui.draw_popup(title,false,24);
 }
 
@@ -148,16 +148,16 @@ void TextInputPage::display_normal() {
 
   // mcl_gui.clear_popup(); <-- E_TOOSLOW
   oled_display.fillRect(s_text_x, s_text_y, 6 * length, 8, BLACK);
-  oled_display.setCursor(s_text_x, s_text_y);
+  oled_cursor(s_text_x, s_text_y);
   oled_display.println(text);
   if (time < FLASH_SPEED) {
     // the default font is 6x8
     uint8_t tx = s_text_x + 6 * cursor_position;
     oled_display.fillRect(tx, s_text_y, 6, 8, WHITE);
-    oled_display.setCursor(s_text_x + 6 * cursor_position, s_text_y);
-    oled_display.setTextColor(BLACK);
+    oled_cursor(s_text_x + 6 * cursor_position, s_text_y);
+    oled_text_color(BLACK);
     oled_display.print(text[cursor_position]);
-    oled_display.setTextColor(WHITE);
+    oled_text_color(WHITE);
   }
   if (time > FLASH_SPEED * 2) {
     last_clock = read_clock_ms();
@@ -165,15 +165,15 @@ void TextInputPage::display_normal() {
 }
 
 void TextInputPage::display_charpane() {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   oled_display.clearDisplay();
-  oled_display.drawRect(0, 0, 128, 32, WHITE);
+  oled_rect(0, 0, 128, 32, WHITE);
   uint8_t chidx = 0;
   for (uint8_t y = 0; y < charpane_h; ++y) {
     for (uint8_t x = 0; x < charpane_w; ++x) {
       auto sx = x, sy = y;
       calc_charpane_coord(sx, sy);
-      oled_display.setCursor(sx + charpane_padx, sy + charpane_pady);
+      oled_cursor(sx + charpane_padx, sy + charpane_pady);
       oled_display.print(_getchar(chidx));
       ++chidx;
     }
@@ -263,7 +263,7 @@ bool TextInputPage::handleEvent(gui_event_t *event) {
 #endif
     if (EVENT_RELEASED(event, Buttons.BUTTON1)) {
     NO:
-      DEBUG_PRINTLN("pop a");
+      DEBUG_PRINTLN(F("pop a"));
       return_state = false;
       GUI.ignoreNextEvent(event->source);
       mcl.popPage();

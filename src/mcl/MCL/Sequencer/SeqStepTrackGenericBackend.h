@@ -137,15 +137,19 @@ public:
       step_edit()->close_microtiming(param_context());
     }
   }
-  void draw_microtiming(uint8_t encoder_value) const {
+  void draw_microtiming(uint8_t encoder_value,
+                        uint8_t condition = MICROTIMING_NO_CONDITION,
+                        uint8_t mode = 0) const {
     if (!uses_kit_sound()) {
       return;
     }
     if (uses_signed_microtiming()) {
       step_edit()->draw_microtiming_signed(
-          param_context(), speed(), microtiming_from_encoder(encoder_value));
+          param_context(), speed(), microtiming_from_encoder(encoder_value),
+          condition, mode);
     } else {
-      step_edit()->draw_microtiming(param_context(), speed(), encoder_value);
+      step_edit()->draw_microtiming(param_context(), speed(), encoder_value,
+                                    condition, mode);
     }
   }
   void clear_step_edit_popup() const {
@@ -180,6 +184,11 @@ public:
                              size_t dst_len) const {
     return DeviceParamResolver::target_for_idx(param_device_idx(), param_dest())
         .lock_param_label(param_id, dst, (uint8_t)dst_len);
+  }
+  // Four bytes; false when the value shows as its plain number.
+  bool lock_value_text(uint8_t param_id, uint8_t value, char *dst) const {
+    return DeviceParamResolver::target_for_idx(param_device_idx(), param_dest())
+        .value_text(param_id, value, dst);
   }
 
   uint8_t length() const {
@@ -346,6 +355,20 @@ public:
     }
   }
   void clear_conditional(uint8_t step) { set_conditional(step, 0, false); }
+  // The Machinedrum's mode number: 0 TRIG, 1 TRIG+LOCK, 5 LOCK.
+  uint8_t condition_mode(uint8_t step) const {
+    return kind_ == KIND_MD ? (tracks_.md->steps[step].cond_plock ? 1 : 0)
+                            : tracks_.stepseq->condition_mode_value(step);
+  }
+  void cycle_condition_mode(uint8_t step) {
+    if (kind_ == KIND_MD) {
+      auto &s = tracks_.md->steps[step];
+      s.cond_plock = !s.cond_plock;
+      tracks_.md->clear_step_oneshot(step);
+    } else {
+      tracks_.stepseq->cycle_condition_mode_value(step);
+    }
+  }
   void set_timing_from_encoder(uint8_t step, uint8_t encoder_value) {
     if (kind_ == KIND_MD) {
       int8_t mt = SeqTrack::timing_to_microtiming(

@@ -8,9 +8,13 @@ Open it from the Grid Page with:
 [Function] + [Yes/Enter]
 ```
 
+On MegaCommand and MegaCMD, **`Save | No`** opens it too.
+
 ![save to a](../assets/images/save_to_a.png)
 
-On TBD, Save keeps the Grid Page visible. On MegaCommand and MegaCMD, it opens as a page.
+On MegaCommand, MegaCMD and TBD, Save opens on the Grid Page itself. The left column shows `SAVE` and what is saved (`SND` and `SEQ` into the grid), with the row on line 4 and an arrow beside the row in the grid.
+
+Save closes after a save. With `CONFIG > SYSTEM > LOAD/SAVE` set to `STAY`, it stays open for the next save.
 
 ## Stored Data
 
@@ -29,10 +33,13 @@ The actual saved data depends on the selected device and slot type.
 
 | Control | Assignment |
 | --- | --- |
-| **[Trig]** keys | Select the slots to save. |
-| **[Scale]** | Toggle Grid X / Grid Y while selecting. |
-| **[Yes/Enter]** | Hold to open group selection; release to save selected groups. |
-| **[No/Exit]** | Cancel Save. |
+| **[Trig]** keys | Select the slots to save. Releasing the trigs saves them. |
+| **[Scale]**, **`Page`** | Toggle Grid X / Grid Y while selecting. |
+| **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to save the selected groups. |
+| **[No/Exit]**, **`Save | No`**, **`Load | Yes`** | Close Save. |
+| **[Up/Down]**, **[Left/Right]** | With `LOAD/SAVE` at `CLOSE` or `STAY`, **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Save stays open. At `LEGACY` they close Save and move the Grid Page cursor. |
+| **[Rec]**, **[Classic/Extended]** | Open the Step Editor, or the Mixer Page while the sequencer plays. Save opens again when you return to the Grid Page. |
+| Other keys, including **[Play]** and **[Stop]** | Close Save and do their usual job. |
 
 ## Saving Individual Slots
 
@@ -54,7 +61,7 @@ To save tracks from both grids in one operation:
 
 ## Group Save
 
-Hold **[Yes/Enter]** from Save to open `SAVE GROUPS`.
+Hold **[Yes/Enter]**, or **`Shift | Menu`**, from Save to open group selection.
 
 ![group select page](../assets/images/group_select_page.png)
 
@@ -68,7 +75,7 @@ The group selector uses the first five trig keys.
 | 4 | Auxiliary or route state group. |
 | 5 | Tempo/clock state group. |
 
-Use **[Trig 1-5]** to toggle the desired groups, then release **[Yes/Enter]** to save them.
+Use **[Trig 1-5]** to toggle the groups, then release **[Yes/Enter]** or **`Shift | Menu`** to save them.
 
 The group icons follow the configured devices. A classic Machinedrum project may show MD-related groups; a TBD or generic MIDI project may show different device icons.
 

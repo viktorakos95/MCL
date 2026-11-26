@@ -25,7 +25,7 @@ void SampleBrowserPage::setup() {
 }
 
 void SampleBrowserPage::display() {
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
   if (filemenu_active) {
     draw_menu();
     return;
@@ -50,7 +50,7 @@ void SampleBrowserPage::display() {
 
       if (is_wav) {
         if (!wav_file.open(temp_entry, false)) { goto end; }
-        oled_display.setCursor(0, 23);
+        oled_cursor(0, 23);
 
         uint16_t sample_rate_k10 = wav_file.header.fmt.sampleRate / 100;
         oled_display.print(sample_rate_k10 / 10);
@@ -83,7 +83,7 @@ void SampleBrowserPage::display() {
         tmp_file.close();
       }
       else { goto end; }
-      oled_display.setCursor(0, 30);
+      oled_cursor(0, 30);
       if (size < 1024) {
        oled_display.print(size);
        oled_display.print('B');
@@ -110,27 +110,19 @@ void SampleBrowserPage::init(uint8_t show_samplemgr_) {
   filemenu_active = false;
   select_dirs = false;
   show_samplemgr = show_samplemgr_;
+  // Folders, the receive row and the file menu belong to the card's file
+  // list, not to the Machinedrum's sample slots.
+  draw_dirs = show_dirs = show_save = show_filemenu = show_new_folder =
+      show_parent = !show_samplemgr;
 
   if (show_samplemgr) {
     strcpy_P(title, mclstr_title_md_rom);
     encoders[1] = &samplebrowser_param3;
-    draw_dirs = false;
-    show_dirs = false;
-    show_save = false;
-    show_filemenu = false;
-    show_new_folder = false;
-    show_parent = false;
     query_sample_slots();
   } else {
     strcpy_P(title, mclstr_title_sample);
     encoders[1] = &samplebrowser_param2;
     if (old_cur_row != 255) { cur_row = old_cur_row; old_cur_row = 255;}
-    draw_dirs = true;
-    show_dirs = true;
-    show_save = true;
-    show_filemenu = true;
-    show_new_folder = true;
-    show_parent = true;
     //if (query) {
       SD.chdir(lwd);
       query_filesystem();
@@ -195,7 +187,7 @@ void SampleBrowserPage::recv_wav(int slot, bool silent) {
   temp_entry[sizeof(temp_entry) - sizeof(".wav")] = '\0';
   strcat(temp_entry, ".wav");
   if (!silent && SD.exists(temp_entry)) { gfx.alert("File exists!", temp_entry); return; }
-  DEBUG_PRINTLN("bulk recv");
+  DEBUG_PRINTLN(F("bulk recv"));
   DEBUG_PRINTLN(temp_entry);
   #if defined(__AVR__)
     MidiUartClass *uart_clock_recv = nullptr;
@@ -244,7 +236,7 @@ void SampleBrowserPage::on_select(const char *__) {
   if (!show_samplemgr) {
     pending_action = PA_SELECT;
     show_ram_slots = false;
-    DEBUG_PRINTLN("on select");
+    DEBUG_PRINTLN(F("on select"));
     init(true);
   } else {
     auto slot = encoders[1]->cur;
@@ -266,21 +258,15 @@ void SampleBrowserPage::on_select(const char *__) {
 bool SampleBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
-      bool action_entry = param2->cur == 0;
-      bool regular_entry = !action_entry && param2->cur < numEntries;
+      char entry[FILE_ENTRY_SIZE];
+      uint8_t entry_type;
+      bool regular_entry = get_selected_entry(entry, entry_type);
       bool clone_entry = regular_entry;
-      if (regular_entry) {
-        char entry[FILE_ENTRY_SIZE];
-        uint8_t entry_type;
-        get_entry(param2->cur, entry, entry_type);
-        regular_entry = strcmp(entry, "..") != 0;
-        clone_entry = regular_entry;
 #ifdef __AVR__
-        clone_entry = clone_entry && entry_type == FILE_TYPE;
+      clone_entry = clone_entry && entry_type == FILE_TYPE;
 #endif
-      }
       uint16_t disabled = FM_MASK(FM_MOVE) | FM_MASK(FM_VERSIONS);
-      if (action_entry) {
+      if (param2->cur == 0) {
         disabled |= FM_MASK(FM_NEW_FOLDER);
       } else {
         disabled |= FM_MASK(FM_RECVALL) | FM_MASK(FM_SENDALL);
@@ -291,8 +277,7 @@ bool SampleBrowserPage::handleEvent(gui_event_t *event) {
       if (!clone_entry) {
         disabled |= FM_MASK(FM_DUPLICATE);
       }
-      set_file_menu_disabled_mask(disabled);
-      open_filemenu();
+      open_filemenu(disabled);
       return true;
     }
   }
@@ -300,13 +285,11 @@ bool SampleBrowserPage::handleEvent(gui_event_t *event) {
 }
 
 void SampleBrowserPage::query_sample_slots() {
-  DEBUG_PRINTLN("query sample slots");
-  encoders[1]->cur = 0;
-  encoders[1]->old = 0;
+  DEBUG_PRINTLN(F("query sample slots"));
   old_cur_row = cur_row;
+  set_cursor(0, 0);
   numEntries = 0;
   cur_file = 255; // XXX why 255?
-  cur_row = 0;
   uint8_t data[2] = {0x70, 0x34};
   s_query_returned = false;
 
@@ -353,11 +336,11 @@ bool SampleBrowserPage::_handle_filemenu() {
       gfx.alert("NON", "UW");
       goto end;
     }
-   DEBUG_PRINTLN("Recv samples");
+   DEBUG_PRINTLN(F("Recv samples"));
     DEBUG_PRINTLN(numEntries);
     for (uint8_t n = 0; n < numEntries && !key_interface.is_key_down(MDX_KEY_NO) &&
          !BUTTON_DOWN(Buttons.BUTTON1); n++) {
-      DEBUG_PRINTLN("Recv wav");
+      DEBUG_PRINTLN(F("Recv wav"));
       char wav_name[FILE_ENTRY_SIZE];
       get_entry(n, wav_name);
       DEBUG_PRINTLN(wav_name);
@@ -384,7 +367,7 @@ bool SampleBrowserPage::_handle_filemenu() {
       if (!isdigit(wav_name[0]) || !isdigit(wav_name[1]))
         continue;
       uint8_t slot = (wav_name[0] - '0') * 10 + wav_name[1] - '0' - 1;
-      DEBUG_PRINTLN("slot pos:");
+      DEBUG_PRINTLN(F("slot pos:"));
       DEBUG_PRINTLN(slot);
       DEBUG_PRINTLN((uint8_t)wav_name[0]);
       DEBUG_PRINTLN((uint8_t)wav_name[1]);

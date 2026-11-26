@@ -9,9 +9,7 @@ class MidiDevice;
 
 class MidiActivePeering : public Task {
 public:
-  MidiActivePeering(uint16_t _interval = 250) : Task(_interval) {
-    setup(_interval);
-  }
+  constexpr MidiActivePeering(uint16_t _interval = 250) : Task(_interval) {}
   void setup(uint16_t _interval = 250) { interval = _interval; }
   void disconnect(uint8_t port);
   void force_connect(uint8_t port, MidiDevice *driver);

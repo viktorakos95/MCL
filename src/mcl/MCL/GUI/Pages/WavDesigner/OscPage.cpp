@@ -168,7 +168,7 @@ void OscPage::loop() {
 
 
 
-void OscPage::display() {
+COLD_SMALL() void OscPage::display() {
   // oled_display.clearDisplay();
   oled_display.fillRect(0, 0, 64, 32, BLACK);
 
@@ -176,7 +176,7 @@ void OscPage::display() {
 
   uint8_t c = 1;
   uint8_t i = 0;
-  oled_display.setCursor(0, 0);
+  oled_cursor(0, 0);
 
   switch (osc_waveform) {
   default:
@@ -224,11 +224,7 @@ void OscPage::draw_wav(uint8_t wav_type) {
   uint8_t h = 30;
   uint8_t w = 128 - x;
   float osc_width = get_width();
-  TriOsc tri_osc(w, osc_width);
-  PulseOsc pul_osc(w, osc_width);
-  SawOsc saw_osc(w, osc_width);
-  SineOsc sine_osc(w);
-  UsrOsc usr_osc(w);
+  OscSet oscs(w);
   float sample = 0;
   uint8_t n = sample_number;
   // for (uint8_t n = 0; n < 128 - x; n++) {
@@ -239,8 +235,7 @@ void OscPage::draw_wav(uint8_t wav_type) {
     //  oled_display.drawLine(n + x, 0, n + x, 32, BLACK);
     // }
     sample = render_osc_sample(wav_type, osc_width, sine_levels, usr_values,
-                               sine_level_sum, n, 1.0f, sine_osc, tri_osc,
-                               pul_osc, saw_osc, usr_osc);
+                               sine_level_sum, n, 1.0f, oscs);
     uint8_t pixel_y = osc_sample_to_y(sample);
     if (wav_type != 0) {
        oled_display.drawPixel(x + n, pixel_y, WHITE);
@@ -276,7 +271,7 @@ void OscPage::draw_usr() {
     if (note_interface.is_note_on(i)) {
 
       // oled_display.fillRect(63 + i * 4, 0, 3, 32, BLACK);
-      oled_display.drawRect(63 + i * 4, pixel_y - 1, 3, 3, WHITE);
+      oled_rect(63 + i * 4, pixel_y - 1, 3, 3, WHITE);
     }
   }
 }
@@ -290,7 +285,7 @@ void OscPage::draw_levels() {
     if (note_interface.is_note_on(i)) {
       oled_display.fillRect(bx, by, 3, bh, WHITE);
     } else {
-      oled_display.drawRect(bx, by, 3, bh, WHITE);
+      oled_rect(bx, by, 3, bh, WHITE);
     }
   }
 }

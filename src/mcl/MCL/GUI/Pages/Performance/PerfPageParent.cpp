@@ -18,6 +18,7 @@ void PerfPageParent::init() {
   R.Clear();
   R.use_machine_param_names();
   R.use_icons_knob();
+  RM_REQUIRE(0, __T_machine_param_names, __T_icons_knob);
 }
 
 void PerfPageParent::cleanup() {

@@ -60,9 +60,9 @@ void GridIOPage::draw_popup_P(const char *title_P) {
 
 void GridIOPage::draw_grid_marker(uint8_t body_y_offset) {
   oled_display.setFont(&Elektrothic);
-  oled_display.setCursor(MCLGUI::s_menu_x + 4, 21 + body_y_offset);
+  oled_cursor(MCLGUI::s_menu_x + 4, 21 + body_y_offset);
   oled_display.print((char)(0x3A + old_grid));
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 }
 
 void GridIOPage::draw_title(const char *title, uint8_t y_offset) {
@@ -75,7 +75,7 @@ void GridIOPage::draw_title(const char *title, uint8_t y_offset) {
 
 void GridIOPage::draw_tbd_panel_header(const char *title, uint8_t y_offset) {
 #ifdef PLATFORM_TBD
-  oled_display.setFont();
+  oled_font_default();
 
   uint8_t title_len = 0;
   while (title[title_len] != '\0') title_len++;
@@ -86,17 +86,16 @@ void GridIOPage::draw_tbd_panel_header(const char *title, uint8_t y_offset) {
   const uint8_t title_w = title_len * 6 + 4;
 
   oled_display.fillRect(title_x, title_y, title_w, title_h, WHITE);
-  oled_display.setTextColor(BLACK, WHITE);
-  oled_display.setCursor(title_x + 2, title_y + 2);
-  oled_display.print(title);
+  oled_text_color(BLACK, WHITE);
+  text_at(title_x + 2, title_y + 2, title);
 
-  oled_display.setTextColor(WHITE, BLACK);
+  oled_text_color(WHITE, BLACK);
   char val[3];
   const GridRow row = grid_page.getRow();
   const uint8_t bank = row / 16;
   mcl_gui.put_value_at2(row - bank * 16 + 1, val);
 
-  oled_display.setCursor(92, y_offset + 2);
+  oled_cursor(92, y_offset + 2);
   oled_display.print((char)('X' + old_grid));
   oled_display.print(':');
   oled_display.print((char)('A' + bank));
@@ -141,7 +140,7 @@ void GridIOPage::paint_track_select_leds() {
     for (uint8_t n = 0; n < GRID_WIDTH && n < 16; n++) {
       uint8_t type = grid_page.row_headers[grid_page.cur_row].track_type[n];
       if (type != EMPTY_TRACK_TYPE && type != NULL_TRACK_TYPE && type != 255) {
-        SET_BIT16(occupied_mask, n);
+        bitfield_set(&occupied_mask, n);
       }
     }
   }
@@ -149,14 +148,14 @@ void GridIOPage::paint_track_select_leds() {
   uint16_t active_mask = 0;
   if (show_offset) {
     if (offset < NUM_SLOTS && offset / GRID_WIDTH == old_grid) {
-      SET_BIT16(active_mask, offset % GRID_WIDTH);
+      bitfield_set(&active_mask, offset % GRID_WIDTH);
     }
   } else {
     for (uint8_t n = 0; n < GRID_WIDTH && n < 16; n++) {
       GridSlot slot = n + old_grid * GRID_WIDTH;
-      if (IS_BIT_SET32(track_select, slot) || note_interface.is_note(slot) ||
+      if (bitfield_test(&track_select, slot) || note_interface.is_note(slot) ||
           note_interface.is_note(n)) {
-        SET_BIT16(active_mask, n);
+        bitfield_set(&active_mask, n);
       }
     }
   }
@@ -176,9 +175,9 @@ void GridIOPage::paint_track_select_leds() {
 void GridIOPage::populate_track_select_from_notes(uint8_t *track_select_array) {
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
     if (note_interface.is_note(n)) {
-      SET_BIT32(track_select, slot_for_note(n));
+      bitfield_set(&track_select, slot_for_note(n));
     }
-    track_select_array[n] = IS_BIT_SET32(track_select, n) ? 1 : 0;
+    track_select_array[n] = bitfield_test(&track_select, n) ? 1 : 0;
   }
 }
 
@@ -200,7 +199,7 @@ bool GridIOPage::slot_matches_track_type_select(GridSlot slot) {
     break;
   }
 
-  return match != 255 && IS_BIT_SET16(mcl_cfg.track_type_select, match);
+  return match != 255 && bitfield_test(&mcl_cfg.track_type_select, match);
 }
 
 void GridIOPage::track_select_array_from_type_select(
@@ -208,6 +207,27 @@ void GridIOPage::track_select_array_from_type_select(
   for (uint8_t n = 0; n < NUM_SLOTS; n++) {
     track_select_array[n] = slot_matches_track_type_select(n) ? 1 : 0;
   }
+}
+
+// Carry the trigs held on this grid into track_select, then switch grids.
+void GridIOPage::toggle_grid() {
+  for (uint8_t n = 0; n < GRID_WIDTH; n++) {
+    GridSlot slot = n + old_grid * GRID_WIDTH;
+    if (note_interface.is_note(n) || note_interface.is_note(slot)) {
+      TOGGLE_BIT32(track_select, slot);
+      if (note_interface.is_note_on(n)) {
+        note_interface.ignoreNextEvent(n);
+      }
+      if (slot != n && note_interface.is_note_on(slot)) {
+        note_interface.ignoreNextEvent(slot);
+      }
+      note_interface.clear_note(n);
+      if (slot != n) {
+        note_interface.clear_note(slot);
+      }
+    }
+  }
+  old_grid = !old_grid;
 }
 
 bool GridIOPage::handleEvent(gui_event_t *event) {
@@ -273,23 +293,7 @@ bool GridIOPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
     if (EVENT_PRESSED(event, Buttons.BUTTON2)) {
     toggle_grid:
-      for (uint8_t n = 0; n < GRID_WIDTH; n++) {
-        GridSlot slot = n + old_grid * GRID_WIDTH;
-        if (note_interface.is_note(n) || note_interface.is_note(slot)) {
-          TOGGLE_BIT32(track_select, slot);
-          if (note_interface.is_note_on(n)) {
-            note_interface.ignoreNextEvent(n);
-          }
-          if (slot != n && note_interface.is_note_on(slot)) {
-            note_interface.ignoreNextEvent(slot);
-          }
-          note_interface.clear_note(n);
-          if (slot != n) {
-            note_interface.clear_note(slot);
-          }
-        }
-      }
-      old_grid = !old_grid;
+      toggle_grid();
       paint_track_select_leds();
       return true;
     }

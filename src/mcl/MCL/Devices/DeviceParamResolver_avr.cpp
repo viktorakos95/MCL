@@ -42,9 +42,15 @@ bool copy_short_label(const char *label, char *out, uint8_t len,
   return true;
 }
 
+// Parameters a track offers: 38 with an X.20 peer, 24 otherwise.
+uint8_t md_track_param_count() NOINLINE();
+uint8_t md_track_param_count() {
+  return MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+}
+
 uint8_t md_param_count(uint8_t target) {
   if (target < NUM_MD_TRACKS) {
-    return MD_PARAMS_PER_TRACK;
+    return md_track_param_count();
   }
   if (target < NUM_MD_TRACKS + 4) {
     return 8;
@@ -164,6 +170,19 @@ bool DeviceParamTarget::get_base_param(uint8_t param, uint8_t *value) const {
   return get_param(param, value);
 }
 
+bool DeviceParamTarget::value_text(uint8_t param, uint8_t value,
+                                   char *out) const {
+  return device_idx == DeviceIdx::Primary && target < NUM_MD_TRACKS &&
+         md_param_value_text(param, value, out);
+}
+
+MidiDeviceParamRange DeviceParamTarget::value_range(uint8_t param) const {
+  if (device_idx == DeviceIdx::Primary && target < NUM_MD_TRACKS) {
+    return md_param_range(param);
+  }
+  return MidiDeviceParamRange{0, 127};
+}
+
 bool DeviceParamTarget::set_base_param(uint8_t param, uint8_t value,
                                        MidiUartClass *uart_) const {
   return set_resolved_param(*this, param, value, uart_, true);
@@ -178,9 +197,10 @@ uint8_t DeviceParamTarget::lock_param_count() const {
   if (!valid()) {
     return 0;
   }
-  return device_idx != DeviceIdx::Secondary && target < NUM_MD_TRACKS
-             ? MD_PARAMS_PER_TRACK
-             : 0;
+  if (device_idx == DeviceIdx::Secondary || target >= NUM_MD_TRACKS) {
+    return 0;
+  }
+  return md_track_param_count();
 }
 
 bool DeviceParamTarget::lock_param_info(uint8_t param,
@@ -232,7 +252,8 @@ uint8_t DeviceParamTarget::pitch_lock_param() const {
   if (!valid()) {
     return 0;
   }
-  return 0;
+  return device_idx != DeviceIdx::Secondary && target < NUM_MD_TRACKS
+      ? MD.pitchParameter(target) : 0;
 }
 
 bool DevicePerfTarget::param_from_key(uint8_t key, uint8_t *param) const {
@@ -240,7 +261,7 @@ bool DevicePerfTarget::param_from_key(uint8_t key, uint8_t *param) const {
       params.target >= NUM_MD_TRACKS || key < 0x10 || key > 0x17) {
     return false;
   }
-  uint8_t value = MD.currentSynthPage * 8 + key - 0x10;
+  uint8_t value = MD.paramForEncoder(key - 0x10);
   if (value >= MD_PARAMS_PER_TRACK) {
     return false;
   }
@@ -253,11 +274,11 @@ bool DevicePerfTarget::key_for_param(uint8_t param, uint8_t *key) const {
       params.target >= NUM_MD_TRACKS || param >= MD_PARAMS_PER_TRACK) {
     return false;
   }
-  int8_t value = (int8_t)param - (int8_t)MD.currentSynthPage * 8 + 0x10;
-  if (value < 0x10 || value > 0x17) {
+  uint8_t encoder = MD.encoderForParam(param);
+  if (encoder > 7) {
     return false;
   }
-  *key = (uint8_t)value;
+  *key = 0x10 + encoder;
   return true;
 }
 
@@ -265,10 +286,10 @@ bool DevicePerfTarget::begin_param_editor(uint8_t *editor_params,
                                           uint8_t count) const {
   if (params.device_idx != DeviceIdx::Primary ||
       params.target >= NUM_MD_TRACKS || editor_params == nullptr ||
-      count < MD_PARAMS_PER_TRACK) {
+      count < md_track_param_count()) {
     return false;
   }
-  MD.activate_encoder_interface(editor_params);
+  MD.activate_encoder_interface(editor_params, md_track_param_count());
   return true;
 }
 
@@ -325,8 +346,7 @@ bool perf_scene_autofill(PerfData *data, uint8_t scene) {
     return false;
   }
   bool filled = false;
-  uint8_t num_params =
-      mcl_seq.using_spsx_tracks ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+  uint8_t num_params = md_track_param_count();
   for (uint8_t track = 0; track < NUM_MD_TRACKS; track++) {
     uint8_t dest = track;
     for (uint8_t param = 0; param < num_params; param++) {

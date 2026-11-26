@@ -576,7 +576,7 @@ bool MidiSDSClass::sendWav(const char *filename, const char *samplename,
 bool MidiSDSClass::recvWav(const char *filename, uint16_t sample_number) {
   bool ret = false;
   if (state != SDS_READY) {
-    DEBUG_PRINTLN("SDS in progress aborting");
+    DEBUG_PRINTLN(F("SDS in progress aborting"));
     return false;
   }
 
@@ -598,11 +598,11 @@ bool MidiSDSClass::recvWav(const char *filename, uint16_t sample_number) {
     if (MIDI_SDS_DUMPHEADER == m) {
       break;
     }
-    DEBUG_PRINTLN("retry sds");
+    DEBUG_PRINTLN(F("retry sds"));
   }
 
   if (MIDI_SDS_DUMPHEADER != m) {
-    DEBUG_PRINTLN("request failed");
+    DEBUG_PRINTLN(F("request failed"));
     goto recv_fail;
   }
 
@@ -614,13 +614,13 @@ bool MidiSDSClass::recvWav(const char *filename, uint16_t sample_number) {
     }
     uint8_t msg = waitForMsg(2000);
     if (msg == 255 || msg == MIDI_SDS_CANCEL) {
-      DEBUG_PRINTLN("sds recv abort");
+      DEBUG_PRINTLN(F("sds recv abort"));
       goto recv_fail;
     }
     if (midi_sds.state == SDS_READY) {
-      DEBUG_PRINTLN("here");
+      DEBUG_PRINTLN(F("here"));
       if (wav_file.file.isOpen()) {
-        DEBUG_PRINTLN("wav is open");
+        DEBUG_PRINTLN(F("wav is open"));
         goto recv_fail;
       } else {
         SD.remove(filename);
@@ -628,7 +628,7 @@ bool MidiSDSClass::recvWav(const char *filename, uint16_t sample_number) {
           gfx.alert("wav_file rename", "failed :(");
           goto fin;
         }
-        DEBUG_PRINTLN("okay");
+        DEBUG_PRINTLN(F("okay"));
         ret = true;
         goto fin;
       }
@@ -646,7 +646,7 @@ bool MidiSDSClass::recvWav(const char *filename, uint16_t sample_number) {
   }
 
 recv_fail:
-  DEBUG_PRINTLN("Recv fail");
+  DEBUG_PRINTLN(F("Recv fail"));
   if (wav_file.file.isOpen()) {
     wav_file.file.remove();
   }

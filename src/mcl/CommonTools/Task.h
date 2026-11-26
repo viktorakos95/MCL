@@ -20,12 +20,16 @@ public:
   void (*taskFunction)();
 
 	/** Create a task to be executed approximately every _interval ticks, calling the function _taskFunction. **/
-  Task(uint16_t _interval, void (*_taskFunction)() = NULL) {
-    interval = _interval;
-    lastExecution = 0;
-    taskFunction = _taskFunction;
-    starting = true;
-  }
+  // constexpr: global tasks are constant-initialised (no start-up code).
+  constexpr Task(uint16_t _interval, void (*_taskFunction)() = NULL)
+      : interval(_interval), lastExecution(0), starting(true),
+        taskFunction(_taskFunction) {}
+
+  // Only for a global that is not constant-initialised (it starts zeroed in
+  // .bss): sets `starting` and leaves the zero interval, clock and function
+  // to .bss, so the global constructor stores nothing else.
+  struct ZeroInit {};
+  explicit Task(ZeroInit) : starting(true) {}
 
 	/** Execute the task by calling the taskFunction. **/
   virtual void run() {

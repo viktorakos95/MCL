@@ -32,6 +32,9 @@ public:
   static const lightpage_ptr_t pages_table[NUM_PAGES] PROGMEM;
 
   PageIndex current_page = GRID_PAGE;
+  // The page setPage() last left, for a page that comes back to a state it
+  // had (the Grid page's Load or Save, after the mixer or step edit).
+  PageIndex previous_page = NULL_PAGE;
 
   LightPage *getPage(PageIndex page) {
     if (page >= NUM_PAGES) return nullptr;
@@ -50,6 +53,7 @@ public:
     if (page >= NUM_PAGES) {
       page = GRID_PAGE;
     }
+    previous_page = current_page;
     current_page = page;
     GUI.setPage(getPage(page));
   }
@@ -63,14 +67,17 @@ public:
   }
 
   void popPage(bool re_init = true) {
-    GUI.popPage(re_init);
+    GUI.popPage(false);
+    current_page = NULL_PAGE;
     for (uint8_t n = 0; n < NUM_PAGES; n++) {
       if (GUI.currentPage() == getPage((PageIndex) n)) {
         current_page = (PageIndex) n;
-        return;
+        break;
       }
     }
-    current_page = NULL_PAGE;
+    if (re_init && GUI.currentPage() != nullptr) {
+      GUI.currentPage()->init();
+    }
   }
 
   bool isSeqPage() {

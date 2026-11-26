@@ -29,8 +29,8 @@ The available destinations follow the current Grid X / Grid Y device configurati
 
 | Control | Assignment |
 | --- | --- |
-| **[Load/Yes]** / panel button 4 | Cycle LFO subpages. |
-| **[Save/No]** / panel button 1 | Toggle the current LFO on or off. |
+| **`Load | Yes`** | Cycle LFO subpages. |
+| **`Save | No`** | Toggle the current LFO on or off. |
 | **[Global]** | Hold for the Track Menu. |
 | **[Function]** + **[Copy]** | Copy the current LFO track. |
 | **[Function]** + **[Clear]** | Clear the current LFO track; repeat to undo the clear. |

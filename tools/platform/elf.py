@@ -14,12 +14,15 @@ env = DefaultEnvironment()
 ENV_MAPPING = {
     "rp2040": "rp2040", "rp2350": "rp2040", "tbd": "rp2040",
     "avr": "avr", "megacmd": "avr", "megacommand": "avr", "nano": "avr",
+    "megacmd_upgrader": "avr", "megacommand_upgrader": "avr",
 }
 FIRMWARE_EXTENSIONS = {
     "rp2040": ".uf2",
     "avr": ".hex"
 }
 CHECKSUM_MODE = os.environ.get("CHECKSUM_MODE", "validate")
+# The AVR bootloader can only program the first 245,760 bytes of flash.
+AVR_APP_FLASH_LIMIT = 0x3C000
 
 # =================================================================
 # Helper Functions
@@ -77,6 +80,36 @@ def get_version_code(env):
         if isinstance(define, tuple) and define[0] == "VERSION":
             return str(define[1])
     return "N/A"
+
+def is_debug_build(env):
+    """True for PlatformIO debug builds and for builds with -DDEBUGMODE."""
+    if env.GetBuildType() == "debug":
+        return True
+    for define in env.get("CPPDEFINES", []):
+        name = define[0] if isinstance(define, (list, tuple)) else define
+        if name == "DEBUGMODE":
+            return True
+    return False
+
+def check_avr_flash_limit(env, firmware_size):
+    """Fails a release AVR build that the bootloader could not program."""
+    spare = AVR_APP_FLASH_LIMIT - firmware_size
+    if spare >= 0:
+        print(f"✓ AVR flash: {firmware_size} of {AVR_APP_FLASH_LIMIT} bytes ({spare} spare)")
+        return
+    if is_debug_build(env):
+        print(f"⚠ AVR flash: {firmware_size} bytes is {-spare} over the "
+              f"{AVR_APP_FLASH_LIMIT}-byte limit (allowed in a debug build)")
+        return
+    if os.environ.get("MCL_AVR_LOWTEXT_FREE"):
+        # Input for tools/platform/avr_lowtext.py only, never for flashing.
+        print(f"⚠ AVR flash: {firmware_size} bytes is {-spare} over the "
+              f"{AVR_APP_FLASH_LIMIT}-byte limit (MCL_AVR_LOWTEXT_FREE layout, "
+              f"not for flashing)")
+        return
+    print(f"✗ Error: AVR flash is {firmware_size} bytes, {-spare} over the "
+          f"{AVR_APP_FLASH_LIMIT}-byte bootloader limit.")
+    env.Exit(1)
 
 # =================================================================
 # Checksum and Firmware Calculation Logic
@@ -174,6 +207,10 @@ def create_or_validate_manifest(env, env_name, checksum, firmware_size):
         transformed_version = '_'.join(alphanumeric_chars).lower()
         new_firmware_name = f"mcl_{transformed_version}{firmware_ext}"
 
+    # The project upgrader is its own tool with its own version.
+    if env_name.endswith("_upgrader"):
+        new_firmware_name = f"mcl_project_upgrade_1_0{firmware_ext}"
+
     print(f"✓ Target filename will be '{new_firmware_name}'")
 
     project_dir = env.subst("$PROJECT_DIR")
@@ -260,7 +297,9 @@ def embed_checksum_action(source, target, env):
     if platform_family:
         # Calculate checksum, get size, and embed it into the ELF
         checksum, firmware_size = calculate_and_embed_checksum(elf_file, env, platform_family)
-        
+        if platform_family == "avr":
+            check_avr_flash_limit(env, firmware_size)
+
         # Create/validate the manifest and get the final firmware name
         new_firmware_name = create_or_validate_manifest(env, env_name, checksum, firmware_size)
         

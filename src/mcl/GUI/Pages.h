@@ -14,7 +14,7 @@ public:
   /** Set to true when the setup() function has been called. **/
   bool isSetup;
 
-  PageParent() {}
+  constexpr PageParent() : isSetup(false) {}
 
   /**
    * The update() method is called by the GUI main loop on every
@@ -106,8 +106,20 @@ public:
   uint8_t encoder_focus;
   uint8_t encoder_key_control_mask;
 
-  LightPage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL,
-            Encoder *e4 = NULL) NOINLINE();
+  // constexpr so that a page whose own constructor is constexpr is
+  // initialised statically instead of by the global constructor.
+  constexpr LightPage(Encoder *e1 = NULL, Encoder *e2 = NULL,
+                      Encoder *e3 = NULL, Encoder *e4 = NULL) NOINLINE()
+      : encoders{e1, e2, e3, e4}, encoder_focus(ENCODER_FOCUS_NONE),
+        encoder_key_control_mask(0x0F)
+#if defined(MCL_HAS_DESKTOP_MOUSE)
+        ,
+        mouse_encoder_focus(ENCODER_FOCUS_NONE), mouse_encoder_drag_origin_y(0),
+        mouse_encoder_drag_last_ticks(0), mouse_encoder_press_buttons(0),
+        mouse_encoder_was_dragged(false), page_encoder_hits{}
+#endif
+  {
+  }
 
   void setEncoders(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL,
                    Encoder *e4 = NULL) {

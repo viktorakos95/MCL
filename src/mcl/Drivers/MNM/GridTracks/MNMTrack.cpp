@@ -107,7 +107,7 @@ bool MNMTrack::store_in_grid(GridSlot column, GridRow row, SeqTrack *seq_track, 
     if (merge > 0) {
       // TODO decode MNM track data from a pattern...
     } else {
-      DEBUG_PRINT("memcpy");
+      DEBUG_PRINT(F("memcpy"));
       memcpy(&seq_data, ext_track->data(), sizeof(seq_data));
     }
   }

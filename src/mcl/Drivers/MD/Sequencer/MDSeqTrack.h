@@ -70,13 +70,19 @@ public:
 
   void send_trig();
   void send_trig_inline();
-  uint8_t trig_conditional(uint8_t condition);
+  // TRIG_ONESHOT: the step is muted. A one-shot that has played is
+  // TRIG_FALSE, so in TRIG mode its locks are still sent.
+  uint8_t trig_conditional(uint8_t step, uint8_t condition);
   ALWAYS_INLINE() void clear_step_oneshot(uint8_t step) {
     CLEAR_BIT64(oneshot_mask, step);
   }
   void send_parameter_locks(uint8_t step, bool trig,
                             uint16_t lock_idx = 0xFFFF);
-  void send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx);
+  // note_on: the step plays a MID note, so its NOTE, N2, N3, LEN and VEL
+  // locks apply. Otherwise they are skipped: the sounding note's Note Off is
+  // built from those fields.
+  void send_parameter_locks_inline(uint8_t step, bool trig, uint16_t lock_idx,
+                                   bool note_on = false);
   void reset_params();
   void get_step_locks(uint8_t step, uint8_t *params,
                       bool ignore_locks_disabled = false);
@@ -118,6 +124,8 @@ public:
   void clear_param_locks(uint8_t param_id);
   bool is_param(uint8_t param_id);
 
+  // Imports the track's trigs and locks from a received pattern. A lock on a
+  // step without a trig is kept only from MDX X.20 or later.
   void merge_from_md(uint8_t track_number, MDPattern *pattern);
 
   virtual void set_length(uint8_t len, bool expand = false) override;
@@ -177,5 +185,17 @@ private:
 
   SlideDispatchContext *slide_ctx = nullptr;
 };
+
+#if !defined(__AVR__)
+// Microtiming between an SPS-X step (MDX patterns and SPS-X tracks: +-127 is
+// +-min(ticks per step - 1, 23) ticks of 1/384 note) and an MD track step
+// (+-127 is about +-1 step, in ticks of 1/192 note). md_ticks_per_step is the
+// MD track's ticks per step at the track's speed. The offset keeps its time,
+// to the nearest tick both can hold.
+int8_t spsx_microtiming_to_md_microtiming(int8_t microtiming,
+                                          uint16_t md_ticks_per_step);
+int8_t md_microtiming_to_spsx_microtiming(int8_t microtiming,
+                                          uint16_t md_ticks_per_step);
+#endif
 
 #endif /* MDSEQTRACK_H__ */

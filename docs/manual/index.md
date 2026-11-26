@@ -6,12 +6,14 @@ MCL began on the MegaCommand/MegaCMD hardware platform, with the Machinedrum as 
 
 > Back up all projects before installing current firmware. Projects may be upgraded automatically on first load and may not remain compatible with older firmware after conversion.
 
-Recommended device OS versions:
+Device OS versions:
 
-| Device | Required version |
+| Device | Version |
 | --- | --- |
-| Machinedrum | OS X.13 |
+| Machinedrum | MDX X.14 or X.20 |
 | Monomachine | OS X.01 |
+
+Some Machinedrum features need MDX X.20 or later. The manual says where.
 
 This manual was migrated from the legacy LaTeX/PDF documentation. Some legacy sections and screenshots are still being updated.
 

@@ -11,12 +11,6 @@
 #include "GUI/Pages/Sequencer/SeqPages.h"
 #endif
 
-DeviceMixerCapability::DeviceMixerCapability(MidiDevice &device,
-                                             uint8_t default_param,
-                                             uint8_t mute_param)
-    : DeviceCapability(device), default_param_(default_param),
-      mute_param_(mute_param) {}
-
 #if !defined(__AVR__)
 uint8_t DeviceMixerCapability::track_count(const DeviceContext &ctx) const {
   uint8_t grid_idx = static_cast<uint8_t>(ctx.device_idx());
@@ -508,6 +502,25 @@ bool DeviceParamCapability::set_param(const DeviceContext &ctx, uint8_t target,
   return false;
 }
 
+bool DeviceParamCapability::param_value_text(const DeviceContext &ctx,
+                                             uint8_t target, uint8_t param,
+                                             uint8_t value, char *out) {
+  (void)ctx;
+  (void)target;
+  (void)param;
+  (void)value;
+  (void)out;
+  return false;
+}
+
+MidiDeviceParamRange DeviceParamCapability::param_range(
+    const DeviceContext &ctx, uint8_t target, uint8_t param) const {
+  (void)ctx;
+  (void)target;
+  (void)param;
+  return MidiDeviceParamRange{0, 127};
+}
+
 uint8_t DeviceParamCapability::sequencer_lock_param_count(
     const DeviceContext &ctx, uint8_t target) const {
   return param_count(ctx, target);
@@ -744,18 +757,24 @@ void DeviceStepEditCapability::end_param_editor(const DeviceContext &ctx) {
 }
 
 void DeviceStepEditCapability::draw_microtiming(const DeviceContext &ctx,
-                                                uint8_t speed,
-                                                uint8_t timing) {
+                                                uint8_t speed, uint8_t timing,
+                                                uint8_t condition,
+                                                uint8_t mode) {
   (void)ctx;
   (void)speed;
   (void)timing;
+  (void)condition;
+  (void)mode;
 }
 
 void DeviceStepEditCapability::draw_microtiming_signed(
-    const DeviceContext &ctx, uint8_t speed, int8_t microtiming) {
+    const DeviceContext &ctx, uint8_t speed, int8_t microtiming,
+    uint8_t condition, uint8_t mode) {
   (void)ctx;
   (void)speed;
   (void)microtiming;
+  (void)condition;
+  (void)mode;
 }
 
 void DeviceStepEditCapability::close_microtiming(const DeviceContext &ctx) {

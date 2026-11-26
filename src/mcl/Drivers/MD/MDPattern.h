@@ -13,7 +13,7 @@
 //#define MDPATTERN_TOSYSEX_ENABLE
 
 #if !defined(__AVR__)
-#define MD_PATTERN_VERSION_SPSX    0x04
+#define MD_PATTERN_VERSION_SPSX    0x40
 #define MD_PATTERN_SCHEMA_SPSX     0x40
 #define MD_PATTERN_LOCK_SLOTS      SPS_PARAMS_PER_TRACK
 // Maximum number of distinct param-lock rows the host can transmit in an SPS-X
@@ -111,6 +111,9 @@ public:
   uint8_t version;
   int8_t ext_microtiming[16][64];
   uint8_t ext_step_flags[16][64];
+  // The second bit of each step's condition mode, one bit per step: MDX's
+  // explicit TRIG and, with the plock flag, LOCK. Bit 14 of a condition word.
+  uint64_t ext_condition_mode_high[16];
   uint8_t ext_locks_params[16][MD_PATTERN_LOCK_SLOTS];
   uint8_t ext_track_lengths[16];
   uint8_t ext_track_speeds[16];
@@ -125,12 +128,14 @@ public:
 
   /** Extended lock rows (64..MAX_LOCK_ROWS-1). Base class locks[64][64]
    *  covers the first 64 rows; this array extends storage for current SPS-X
-   *  patterns with deep automation. ext_lockTracks/ext_lockParams are widened
-   *  so they can hold the matching track/param mapping for extended rows.
-   *  Memory cost: about 35.1 KiB on hosted/rp2040 builds. **/
+   *  patterns with deep automation. ext_lockTracks/ext_lockParams hold the
+   *  matching track (0-15) and parameter (0-37) of each extended row, or -1,
+   *  so one byte each is enough, as for the first 64 rows. The RP2040 build
+   *  has no RAM to spare: 16-bit entries here cost it 1,088 bytes.
+   *  Memory cost: about 34 KiB on hosted/rp2040 builds. **/
   int8_t  ext_locks[MAX_LOCK_ROWS - 64][64];
-  int16_t ext_lockTracks[MAX_LOCK_ROWS - 64];
-  int16_t ext_lockParams[MAX_LOCK_ROWS - 64];
+  int8_t  ext_lockTracks[MAX_LOCK_ROWS - 64];
+  int8_t  ext_lockParams[MAX_LOCK_ROWS - 64];
 #endif
 
 #if !defined(__AVR__)
@@ -150,6 +155,15 @@ public:
   inline int8_t *lock_row(uint8_t row) { return (int8_t*)locks[row]; }
 #endif
 #if !defined(__AVR__)
+  /** The length and speed a track plays: its own, or the pattern's. */
+  uint8_t trackLength(uint8_t track) const {
+    return ext_track_lengths[track] ? ext_track_lengths[track]
+                                    : patternLength;
+  }
+  uint8_t trackSpeed(uint8_t track) const {
+    return ext_track_speeds[track] != 0xff ? ext_track_speeds[track]
+                                           : doubleTempo;
+  }
   inline int16_t lock_track(uint16_t row) const {
     return (row < 64) ? (int16_t)lockTracks[row] : ext_lockTracks[row - 64];
   }
@@ -161,8 +175,8 @@ public:
       lockTracks[row] = (int8_t)track;
       lockParams[row] = (int8_t)param;
     } else {
-      ext_lockTracks[row - 64] = track;
-      ext_lockParams[row - 64] = param;
+      ext_lockTracks[row - 64] = (int8_t)track;
+      ext_lockParams[row - 64] = (int8_t)param;
     }
   }
 #endif

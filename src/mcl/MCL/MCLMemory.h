@@ -93,7 +93,7 @@ constexpr size_t NUM_LOCKS = 8;
 #define MEMORY_ALIGN(size) (size)  // for avr, dont align
 #endif
 
-constexpr size_t GRID1_TRACK_LEN = MEMORY_ALIGN(619); // MDTrack + SeqTrackModData + masks + load fade
+constexpr size_t GRID1_TRACK_LEN = MEMORY_ALIGN(639); // MDTrack + SeqTrackModData + masks + load fade
 #if !defined(__AVR__)
 // Non-AVR grid-2 cache slots can carry enhanced MIDI/TBD tracks. Hosted
 // builds also need the enlarged slot because native pointers grow several
@@ -137,7 +137,10 @@ constexpr size_t SPSX_CACHE_LEN = SPSX_TRACK_LEN * NUM_MD_TRACKS;
 
 #if defined(PLATFORM_TBD)
 // DEV1 TBD tracks carry StepSeqTrackData plus the authoritative P4 sound map.
-constexpr size_t TBD_TRACK_LEN = MEMORY_ALIGN(2048);
+// The slot is the track's stored size (1968 bytes; TBDTrack.cpp asserts the
+// fit). It was rounded up to 2048, and those 80 spare bytes in each of the
+// 16 slots were the difference between the RP2040 build linking and not.
+constexpr size_t TBD_TRACK_LEN = MEMORY_ALIGN(1968);
 constexpr size_t TBD_CACHE_LEN = TBD_TRACK_LEN * 16;
 #endif
 
@@ -203,6 +206,22 @@ extern const uintptr_t BANK3_FILE_ENTRIES_END;
 constexpr size_t BANK1_MD_TRACKS_START = (BANK1_SYSEX3_DATA_START + SYSEX3_DATA_LEN);
 constexpr size_t BANK1_AUX_TRACKS_START = BANK1_MD_TRACKS_START + MD_CACHE_LEN;
 constexpr size_t BANK1_EXT_TRACKS_START = BANK1_AUX_TRACKS_START + AUX_CACHE_LEN;
+#if defined(__AVR__)
+// Volatile USR metadata follows the existing track caches in bank one.
+constexpr size_t BANK1_USR_CACHE_START = BANK1_EXT_TRACKS_START + EXT_CACHE_LEN;
+constexpr size_t BANK1_USR_CACHE_LEN = 48u * 6u;
+// Kit 65.1 fields outside the parameter rows: 16 x 9 LFO-B records (five
+// settings, four bytes of run state), output routing (16) and reserved
+// bytes (32).
+constexpr size_t BANK1_KIT65_START = BANK1_USR_CACHE_START + BANK1_USR_CACHE_LEN;
+constexpr size_t BANK1_KIT65_LEN = 16u * 9u + 16u + 32u;
+// USR parameter labels ($70/$44 page 5): per slot a validity byte and eight
+// four-character labels.
+constexpr size_t BANK1_USR_LABELS_START = BANK1_KIT65_START + BANK1_KIT65_LEN;
+constexpr size_t BANK1_USR_LABELS_LEN = 48u * 33u;
+constexpr uint32_t BANK1_USED_END = uint32_t(BANK1_USR_LABELS_START) + BANK1_USR_LABELS_LEN;
+static_assert(BANK1_USED_END <= 0x10000UL, "AVR bank-one allocation exceeds SRAM");
+#endif
 #if defined(PLATFORM_TBD)
 constexpr size_t BANK1_TBD_TRACKS_START = BANK1_EXT_TRACKS_START + EXT_CACHE_LEN;
 #endif

@@ -65,7 +65,7 @@ The exact entries depend on the page and track type.
 | `EDIT` | Select the page's edit mode or mask. |
 | `SPEED` | Set track speed: `1x`, `2x`, `3/2x`, `3/4x`, `1/2x`, `1/4x`, `1/8x`. |
 | `LENGTH` | Set track length. Primary step tracks use up to 64 steps; external MIDI-style tracks use up to 128 steps. |
-| `SWING` | Set per-track swing percentage for step tracks. Hold **[Yes/Load]** while applying to update all compatible tracks. |
+| `SWING` | Set per-track swing percentage for step tracks. Hold **`Load | Yes`** while applying to update all compatible tracks. |
 | `COPY` | Copy the current track or all compatible tracks. |
 | `CLEAR` | Clear the current track or all compatible tracks. |
 | `PASTE` | Paste copied track data. |

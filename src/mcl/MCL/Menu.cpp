@@ -172,7 +172,7 @@ const char* MenuBase::get_item_name(uint8_t item_n) {
 }
 
 PageIndex MenuBase::get_page_callback(uint8_t item_n) {
-  DEBUG_PRINTLN("get page callback");
+  DEBUG_PRINTLN(F("get page callback"));
   auto *item = get_item(item_n);
   DEBUG_PRINTLN(item->page_callback_id);
   if (item == nullptr) { return NULL_PAGE; }

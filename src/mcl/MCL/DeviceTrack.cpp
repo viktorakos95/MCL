@@ -34,9 +34,7 @@ DeviceTrack *load_grid_512(DeviceTrack *track, GridSlot column, GridRow row,
       }
     }
   }
-#if !defined(__AVR__)
   ptrack->on_storage_loaded();
-#endif
   return ptrack;
 }
 
@@ -131,9 +129,7 @@ DeviceTrack *DeviceTrack::load_from_mem(GridSlot col, uint8_t track_type,
     return nullptr;
   }
   if (that->active == track_type) {
-#if !defined(__AVR__)
     that->on_storage_loaded();
-#endif
     return that;
   }
 
@@ -146,9 +142,7 @@ DeviceTrack *DeviceTrack::load_from_mem(GridSlot col, uint8_t track_type,
   if (!p->GridTrack::load_from_mem(col) || p->active != source_active) {
     return nullptr;
   }
-#if !defined(__AVR__)
   p->on_storage_loaded();
-#endif
   return p->materialize_as(track_type, col, nullptr);
 }
 
@@ -205,9 +199,7 @@ DeviceTrack *DeviceTrack::load_from_grid(GridSlot column, GridRow row) {
     }
   }
 
-#if !defined(__AVR__)
   ptrack->on_storage_loaded();
-#endif
 
   return ptrack;
 }
@@ -226,7 +218,7 @@ bool DeviceTrackChunk::load_from_mem_chunk(GridSlot column, uint8_t chunk) {
                   (chunk_size * chunk);
   // 3. Convert the final integer address back to a pointer for the memory copy.
   volatile uint8_t *ptr = reinterpret_cast<volatile uint8_t *>(pos);
-  memcpy_bank1(seq_data_chunk, ptr, chunk_size);
+  track_mem_copy(seq_data_chunk, ptr, chunk_size);
   return true;
 }
 
@@ -249,6 +241,6 @@ bool DeviceTrackChunk::load_link_from_mem(GridSlot column) {
                   static_cast<uintptr_t>(get_region_size() * static_cast<uint32_t>(column)) + offset;
   // 3. Convert the final integer address back to a pointer.
   volatile uint8_t *ptr = reinterpret_cast<volatile uint8_t *>(pos);
-  memcpy_bank1(&this->link, ptr, sizeof(GridLink));
+  track_mem_copy(&this->link, ptr, sizeof(GridLink));
   return true;
 }

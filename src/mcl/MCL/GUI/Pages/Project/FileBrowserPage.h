@@ -52,9 +52,9 @@ class FileBrowserFileTypes {
 
   bool compare(const char *str) {
     for (uint8_t n = 0; n < count; n++) {
-      DEBUG_PRINT("Comparing "); DEBUG_PRINT(str); DEBUG_PRINT(" "); DEBUG_PRINTLN(types[n]);
+      DEBUG_PRINT(F("Comparing ")); DEBUG_PRINT(str); DEBUG_PRINT(F(" ")); DEBUG_PRINTLN(types[n]);
       if (strcmp(str, types[n]) == 0) {
-        DEBUG_PRINTLN("match");
+        DEBUG_PRINTLN(F("match"));
         return true;
       }
     }
@@ -98,6 +98,8 @@ public:
   static int numEntries;
 
   char lwd[128];
+  // Files are listed without their suffix: set by a browser of one file type.
+  bool hide_suffix;
   static char title[12];
   static char str_save[16];
   uint8_t cur_row;
@@ -141,12 +143,14 @@ public:
     param1 = e1;
     param2 = e2;
     lwd[0] = '\0';
+    hide_suffix = false;
   }
   virtual bool handleEvent(gui_event_t *event);
   void draw_sidebar();
   void draw_filebrowser();
   void draw_menu();
   void open_filemenu();
+  void open_filemenu(uint16_t disabled);
 
   virtual void display();
 
@@ -158,6 +162,7 @@ public:
   bool add_entry(const char *entry, uint8_t type = FILE_TYPE);
   void get_entry(uint16_t n, char *entry);
   void get_entry(uint16_t n, char *entry, uint8_t &type);
+  bool get_selected_entry(char *entry, uint8_t &type);
   void set_entry_type(uint16_t n, uint8_t type);
 
   void draw_scrollbar(uint8_t x_offset);
@@ -169,6 +174,7 @@ public:
   virtual void setup();
   virtual void init();
   static void reset_browser_options();
+  static void folder_browser_options();
 
   virtual void on_new() {
 #ifdef MCL_HAS_FILE_MOVE
@@ -201,6 +207,8 @@ protected:
                                    const char *entry);
   void _cd_up();
   bool _cd(const char *);
+  void set_cursor(uint16_t pos, uint8_t row) NOINLINE();
+  void cursor_to_first_entry() NOINLINE();
   void query_filesystem();
   virtual bool can_show_parent_entry() const;
   virtual uint8_t entry_type_for_dir(const char *entry);

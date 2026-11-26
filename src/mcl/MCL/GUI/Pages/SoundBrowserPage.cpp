@@ -4,7 +4,7 @@
 #include "../../../Drivers/MD/MD.h"
 #include "../../../Drivers/MD/MDSound.h"
 
-const char *c_snd_root = "/Sounds";
+const char c_snd_root[] = "/Sounds";
 const char *c_snd_suffix = ".snd";
 
 void SoundBrowserPage::setup() {
@@ -16,26 +16,47 @@ void SoundBrowserPage::setup() {
 }
 
 void SoundBrowserPage::init() {
-  FileBrowserPage::selection_change = true;
-  file_types.reset();
-  file_types.add(c_snd_suffix);
+  // The browser options are shared by every file browser page: start from
+  // the defaults, or the last page's settings stay (the project page selects
+  // folders instead of opening them).
+  FileBrowserPage::init();
 
   key_interface.off();
 
-  strcpy_P(title, mclstr_title_sound);
-  show_dirs = true;
-  show_save = true;
-  show_filemenu = true;
-  show_new_folder = true;
-  show_parent = true;
-  SD.chdir(lwd);
+  folder_browser_options();
+#ifdef MCL_HAS_FILE_MOVE
+  // While a move waits for its destination, the base page has set up the
+  // DEST view, which lists folders only.
+  if (!move_destination_mode)
+#endif
+  {
+    file_types.add(c_snd_suffix);
+    strcpy_P(title, mclstr_title_sound);
+    strcpy_P(str_save, mclstr_action_save_bracket);
+  }
   query_filesystem();
-
-  strcpy_P(str_save, mclstr_action_save_bracket);
 
   R.Clear();
   R.use_machine_names_short();
 }
+
+// ".." is shown only inside a folder, so the browser stays in /Sounds. It
+// opens /Sounds and never goes above it, so a longer path is a folder.
+bool SoundBrowserPage::can_show_parent_entry() const {
+#ifdef __AVR__
+  return show_parent && strlen(lwd) > sizeof(c_snd_root) - 1;
+#else
+  char path[64];
+  return show_parent &&
+         strlen(lwd) > strlen(mcl_sd.full_path(c_snd_root, path, sizeof(path)));
+#endif
+}
+
+#ifdef PLATFORM_TBD
+bool SoundBrowserPage::tbd_can_cd_up() const {
+  return can_show_parent_entry();
+}
+#endif
 
 void SoundBrowserPage::save_sound() {
 
@@ -90,8 +111,32 @@ void SoundBrowserPage::load_sound() {
 
 
 void SoundBrowserPage::on_new() {
+#ifdef MCL_HAS_FILE_MOVE
+  if (move_destination_mode) {
+    move_to_current_folder();
+    return;
+  }
+#endif
  save_sound();
  init();
+}
+
+void SoundBrowserPage::on_cancel() {
+#ifdef MCL_HAS_FILE_MOVE
+  if (move_destination_mode) {
+    cancel_move_destination();
+    return;
+  }
+#endif
+  mcl.popPage();
+}
+
+void SoundBrowserPage::cleanup() {
+#ifdef MCL_HAS_FILE_MOVE
+  // The browser pages share the move state: a move not finished here must
+  // not carry over to the next one.
+  move_destination_mode = false;
+#endif
 }
 
 void SoundBrowserPage::on_select(const char *__) {
@@ -100,17 +145,22 @@ void SoundBrowserPage::on_select(const char *__) {
 
 bool SoundBrowserPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event)) {
-    if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu) {
-      bool state = (param2->cur == 0);
-      uint16_t disabled = FM_MASK(FM_DUPLICATE) | FM_MASK(FM_MOVE) |
-                          FM_MASK(FM_VERSIONS) | FM_MASK(FM_RECVALL) |
-                          FM_MASK(FM_SENDALL);
-      if (state) {
-        disabled |=
-            FM_MASK(FM_NEW_FOLDER) | FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME);
+    // While a move waits for its destination, the base page's menu applies.
+    if (EVENT_PRESSED(event, Buttons.BUTTON3) && show_filemenu &&
+        !move_destination_mode) {
+      // A new folder can be made from any row; delete, rename and move act
+      // on a sound or folder, not on the save row or "..".
+      char entry[FILE_ENTRY_SIZE];
+      uint8_t entry_type;
+      uint16_t disabled = FM_MASK(FM_DUPLICATE) | FM_MASK(FM_VERSIONS) |
+                          FM_MASK(FM_RECVALL) | FM_MASK(FM_SENDALL);
+#ifndef MCL_HAS_FILE_MOVE
+      disabled |= FM_MASK(FM_MOVE);
+#endif
+      if (!get_selected_entry(entry, entry_type)) {
+        disabled |= FM_MASK(FM_DELETE) | FM_MASK(FM_RENAME) | FM_MASK(FM_MOVE);
       }
-      set_file_menu_disabled_mask(disabled);
-      open_filemenu();
+      open_filemenu(disabled);
       return true;
     }
 

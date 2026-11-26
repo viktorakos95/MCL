@@ -6,7 +6,7 @@
 
 void PerfTrack::transition_load(uint8_t tracknumber, SeqTrack *seq_track,
                                   GridSlot slotnumber) {
-  DEBUG_PRINTLN("transition send");
+  DEBUG_PRINTLN(F("transition send"));
   if (seq_track) {
     seq_track->cache_loaded = false;
   }
@@ -48,13 +48,13 @@ void PerfTrack::get_perf() {
     }
 
   }
-  DEBUG_PRINTLN("get perf");
+  DEBUG_PRINTLN(F("get perf"));
   DEBUG_PRINTLN(sizeof(scenes));
 }
 
 
 void PerfTrack::load_perf(bool immediate, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load perf");
+  DEBUG_PRINTLN(F("load perf"));
   DEBUG_PRINTLN( sizeof(scenes));
   mixer_page.load_perf_state = load_perf_state < 4 ? load_perf_state : 255;
 
@@ -91,7 +91,7 @@ void PerfTrack::load_perf(bool immediate, SeqTrack *seq_track) {
 }
 
 void PerfTrack::load_immediate(uint8_t tracknumber, SeqTrack *seq_track) {
-  DEBUG_PRINTLN("load immediate");
+  DEBUG_PRINTLN(F("load immediate"));
   load_link_data(seq_track);
   load_perf(true, seq_track);
 }

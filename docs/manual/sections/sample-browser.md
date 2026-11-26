@@ -37,7 +37,7 @@ The browser filters the file list to `.wav` and `.syx` files. Folders are shown 
 | Control | Action |
 | --- | --- |
 | **[Up]** / **[Down]** | Move through entries. |
-| **[Yes]** / **[Load/Yes]** | Enter a folder, start receive from `[RECV]`, or send the selected file. |
+| **[Yes]** / **`Load | Yes`** | Enter a folder, start receive from `[RECV]`, or send the selected file. |
 | **[No]** | Cancel, leave a picker, or move back depending on the current browser state. |
 | Hold **[Global]** | Open the file menu. |
 
@@ -77,7 +77,7 @@ Bulk receive prefixes filenames with a two-digit slot number, such as `01KICK.wa
 
 Sample transfers use the configured Machinedrum MIDI port. If external MIDI clock is present, MCL temporarily protects the transfer path where required by the platform.
 
-Press or hold Machinedrum **[No]** during a send or receive to cancel. MCL **[Save/No]** also cancels receives, and stops bulk receive/send at the next slot or file boundary.
+Press or hold Machinedrum **[No]** during a send or receive to cancel. **`Save | No`** also cancels receives, and stops bulk receive/send at the next slot or file boundary.
 
 Loop points from received looped SDS samples are stored in the saved WAV file. MCL's WAV reader also handles common non-standard WAV chunk layouts.
 

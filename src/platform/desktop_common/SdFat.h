@@ -105,6 +105,8 @@ public:
     bool truncate(uint32_t length);
     bool remove();
     bool preAllocate(uint32_t length);
+    // Host files have no cluster chain: nothing to check.
+    bool contiguousRange(uint32_t *, uint32_t *) { return true; }
 
     explicit operator bool() const { return open_; }
 

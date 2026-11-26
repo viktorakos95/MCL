@@ -68,7 +68,7 @@ void MDMidiEvents::track_cc(uint8_t *msg) {
   }
 
   uint8_t param_limit =
-      MD.is_spsx ? MD.spsxWireParamCount() : MD_PARAMS_PER_TRACK;
+      MD.x20() ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
   if (track_param == MODEL_LEVEL) {
     MD.kit.levels[track] = value;
   } else if (track_param == MODEL_MUTE) {
@@ -230,6 +230,7 @@ void MDClass::setup_listeners() {
 }
 
 void MDClass::cleanup_listeners() {
+  md_usr.reset();
   midi_events.disable_live_kit_update();
   // Remove sysex listeners from the current (old) sysex object
   // before setPort() reassigns midi to the new port.
@@ -274,7 +275,7 @@ namespace {
 
 class MDMixerCapability final : public DeviceMixerCapability {
 public:
-  explicit MDMixerCapability(MDClass &device)
+  constexpr explicit MDMixerCapability(MDClass &device)
       : DeviceMixerCapability(device, MODEL_LEVEL, MODEL_MUTE) {}
   virtual uint8_t track_count(const DeviceContext &ctx) const override;
   virtual SeqTrack *seq_track(const DeviceContext &ctx,
@@ -322,11 +323,20 @@ public:
                          uint8_t param, uint8_t value,
                          MidiUartClass *uart_ = nullptr,
                          bool update_kit = false) override;
+  virtual bool param_value_text(const DeviceContext &ctx, uint8_t target,
+                                uint8_t param, uint8_t value,
+                                char *out) override;
+  virtual MidiDeviceParamRange param_range(const DeviceContext &ctx,
+                                           uint8_t target,
+                                           uint8_t param) const override;
   virtual bool sequencer_lock_param_label(const DeviceContext &ctx,
                                           uint8_t target, uint8_t param,
                                           char *out, uint8_t len) override;
   virtual bool sequencer_uses_step_pitch(const DeviceContext &ctx,
                                          uint8_t target) const override;
+  uint8_t sequencer_pitch_lock_param(const DeviceContext &, uint8_t target) const override {
+    return md().pitchParameter(target);
+  }
 
 private:
   MDClass &md() const { return (MDClass &)device_; }
@@ -400,9 +410,11 @@ public:
                                   uint8_t *params, uint8_t count) override;
   virtual void end_param_editor(const DeviceContext &ctx) override;
   virtual void draw_microtiming(const DeviceContext &ctx, uint8_t speed,
-                                uint8_t timing) override;
+                                uint8_t timing, uint8_t condition,
+                                uint8_t mode) override;
   virtual void draw_microtiming_signed(const DeviceContext &ctx, uint8_t speed,
-                                       int8_t microtiming) override;
+                                       int8_t microtiming, uint8_t condition,
+                                       uint8_t mode) override;
   virtual void close_microtiming(const DeviceContext &ctx) override;
   virtual void clear_popup(const DeviceContext &ctx) override;
   virtual void popup_text(const DeviceContext &ctx, char *text,
@@ -795,7 +807,9 @@ bool MDStepEditCapability::configure_kit_sound_panel(
   }
   if (pitch_max != nullptr) {
     if (tuning) {
-      *pitch_max = tuning->len - 1 + tuning->base;
+      const uint8_t base = uint8_t(model - MD_USR_FIRST) < MD_USR_SLOTS
+          ? tuning->base % 12 : tuning->base;
+      *pitch_max = tuning->len - 1 + base;
     } else if (midi_model) {
       *pitch_max = 127;
     } else {
@@ -803,12 +817,7 @@ bool MDStepEditCapability::configure_kit_sound_panel(
     }
   }
 
-  const char *str1 = getMDMachineNameShort(model, 1);
-  const char *str2 = getMDMachineNameShort(model, 2);
-  copyMachineNameShort(str1, info);
-  info[2] = '>';
-  copyMachineNameShort(str2, info + 3);
-  info[5] = '\0';
+  copyMDTrackLabel(model, info, info_len);
   return true;
 }
 
@@ -833,7 +842,8 @@ bool MDStepEditCapability::kit_sound_voice_allocatable(
 uint8_t MDStepEditCapability::kit_sound_default_pitch(const DeviceContext &ctx,
                                                       uint8_t target) const {
   (void)ctx;
-  return target < NUM_MD_TRACKS ? md().kit.params[target][0] : 0;
+  const uint8_t parameter = md().pitchParameter(target);
+  return parameter != 255 ? md().kit.params[target][parameter] : 0;
 }
 
 uint8_t MDStepEditCapability::kit_sound_note_from_pitch(
@@ -901,7 +911,7 @@ bool MDStepEditCapability::param_from_key(const DeviceContext &ctx,
     return false;
   }
   MDClass &device = md();
-  uint8_t value = device.currentSynthPage * 8 + key - 0x10;
+  uint8_t value = device.paramForEncoder(key - 0x10);
   uint8_t param_count =
       device.is_spsx ? device.spsxWireParamCount() : MD_PARAMS_PER_TRACK;
   if (value >= param_count) {
@@ -924,12 +934,11 @@ bool MDStepEditCapability::key_for_param(const DeviceContext &ctx,
   if (param >= param_count) {
     return false;
   }
-  int16_t value =
-      (int16_t)param - (int16_t)device.currentSynthPage * 8 + 0x10;
-  if (value < 0x10 || value > 0x17) {
+  uint8_t encoder = device.encoderForParam(param);
+  if (encoder > 7) {
     return false;
   }
-  *key = (uint8_t)value;
+  *key = 0x10 + encoder;
   return true;
 }
 
@@ -955,16 +964,19 @@ void MDStepEditCapability::end_param_editor(const DeviceContext &ctx) {
 }
 
 void MDStepEditCapability::draw_microtiming(const DeviceContext &ctx,
-                                            uint8_t speed, uint8_t timing) {
+                                            uint8_t speed, uint8_t timing,
+                                            uint8_t condition, uint8_t mode) {
   (void)ctx;
-  md().draw_microtiming(speed, timing);
+  md().draw_microtiming(speed, timing, condition, mode);
 }
 
 void MDStepEditCapability::draw_microtiming_signed(const DeviceContext &ctx,
                                                    uint8_t speed,
-                                                   int8_t microtiming) {
+                                                   int8_t microtiming,
+                                                   uint8_t condition,
+                                                   uint8_t mode) {
   (void)ctx;
-  md().draw_microtiming_signed(speed, microtiming);
+  md().draw_microtiming_signed(speed, microtiming, condition, mode);
 }
 
 void MDStepEditCapability::close_microtiming(const DeviceContext &ctx) {
@@ -1166,6 +1178,21 @@ bool MDParamCapability::set_param(const DeviceContext &ctx, uint8_t target,
   return false;
 }
 
+bool MDParamCapability::param_value_text(const DeviceContext &ctx,
+                                         uint8_t target, uint8_t param,
+                                         uint8_t value, char *out) {
+  (void)ctx;
+  return target < NUM_MD_TRACKS && md_param_value_text(param, value, out);
+}
+
+MidiDeviceParamRange MDParamCapability::param_range(const DeviceContext &ctx,
+                                                    uint8_t target,
+                                                    uint8_t param) const {
+  (void)ctx;
+  return target < NUM_MD_TRACKS ? md_param_range(param)
+                                : MidiDeviceParamRange{0, 127};
+}
+
 bool MDParamCapability::sequencer_lock_param_label(const DeviceContext &ctx,
                                                    uint8_t target,
                                                    uint8_t param, char *out,
@@ -1199,6 +1226,35 @@ bool MDParamCapability::sequencer_uses_step_pitch(const DeviceContext &ctx,
 }
 #endif
 
+// The Machinedrum's LFO page: the first five encoders of an LFO tab choose
+// the destination, shapes and type, which are not track parameters.
+static const uint8_t md_lfo_page_params[3][8] PROGMEM = {
+    {255, 255, 255, 255, 255, 21, 22, 23},
+    {255, 255, 255, 255, 255, 28, 29, 30},
+    {24, 25, 26, 27, 31, 32, 33, 37},
+};
+
+uint8_t MDClass::paramForEncoder(uint8_t encoder) const {
+  uint8_t page = currentSynthPage;
+  if (page < 3) {
+    return page * 8 + encoder;
+  }
+  page -= 4;
+  if (page >= 3) {
+    return 255;
+  }
+  return pgm_read_byte(&md_lfo_page_params[page][encoder]);
+}
+
+uint8_t MDClass::encoderForParam(uint8_t param) const {
+  for (uint8_t encoder = 0; encoder < 8; encoder++) {
+    if (paramForEncoder(encoder) == param) {
+      return encoder;
+    }
+  }
+  return 255;
+}
+
 void MDClass::setup() {
   resetMidiMap();
   setTrackRoutings(mcl_cfg.routing);
@@ -1216,10 +1272,23 @@ void MDClass::setup() {
   if (global.baseChannel == 0) {
     setBaseChannel(9);
   }
+#if defined(__AVR__)
+  if (x20()) {
+    // Parameters 24-37 are only reachable in EXPANDED channel mode, which
+    // needs eight channels from the base channel.
+    if (global.baseChannel > 8) {
+      setBaseChannel(8);
+    }
+    setChannelMode(1);
+  }
+#endif
 
   setExternalSync();
   setProgramChange(2);
   setLocalOn(true);
+  if (extendedMachineUpdates()) {
+    send_global_setting(*this, 0x45, 1);
+  }
 }
 
 void MDClass::setBaseChannel(uint8_t channel) {
@@ -1234,13 +1303,21 @@ void MDClass::setProgramChange(uint8_t val) {
   send_global_setting(*this, 0x4C, val);
 }
 
-#if !defined(__AVR__)
 void MDClass::requestKit(uint8_t kit) {
+#if defined(__AVR__)
+  // Ask an X.20 peer for kit 65.1 by name; a bare request would follow the
+  // SysEx-format preference set on the Machinedrum.
+  if (!x20()) {
+    ElektronDevice::requestKit(kit);
+    return;
+  }
+  const uint8_t ver = SYSEX_VERSION_SPSX;
+#else
   uint8_t ver = is_spsx ? SYSEX_VERSION_SPSX : SYSEX_VERSION_LEGACY;
+#endif
   uint8_t data[] = {sysex_protocol.kitrequest_id, kit, ver};
   sendRequest(data, sizeof(data));
 }
-#endif
 
 void MDClass::requestPattern(uint8_t pattern) {
 #if defined(__AVR__)
@@ -1397,14 +1474,18 @@ void MDClass::get_mutes() {
       DEBUG_PRINTLN(m);
     }
     if (state & 2) {
-      mcl_seq.set_fill_mask(DeviceIdx::Primary, fill_state);
+      // An MCL-fill MD reports which tracks take part in a fill.
+      mcl_seq.fill_model = (fw_caps & FW_CAP_MCL_FILL_STATE) != 0;
+      mcl_seq.fill_edit_mask(DeviceIdx::Primary) = fill_state;
+      mcl_seq.fill_edited();
     }
   } else {
-    DEBUG_PRINTLN("mute state failed");
+    DEBUG_PRINTLN(F("mute state failed"));
   }
 }
 
 bool MDClass::probe() {
+  md_usr.reset();
   DEBUG_PRINT_FN();
 
   bool ti = key_interface.state;
@@ -1413,16 +1494,17 @@ bool MDClass::probe() {
   if (ti) {
     key_interface.off();
   }
-  DEBUG_PRINTLN("md probe");
+  DEBUG_PRINTLN(F("md probe"));
   connected = false;
 
   // Begin main probe sequence — derive port from uart pointer
   uint8_t probe_port = port;
+  fw_caps = 0; // A new connection learns its capabilities again.
   if (uart->device.getBlockingId(DEVICE_MD, DEVICE_SPS, probe_port, CALLBACK_TIMEOUT)) {
     uint8_t count = 3;
 
     while ((!get_fw_caps() || !md_has_required_fw_caps(*this)) && count) {
-      DEBUG_PRINTLN("bad caps");
+      DEBUG_PRINTLN(F("bad caps"));
       mcl_gui.delay_progress(250);
       count--;
     }
@@ -1459,7 +1541,14 @@ bool MDClass::probe() {
     setup();
 
     for (uint8_t i = 0; i < 32; i++) {
+#ifdef __AVR__
+      // The run across the track LEDs: 18 ms a step, with the progress bar
+      // moving. The bar's frame send paced it before the display's waits
+      // were removed; without a wait the 32 selects go out in under 100 ms.
+      mcl_gui.delay_progress(18);
+#else
       mcl_gui.draw_progress_bar(60, 60, false, 60, 25);
+#endif
       setStatus(0x22, i & 0x0F);
     }
     setStatus(0x22, currentTrack);
@@ -1506,7 +1595,7 @@ void MDClass::parseCC(uint8_t channel, uint8_t cc, uint8_t *track,
 
   uint8_t control_ch = channel - global.baseChannel;
 
-  const bool expanded_channel_mode = is_spsx && global.channelMode;
+  const bool expanded_channel_mode = x20() && global.channelMode;
 
   if (control_ch >= (expanded_channel_mode ? 8 : 4)) {
     *track = 255;
@@ -1514,7 +1603,6 @@ void MDClass::parseCC(uint8_t channel, uint8_t cc, uint8_t *track,
   }
 
   // Extended channels (base+4..+7): SPS-X parameters after the stock 24.
-#if !defined(__AVR__)
   if (expanded_channel_mode && control_ch >= 4) {
     SpsExtendedCcTarget target{};
     if (!spsExtendedCcToParam(global.baseChannel, channel, cc, target) ||
@@ -1526,7 +1614,6 @@ void MDClass::parseCC(uint8_t channel, uint8_t cc, uint8_t *track,
     *param = target.param;
     return;
   }
-#endif
 
   *track = control_ch * 4;
 
@@ -1651,9 +1738,8 @@ void MDClass::setTrackParam_inline(uint8_t track, uint8_t param, uint8_t value,
     if (update_kit) {
       kit.params[track][param] = value;
     }
-#if !defined(__AVR__)
-  } else if (param >= MD_PARAMS_PER_TRACK && param < spsxWireParamCount() &&
-             is_spsx && global.channelMode) {
+  } else if (param >= MD_PARAMS_PER_TRACK && param < SPS_PARAMS_PER_TRACK &&
+             x20() && global.channelMode) {
     // Extended params on extended channels (base+4..+7)
     SpsExtendedCcAddress address{};
     if (!spsExtendedParamToCc(global.baseChannel, track, param, address))
@@ -1665,7 +1751,6 @@ void MDClass::setTrackParam_inline(uint8_t track, uint8_t param, uint8_t value,
       sendPolyKeyPressure(address.channel, address.cc, value, uart_);
     }
     return;
-#endif
   } else if (param == MODEL_MUTE) { // MUTE
     cc = 12 + b;
   } else if (param == MODEL_LEVEL) { // LEV
@@ -1763,12 +1848,57 @@ void MDClass::setCompressorParam(uint8_t param, uint8_t value) {
 
 /*** tunings ***/
 
+bool MDClass::getBlockingKit(uint8_t kit, uint16_t timeout) {
+  if (!ElektronDevice::getBlockingKit(kit, timeout)) return false;
+#if defined(__AVR__)
+  // Kit 65.1 carries every tuning flag; older peers have only tonal on/off.
+  return true;
+#else
+  if (is_spsx) return true; // Native kits already contain all tuning flags.
+  return md_usr.readKitTuning(kit, timeout);
+#endif
+}
+
+uint8_t MDClass::pitchParameter(uint8_t track) const {
+  if (track >= 16) return 255;
+  const uint8_t model = uint8_t(kit.models[track]);
+  if (uint8_t(model - MD_USR_FIRST) >= MD_USR_SLOTS) return 0;
+  const uint8_t descriptor = md_usr.descriptor(model);
+  return (descriptor & (MD_USR_PRESENT | MD_USR_PITCH)) ==
+         (MD_USR_PRESENT | MD_USR_PITCH) ? descriptor & 7u : 255;
+}
+
+// MDX_tonal_pitch_base_note's octave for parameter 0 of each built-in model
+// (-1: no tonal note); USR machines use octave 1. The base note is C# of
+// that octave: 25 + 12 * octave, one octave down for TONAL-1, up for TONAL+1.
+static const int8_t kMdxTonalOctave[40] PROGMEM = {
+  -1, 1, -1, -1, 1, 1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+   0, 0, 0, -1, 1, 0, -1, -1, -1, -1, -1, 1, 1, 0, -1, -1,
+   2, 2, 2, 4, 4, 3, 2, -1};
+
+uint8_t MDClass::mdxTonalNote(uint8_t track, uint8_t note_num) {
+  if (!x20() || track >= 16 || note_num == 0) return 0;
+  const uint8_t tuning = kit.get_tuning(track);
+  if (tuning == MD_TUNING_DEFAULT) return 0;
+  const uint8_t model = kit.get_model(track);
+  int8_t octave = 1;
+  if (uint8_t(model - MD_USR_FIRST) >= MD_USR_SLOTS)
+    octave = model < sizeof(kMdxTonalOctave)
+        ? int8_t(pgm_read_byte(&kMdxTonalOctave[model])) : -1;
+  if (octave < 0) return 0;
+  // Step edit numbers a tonal track's notes from C# = 1 (its first value):
+  // 24 + 12 * octave + note_num, 12 lower for TONAL-1 and higher for TONAL+1.
+  return uint8_t(12 * octave + note_num +
+      (tuning == MD_TUNING_DOWN ? 12 : tuning == MD_TUNING_UP ? 36 : 24));
+}
+
 uint8_t MDClass::trackGetCCPitch(uint8_t track, uint8_t cc, int8_t *offset) {
   tuning_t const *tuning = getKitModelTuning(track);
 
   if (tuning == NULL)
     return 128;
 
+  const int16_t base = int16_t(tuning->base) + mdTuningNoteOffset(kit.get_tuning(track));
   uint8_t i;
   int8_t off = 0;
   for (i = 0; i < tuning->len; i++) {
@@ -1778,8 +1908,8 @@ uint8_t MDClass::trackGetCCPitch(uint8_t track, uint8_t cc, int8_t *offset) {
       if (offset != NULL) {
         *offset = off;
       }
-      if (off <= tuning->offset)
-        return i + tuning->base;
+      if (off <= tuning->offset && base + i >= 0 && base + i < 128)
+        return base + i;
       else
         return 128;
     }
@@ -1787,8 +1917,8 @@ uint8_t MDClass::trackGetCCPitch(uint8_t track, uint8_t cc, int8_t *offset) {
   off = ABS(pgm_read_byte(&tuning->tuning[tuning->len - 1]) - cc);
   if (offset != NULL)
     *offset = off;
-  if (off <= tuning->offset)
-    return i + tuning->base;
+  if (off <= tuning->offset && base + i >= 0 && base + i < 128)
+    return base + i;
   else
     return 128;
 }
@@ -1799,7 +1929,7 @@ uint8_t MDClass::trackGetPitch(uint8_t track, uint8_t pitch) {
   if (tuning == NULL)
     return 128;
 
-  uint8_t base = tuning->base;
+  const int16_t base = int16_t(tuning->base) + mdTuningNoteOffset(kit.get_tuning(track));
   uint8_t len = tuning->len;
 
   if ((pitch < base) || (pitch >= (base + len))) {
@@ -1885,20 +2015,19 @@ void MDClass::setMuteGroup(uint8_t srcTrack, uint8_t muteTrack) {
   send_md_request3(*this, 0x66, srcTrack, muteTrack);
 }
 
-void MDClass::assignMachine(uint8_t track, uint8_t model, uint8_t init) {
+void MDClass::assignMachine(uint8_t track, uint8_t model, uint8_t init, uint8_t tuning) {
+  if (tuning > MD_TUNING_UP) return;
   uint8_t send_length = 5;
   if (init == 255) {
     send_length = 4;
   }
 
   uint8_t data[] = {0x5B, track, model, 0x00, init};
-  if (model >= 128) {
-    data[2] = (model - 128);
-    data[3] = 0x01;
-  } else {
-    data[2] = model;
-    data[3] = 0x00;
-  }
+  data[2] = model & 0x7f;
+  // Use peer capabilities: AVR keeps its legacy kit layout even with SPS-X.
+  const bool tuningFlags = (fw_caps & FW_CAP_SPSX) != 0;
+  data[3] = mdMachineTuningFlags(uint32_t(model) |
+      (tuningFlags ? mdTuningModelFlags(tuning) : 0UL), tuningFlags);
   sendRequest(data, send_length);
 }
 
@@ -1920,7 +2049,7 @@ void MDClass::setMachine(uint8_t track, MDKit *kit) {
   }
 #endif
   // 138 bytes approx
-  assignMachine(track, kit->get_model(track), kit->get_tonal(track));
+  assignMachine(track, kit->get_model(track), kit->get_tonal(track), kit->get_tuning(track));
   setLFO(track, &(kit->lfos[track]), false);
   setTrigGroup(track, kit->trigGroups[track]);
   setMuteGroup(track, kit->muteGroups[track]);
@@ -1935,7 +2064,7 @@ void MDClass::setMachine(uint8_t track, MDKit *kit) {
 
 void MDClass::setMachine(uint8_t track, MDMachine *machine) {
   // 138 bytes approx
-  assignMachine(track, machine->get_model(), machine->get_tonal());
+  assignMachine(track, machine->get_model(), machine->get_tonal(), machine->get_tuning());
   setLFO(track, &(machine->lfo), false);
   if (machine->trigGroup == 255) {
     setTrigGroup(track, 127);
@@ -1961,9 +2090,12 @@ void MDClass::setMachine(uint8_t track, SPSMachine *machine) {
 uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
                                    uint8_t level, uint8_t mode, bool send) {
 
-  DEBUG_PRINT("assign machine bulk: ");
+  DEBUG_PRINT(F("assign machine bulk: "));
   DEBUG_PRINTLN(track);
-  uint8_t data[44]; // Increased size by 1 for length byte
+  // An X.20 peer takes 38 parameters, both LFOs and a trailing route.
+  const bool wide = x20();
+  const uint8_t num_params = wide ? SPS_PARAMS_PER_TRACK : MD_PARAMS_PER_TRACK;
+  uint8_t data[6 + SPS_PARAMS_PER_TRACK + 10 + 2 + 1 + 1];
   data[0] = 0x70;
   data[1] = 0x5b;
   uint8_t i = 2;
@@ -1972,24 +2104,15 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
   uint8_t length_index = i++;
 
   data[i++] = track;
-  if (machine->get_model() >= 128) {
-    data[i++] = (machine->get_model() - 128);
-    data[i] = 0x01;
-  } else {
-    data[i++] = machine->get_model();
-    data[i] = 0x00;
-  }
-  if (machine->get_tonal()) {
-    data[i] += 2;
-  }
-  i++;
+  data[i++] = machine->get_model() & 0x7f;
+  data[i++] = mdMachineTuningFlags(machine->get_model_raw(), (fw_caps & FW_CAP_SPSX) != 0);
 
   if (mode == 0) {
     goto end;
   }
 
-  memcpy(data + i, machine->params, 24);
-  i += 24;
+  memcpy(data + i, machine->params, num_params);
+  i += num_params;
 
   if (mode == 1) {
     goto end;
@@ -1997,6 +2120,10 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
 
   memcpy(data + i, &machine->lfo, 5);
   i += 5;
+  if (wide) {
+    memcpy(data + i, machine->lfoB, 5);
+    i += 5;
+  }
   if (machine->trigGroup > 15) {
     machine->trigGroup = 127;
   }
@@ -2006,18 +2133,23 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, MDMachine *machine,
   data[i++] = machine->trigGroup;
   data[i++] = machine->muteGroup;
   if (level != 255) {
-    DEBUG_PRINT("level ");
+    DEBUG_PRINT(F("level "));
     DEBUG_PRINTLN(level);
     data[i++] = level;
   }
-  DEBUG_PRINT("i : ");
+  if (wide && mdKitRouteValid(machine->outputRouting)) {
+    // Bit 2 marks a trailing per-kit route, after the optional level.
+    data[5] |= 4u;
+    data[i++] = machine->outputRouting;
+  }
+  DEBUG_PRINT(F("i : "));
   DEBUG_PRINTLN(i);
 end:
   // Calculate and insert length (total data length minus the command bytes and length byte itself)
   uint8_t payload_length = i - 1;
   data[length_index] = payload_length;
 
-  DEBUG_PRINT("payload length: ");
+  DEBUG_PRINT(F("payload length: "));
   DEBUG_PRINTLN(payload_length);
 
   return sendRequest(data, i, send);
@@ -2040,17 +2172,8 @@ uint8_t MDClass::assignMachineBulk(uint8_t track, SPSMachine *machine,
   uint8_t length_index = i++;
 
   data[i++] = track;
-  if (machine->get_model() >= 128) {
-    data[i++] = (machine->get_model() - 128);
-    data[i] = 0x01;
-  } else {
-    data[i++] = machine->get_model();
-    data[i] = 0x00;
-  }
-  if (machine->get_tonal()) {
-    data[i] += 2;
-  }
-  i++;
+  data[i++] = machine->get_model() & 0x7f;
+  data[i++] = mdMachineTuningFlags(machine->get_model_raw(), (fw_caps & FW_CAP_SPSX) != 0);
 
   uint8_t num_params =
       is_spsx ? spsxWireParamCount()
@@ -2095,7 +2218,7 @@ end:
 #endif
 
 void MDClass::loadMachinesCache(uint32_t track_mask, MidiUartClass *uart_) {
-  DEBUG_PRINTLN("load machine cache");
+  DEBUG_PRINTLN(F("load machine cache"));
   uint8_t a = track_mask & 0x7F;
   uint8_t b = (track_mask >> 7) & 0x7F;
   uint8_t c = (track_mask >> 14) & 0x7F;
@@ -2125,7 +2248,7 @@ bool MDClass::querySampleBank(uint8_t &bank) {
 
 void MDClass::setOrigParams(uint8_t track, MDMachine *machine) {
   MDKit *kit_ = &kit;
-  memcpy(kit_->params_orig[track], machine->params, MD_PARAMS_PER_TRACK);
+  memcpy(kit_->params_orig[track], machine->params, SPS_PARAMS_PER_TRACK);
 }
 
 #if !defined(__AVR__)
@@ -2139,32 +2262,15 @@ void MDClass::setOrigParams(uint8_t track, SPSMachine *machine) {
 void MDClass::insertMachineInKit(uint8_t track, MDMachine *machine,
                                  bool set_level) {
 
-  DEBUG_PRINT("insert machine in kit ");
+  DEBUG_PRINT(F("insert machine in kit "));
   DEBUG_PRINTLN(track);
 
   MDKit *kit_ = &kit;
 
-  memcpy(kit_->params[track], machine->params, MD_PARAMS_PER_TRACK);
-#if !defined(__AVR__)
-  if (is_spsx) {
-    kit_->outputRouting[track] = MD_KIT_ROUTE_GLOBAL;
-    // Mirror MDKit::fromSysex legacy fallback (host MDTypes.cpp): envelope
-    // bypass-on, retrig off + RENV on. Keeps single-machine inserts
-    // consistent with full-kit inserts.
-    memset(&kit_->params[track][MD_PARAMS_PER_TRACK], 0,
-           SPS_PARAMS_PER_TRACK - MD_PARAMS_PER_TRACK);
-    kit_->params[track][MODEL_ENVATT]  = 0;
-    kit_->params[track][MODEL_ENVHLD]  = 0;
-    kit_->params[track][MODEL_ENVDCY]  = 127;
-    kit_->params[track][MODEL_ENVMIX]  = 127;
-    kit_->params[track][MODEL_LFO2SPD] = 64;
-    kit_->params[track][MODEL_LFO2DEP] = 0;
-    kit_->params[track][MODEL_LFO2MIX] = 0;
-    kit_->params[track][MODEL_RTRG]    = 0;
-    kit_->params[track][MODEL_RTIM]    = 0;
-    kit_->params[track][MODEL_RENV]    = 1;   // envelope reset ON
-  }
-#endif
+  // The record carries all 38 parameters, LFO-B and routing; one loaded from
+  // an older track holds the defaults for the fields it never stored.
+  memcpy(kit_->params[track], machine->params, SPS_PARAMS_PER_TRACK);
+  kit_->set_ext(track, machine);
   setOrigParams(track, machine);
 
   if (set_level) {
@@ -2181,7 +2287,7 @@ void MDClass::insertMachineInKit(uint8_t track, MDMachine *machine,
     DEBUG_PRINTLN(F("warning: lfo dest was out of bounds"));
     machine->lfo.destinationTrack = track;
   }
-  memcpy(&(kit_->lfos[track]), &machine->lfo, sizeof(machine->lfo));
+  kit_->set_lfo(track, &machine->lfo);
 
   if ((machine->trigGroup < 16) && (machine->trigGroup != track)) {
     kit_->trigGroups[track] = machine->trigGroup;
@@ -2247,7 +2353,7 @@ uint8_t MDClass::sendMachine(uint8_t track, MDMachine *machine, bool send_level,
   }
 
   if ((send_level) && (kit_->levels[track_] != machine->level)) {
-    DEBUG_PRINTLN("level changing");
+    DEBUG_PRINTLN(F("level changing"));
     DEBUG_PRINTLN(machine->level);
     level = machine->level;
   }

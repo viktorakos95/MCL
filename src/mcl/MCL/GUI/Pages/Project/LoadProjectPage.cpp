@@ -8,9 +8,13 @@
 #include "KeyInterface.h"
 #include "GUI/MCLMenus.h"
 
+// The name of the last project loaded or tried, so the page opens on it
+// again, including straight after a failed load.
+static char last_project[PRJ_NAME_LEN + 1];
+
 void LoadProjectPage::init() {
 
-  DEBUG_PRINTLN("load project page init");
+  DEBUG_PRINTLN(F("load project page init"));
   DEBUG_PRINT_FN();
   DevicePanelRef::set_primary_key_repeat(1);
   FileBrowserPage::init();
@@ -18,15 +22,11 @@ void LoadProjectPage::init() {
 #ifdef MCL_HAS_FILE_MOVE
   if (!move_destination_mode) {
 #endif
-    show_dirs = true;
+    folder_browser_options();
+    // A project is a folder: [Yes] selects it.
     select_dirs = true;
-    show_save = true;
-    show_parent = true;
-    show_new_folder = true;
-    show_filemenu = true;
     show_copy = true;
     show_versions = false;
-    draw_dirs = true;
     strcpy(title, "PROJECT");
     strcpy(str_save, "[ NEW PROJECT ]");
     focus_current_project();
@@ -71,14 +71,37 @@ void LoadProjectPage::on_select(const char *entry) {
     gfx.alert_error("BAD PATH");
     return;
   }
+  strncpy(last_project, entry, PRJ_NAME_LEN);
   uint8_t count = 2;
   while (count--) {
     if (proj.load_project(proj_filename)) {
-      DEBUG_PRINTLN("loaded, setting grid");
+      if (count == 0) {
+        // The current project is back after a failed load: stay here, on
+        // the project that failed, ready for the next one, once a message
+        // box has had its time (the list would redraw its highlight).
+        while (oled_display.textbox_enabled) {
+          oled_display.display();
+        }
+        init();
+        return;
+      }
+      DEBUG_PRINTLN(F("loaded, setting grid"));
       mcl.setPage(GRID_PAGE);
       return;
     } else {
-      gfx.alert("Error", "Not compatible");
+#ifndef MCL_HAS_PROJECT_CONVERSION
+      if (proj.version == PROJ_MIN_READABLE_VERSION) {
+        // A project from before MCL 5: this firmware cannot convert it. The
+        // list's highlighted row (draw_filebrowser) is blanked first; its
+        // white bar showed around the box.
+        oled_display.fillRect(40, 2 + 8 * cur_row, MENU_WIDTH, 7, BLACK);
+        oled_display.textbox_P(mclstr_upgrade, mclstr_project);
+        oled_display.display();
+      } else
+#endif
+      {
+        gfx.alert("Error", "Not compatible");
+      }
       strncpy(proj_filename, mcl_cfg.project, sizeof(proj_filename) - 1);
       proj_filename[sizeof(proj_filename) - 1] = '\0';
     }
@@ -102,7 +125,7 @@ void LoadProjectPage::on_rename(const char *from, const char *to) {
   char from[f_len] = {0};
   strncpy(from,from_,f_len);
 */
-  DEBUG_PRINTLN("on rename");
+  DEBUG_PRINTLN(F("on rename"));
   bool project_dir = is_project_dir(from);
   char from_project_path[PRJ_PATH_LEN];
   if (!build_project_path(from, from_project_path, sizeof(from_project_path))) {
@@ -132,7 +155,7 @@ void LoadProjectPage::on_rename(const char *from, const char *to) {
   }
 
   if (strcmp(mcl_cfg.project, from_project_path) == 0) {
-    DEBUG_PRINTLN("reload current");
+    DEBUG_PRINTLN(F("reload current"));
     reload_current = true;
   }
 
@@ -149,7 +172,7 @@ void LoadProjectPage::on_rename(const char *from, const char *to) {
   }
 error:
   SD.chdir(lwd);
-  DEBUG_PRINTLN("error");
+  DEBUG_PRINTLN(F("error"));
   gfx.alert_error("Not renamed.");
 }
 
@@ -204,8 +227,7 @@ bool LoadProjectPage::handleEvent(gui_event_t *event) {
       event->mask == EVENT_BUTTON_PRESSED) {
     switch (event->source) {
     case MDX_KEY_LEFT:
-      encoders[1]->cur = encoders[1]->old = 0;
-      cur_row = 0;
+      set_cursor(0, 0);
       selection_change = true;
       return true;
     case MDX_KEY_RIGHT:
@@ -231,16 +253,11 @@ bool LoadProjectPage::handleEvent(gui_event_t *event) {
   if (EVENT_BUTTON(event) && EVENT_PRESSED(event, Buttons.BUTTON3) &&
       show_filemenu) {
     char entry[FILE_ENTRY_SIZE];
-    uint16_t entry_idx = encoders[1]->getValue();
     uint8_t entry_type = FILE_TYPE;
-    bool regular_entry = entry_idx < static_cast<uint16_t>(numEntries) &&
-                         !(show_save && entry_idx == 0);
+    bool regular_entry = get_selected_entry(entry, entry_type);
     if (regular_entry) {
-      get_entry(entry_idx, entry, entry_type);
-      regular_entry = strcmp(entry, "..") != 0;
-      if (regular_entry) {
-        entry_type = resolve_entry_type(entry_idx, entry, entry_type);
-      }
+      entry_type =
+          resolve_entry_type(encoders[1]->getValue(), entry, entry_type);
     }
     bool project_entry = regular_entry && entry_type == FILE_TYPE;
     uint16_t disabled = FM_MASK(FM_RECVALL) | FM_MASK(FM_SENDALL);
@@ -270,8 +287,7 @@ bool LoadProjectPage::handleEvent(gui_event_t *event) {
     }
 #endif
 #endif
-    set_file_menu_disabled_mask(disabled);
-    open_filemenu();
+    open_filemenu(disabled);
     return true;
   }
   return FileBrowserPage::handleEvent(event);
@@ -330,35 +346,20 @@ bool LoadProjectPage::_handle_filemenu() {
 }
 
 #ifdef MCL_HAS_FILE_MOVE
+// The move itself is the file browser's, on full card paths; the project
+// page only refuses to move the current project or a folder holding it.
 bool LoadProjectPage::enter_project_move_destination(const char *entry) {
-  char source_path[PRJ_PATH_LEN];
-  if (!build_project_path(entry, source_path, sizeof(source_path))) {
+  char project_path[PRJ_PATH_LEN];
+  if (!build_project_path(entry, project_path, sizeof(project_path))) {
     gfx.alert_error("BAD PATH");
     return false;
   }
-  if (path_starts_with_dir(mcl_cfg.project, source_path)) {
+  if (path_starts_with_dir(mcl_cfg.project, project_path)) {
     gfx.alert_error("CURRENT PROJECT");
     return false;
   }
 
-  return start_move_destination(source_path);
-}
-
-bool LoadProjectPage::move_to_current_folder() {
-  const char *name = strrchr(move_source_path, '/');
-  name = name == nullptr ? move_source_path : name + 1;
-
-  char dest_path[PRJ_PATH_LEN];
-  if (!build_project_path(name, dest_path, sizeof(dest_path))) {
-    gfx.alert_error("BAD PATH");
-    return false;
-  }
-  proj.chdir_projects();
-  bool ok = finish_move_to_path(dest_path);
-  if (!ok) {
-    SD.chdir(lwd);
-  }
-  return ok;
+  return enter_move_destination(entry);
 }
 #endif
 
@@ -426,12 +427,9 @@ bool LoadProjectPage::tbd_can_cd_up() const {
 uint8_t LoadProjectPage::entry_type_for_dir(const char *entry) {
 #ifdef MCL_HAS_FILE_MOVE
   if (move_destination_mode) {
-    char project_path[PRJ_PATH_LEN];
-    if (!build_project_path(entry, project_path, sizeof(project_path)) ||
-        path_starts_with_dir(project_path, move_source_path)) {
-      return SKIP_TYPE;
-    }
-    if (is_project_dir(entry)) {
+    // Only folders are destinations, not projects.
+    if (FileBrowserPage::entry_type_for_dir(entry) == SKIP_TYPE ||
+        is_project_dir(entry)) {
       return SKIP_TYPE;
     }
     return DIR_TYPE;
@@ -488,6 +486,10 @@ bool LoadProjectPage::build_project_path(const char *entry, char *out,
 }
 
 void LoadProjectPage::focus_current_project() {
+  if (last_project[0] != '\0') {
+    strcpy(focus_match, last_project);
+    return;
+  }
   focus_match[0] = '\0';
 
   const char *parent = nullptr;

@@ -13,10 +13,13 @@ class SoundBrowserPage : public FileBrowserPage {
 
   SoundBrowserPage(Encoder *e1 = NULL, Encoder *e2 = NULL, Encoder *e3 = NULL,
                   Encoder *e4 = NULL) : FileBrowserPage(e1, e2, e3, e4) {
+    hide_suffix = true;
   }
 
   virtual void on_new();
   virtual void on_select(const char*);
+  virtual void on_cancel();
+  virtual void cleanup();
 
   void save_sound();
   void load_sound();
@@ -25,6 +28,12 @@ class SoundBrowserPage : public FileBrowserPage {
 
   virtual void init();
   void setup();
+#ifdef PLATFORM_TBD
+  virtual bool tbd_can_cd_up() const;
+#endif
+
+protected:
+  virtual bool can_show_parent_entry() const;
 
 };
 

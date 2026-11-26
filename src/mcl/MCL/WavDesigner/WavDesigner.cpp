@@ -37,12 +37,12 @@ void WavDesigner::prompt_send() {
       mcl.loop();
     }
   }
-  DEBUG_PRINTLN("cleaning up");
+  DEBUG_PRINTLN(F("cleaning up"));
   sample_browser.file.close();
   mcl.setPage(WD_MIXER_PAGE);
 }
 
-bool WavDesigner::render() {
+COLD_SMALL() bool WavDesigner::render() {
   DEBUG_PRINT_FN();
   float sample_rate = 44100;
   Wav wav_file;
@@ -73,15 +73,11 @@ bool WavDesigner::render() {
 
   // The OscPage pitch range keeps a rendered waveform well under 65535 samples.
   uint16_t n_cycle = (uint16_t)(sample_rate / fund_freq + 0.5f);
-  DEBUG_PRINTLN("n_cycle 1");
+  DEBUG_PRINTLN(F("n_cycle 1"));
   DEBUG_PRINTLN(n_cycle);
   sample_rate = n_cycle * fund_freq;
 
-  SineOsc sine_osc(sample_rate);
-  TriOsc tri_osc(sample_rate);
-  PulseOsc pulse_osc(sample_rate);
-  SawOsc saw_osc(sample_rate);
-  UsrOsc usr_osc(sample_rate);
+  OscSet oscs(sample_rate);
 
   // We need at least 2 cycles of the waveform
   // MD is finicky about minimum sample length.
@@ -122,8 +118,7 @@ bool WavDesigner::render() {
         osc_sample =
             render_osc_sample(osc_type, page->get_width(), page->sine_levels,
                               page->usr_values, page->sine_level_sum, n,
-                              page->get_freq(), sine_osc, tri_osc, pulse_osc,
-                              saw_osc, usr_osc);
+                              page->get_freq(), oscs);
       }
       // Sum oscillator samples together
       sample += osc_sample * mixer.get_gain(i);
@@ -206,7 +201,7 @@ bool WavDesigner::render() {
   // first_zero_crossing = 0;
   // Normalise wav
 
-  DEBUG_PRINTLN("gain:");
+  DEBUG_PRINTLN(F("gain:"));
   DEBUG_PRINTLN(largest_sample_so_far);
   wav_file.header.smpl.init(SDS_LOOP_FORWARD, loop_start, loop_end);
   wav_file.file.sync();

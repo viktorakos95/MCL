@@ -64,7 +64,7 @@ void ArpPage::track_update(uint8_t n, bool re_render) {
   if (re_render) {
     if (last_arp_track && arp_track != last_arp_track) {
       if (!last_arp_track->preserves_note_set()) {
-        DEBUG_PRINTLN("clear");
+        DEBUG_PRINTLN(F("clear"));
         last_arp_track->clear_notes();
       }
     }
@@ -100,14 +100,14 @@ void ArpPage::loop() {
 
 void ArpPage::display() {
 
-  oled_display.setFont(&TomThumb);
+  oled_font_small();
 
   oled_display.fillRect(8, 2, 128 - 16, 32 - 2, BLACK);
-  oled_display.drawRect(8 + 1, 2 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
+  oled_rect(8 + 1, 2 + 1, 128 - 16 - 2, 32 - 2 - 2, WHITE);
 
-  oled_display.setCursor(42, 10);
+  oled_cursor(42, 10);
 
-  oled_display.setTextColor(WHITE);
+  oled_text_color(WHITE);
   mcl_print_P(mclstr_arpeggiator);
 
   if (arp_device_idx() == DeviceIdx::Primary) {

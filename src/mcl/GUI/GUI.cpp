@@ -215,7 +215,15 @@ void GuiClass::loop() {
   MidiUartParent::handle_midi_lock = 0;
 
   if (!skip_display_once) {
+#if defined(__AVR__)
+    const uint16_t now = read_clock_ms();
+    if (clock_diff(frame_clock, now) >= FRAME_PERIOD_MS) {
+      frame_clock = now;
+      display();
+    }
+#else
     display();
+#endif
   }
   skip_display_once = false;
   MidiUartParent::handle_midi_lock = _midi_lock_tmp;
@@ -278,7 +286,7 @@ void GuiClass::display() {
   }
   g_fps++;
   if (clock_diff(g_clock_fps, read_clock_ms()) > 1000) {
-    DEBUG_PRINT("FPS: ");
+    DEBUG_PRINT(F("FPS: "));
     DEBUG_PRINTLN(g_fps);
     g_fps = 0;
     g_clock_fps = read_clock_ms();

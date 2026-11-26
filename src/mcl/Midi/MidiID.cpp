@@ -29,20 +29,20 @@ bool MidiID::getBlockingId(uint8_t id, uint8_t alternate_id, uint8_t port,
   MidiClass *midi = midi_class_for_port(port);
   if (midi == nullptr || midi->midiSysex == nullptr) return false;
   if (port == UART1_PORT) {
-    DEBUG_PRINTLN("adding listener port1");
+    DEBUG_PRINTLN(F("adding listener port1"));
   }
   midi->midiSysex->addSysexListener(&MidiIDSysexListener);
 
   uint8_t ret = waitForId(id, port, timeout);
   if (port == UART1_PORT) {
-    DEBUG_PRINTLN("removing listener port1");
+    DEBUG_PRINTLN(F("removing listener port1"));
   }
   midi->midiSysex->removeSysexListener(&MidiIDSysexListener);
 
   if (id == ret || alternate_id == ret) {
     return true;
   }
-  DEBUG_PRINTLN("bad id");
+  DEBUG_PRINTLN(F("bad id"));
   return false;
 }
 
@@ -53,7 +53,7 @@ uint8_t MidiID::waitForId(uint8_t id, uint8_t port, uint16_t timeout) {
   uint16_t start_clock = read_slowclock();
   uint16_t current_clock = start_clock;
   send_id_request(id, port);
-  DEBUG_PRINTLN("waiting for ID");
+  DEBUG_PRINTLN(F("waiting for ID"));
   uint8_t _midi_lock_tmp = MidiUartParent::handle_midi_lock;
   MidiUartParent::handle_midi_lock = 1;
   do {

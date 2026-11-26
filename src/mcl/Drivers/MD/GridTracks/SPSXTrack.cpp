@@ -10,23 +10,8 @@
 namespace {
 
 int8_t legacy_md_microtiming_to_spsx(int8_t microtiming, uint8_t speed) {
-  if (microtiming == 0) {
-    return 0;
-  }
-
-  uint16_t ticks_per_step = SeqTrack::get_speed_multiplier_int(speed);
-  int16_t ticks = SeqTrack::microtiming_to_ticks(microtiming, ticks_per_step);
-  int32_t numerator = (int32_t)ticks * 512;
-  int16_t spsx_microtiming =
-      numerator >= 0
-          ? (int16_t)((numerator + ticks_per_step / 2) / ticks_per_step)
-          : (int16_t)-(((-numerator) + ticks_per_step / 2) / ticks_per_step);
-  if (spsx_microtiming < -127) {
-    spsx_microtiming = -127;
-  } else if (spsx_microtiming > 127) {
-    spsx_microtiming = 127;
-  }
-  return (int8_t)spsx_microtiming;
+  return md_microtiming_to_spsx_microtiming(
+      microtiming, SeqTrack::get_ticks_per_step(speed));
 }
 
 void copy_spsx_machine_to_md(const SPSMachine &src, MDMachine &dest) {
@@ -60,6 +45,7 @@ void convert_legacy_seq_to_spsx(const MDSeqTrackData &src,
     uint8_t legacy_locks = src_step.locks;
     dest_step.locks = 0;
     dest_step.cond_plock = src_step.cond_plock;
+    dest_step.cond_explicit = false;
     dest_step.cond_id = src_step.cond_id;
     dest.microtiming[step] =
         legacy_md_microtiming_to_spsx(src.microtiming[step], speed);
@@ -435,8 +421,8 @@ bool SPSXTrack::store_in_grid(GridSlot column, GridRow row,
                  sizeof(MDSeqTrackData));
         }
         if (merge == SAVE_MD_PATTERN_IMPORT) {
-          link.length = MD.pattern.patternLength;
-          link.set_speed(SEQ_SPEED_1X + MD.pattern.doubleTempo);
+          link.length = MD.pattern.trackLength(tracknumber);
+          link.set_speed(SEQ_SPEED_1X + MD.pattern.trackSpeed(tracknumber));
         }
         temp_seq_track.length = link.length;
         temp_seq_track.speed = link.speed_value();

@@ -16,7 +16,7 @@ MegaCMD also supports USB disk mode for SD card file transfer. MiniCommand is le
 - MD - Machinedrum
 - MDX - Machinedrum X OS.
 - MC - MegaCommand or MegaCMD MIDI controller.
-- **`Button`** Enclosed arrows will reference the use of a MegaCommand function button or encoders to perform an action.
+- **`Button`** Bold code text refers to a MegaCommand function button or encoder, for example **`Load | Yes`**.
 - **[Key]** Enclosed square brackets will reference the use of a Machinedrum key to perform an action.
 
 
@@ -43,7 +43,7 @@ Each project contains two grids, X and Y. Grid dimensions are 16 slots x 128 row
 Grid X and Grid Y are assigned in `CONFIG > MIDI > DEVICES`. The selected device determines what each slot stores and which editor pages are used. In the classic Machinedrum setup, Grid X stores the 16 Machinedrum tracks and Grid Y stores external MIDI tracks plus auxiliary state such as performance, route, Machinedrum master FX and tempo data.
 - **Bank:**
 
-The rows of the Grid X are divided in to groups of 16, forming 8 banks A,B,C,D,E,F,G,H.
+The rows of the Grid X are divided into groups of 16, forming 8 banks A,B,C,D,E,F,G,H.
 - **Row/Pattern**
 
 

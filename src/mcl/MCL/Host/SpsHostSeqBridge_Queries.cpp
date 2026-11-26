@@ -46,7 +46,7 @@ void SpsHostSeqBridge::sendTrackDetail(int track) {
     body[1] = negotiated_proto_version_ >= kProtoVersion ? 0x41 : 0x40;
     for (int s = 0; s < kNumSteps; s++) body[2 + s] = (uint8_t)(int8_t)tr->microtiming[s];
     for (int s = 0; s < kNumSteps; s++) {
-        uint8_t c = (uint8_t)(tr->steps[s].cond_id & 0x3F);
+        uint8_t c = seq_cond_to_md((uint8_t)(tr->steps[s].cond_id & 0x3F));
         if (tr->steps[s].cond_plock) c |= 0x80;
         body[2 + kNumSteps + s] = c;
     }

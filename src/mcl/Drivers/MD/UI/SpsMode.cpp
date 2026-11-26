@@ -161,6 +161,9 @@ void SpsMode::resync_from_kit() {
   uint8_t base = param_base();
   for (uint8_t i = 0; i < 4; i++) {
     uint8_t param = base + i;
+    // The lowest edit (RTIM 2) is applied on change in poll_encoders, so a
+    // stored value below it is shown and kept until it is edited.
+    enc[i].max = md_param_range(param).max;
     if (param >= param_count()) {
       enc[i].setValue(0);
       continue;
@@ -340,11 +343,11 @@ bool SpsMode::handle_arrow_subpage(gui_event_t *event) {
   if (!is_arrow_source(event->source)) return false;
   const bool sps_key_held = BUTTON_DOWN(ButtonsClass::FUNC_BUTTON5);
   const bool ui_button_held = ui_button_pressed_;
-  DEBUG_PRINT("    SpsMode::handle_arrow_subpage latched=");
+  DEBUG_PRINT(F("    SpsMode::handle_arrow_subpage latched="));
   DEBUG_PRINT((unsigned)latched_);
-  DEBUG_PRINT(" sps_key=");
+  DEBUG_PRINT(F(" sps_key="));
   DEBUG_PRINT((unsigned)sps_key_held);
-  DEBUG_PRINT(" ui_button=");
+  DEBUG_PRINT(F(" ui_button="));
   DEBUG_PRINTLN((unsigned)ui_button_held);
   if (sps_key_held && mcl.currentPage() == GRID_PAGE && grid_page.show_slot_menu) {
     if (is_press(event)) sps_key_consumed_ = true;
@@ -362,7 +365,7 @@ bool SpsMode::handle_arrow_subpage(gui_event_t *event) {
   // Otherwise, panel arrows fall through to grid / seq navigation by
   // default (even if the SPS latch is on).
   if (!overlay_active && !sps_key_held && !ui_button_held) {
-    DEBUG_PRINTLN("    -> reject (no modifier, no overlay)");
+    DEBUG_PRINTLN(F("    -> reject (no modifier, no overlay)"));
     return false;
   }
   if (is_press(event)) {
@@ -515,6 +518,9 @@ void SpsMode::poll_encoders() {
     enc[i].update(&snapshot[i]);
     if (enc[i].cur < enc[i].min) enc[i].cur = enc[i].min;
     if (enc[i].cur > enc[i].max) enc[i].cur = enc[i].max;
+    if (enc[i].hasChanged()) {
+      enc[i].cur = md_param_range(param_base() + i).clamp(enc[i].cur);
+    }
     if (enc[i].hasChanged()) {
       send_param(i);
       enc[i].old = enc[i].cur;

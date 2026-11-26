@@ -5,6 +5,9 @@
 
 #define TRACK_LOAD_FADE_FLAG_ENABLED 0x01
 #define TRACK_LOAD_FADE_FLAG_OUT 0x02
+// Runtime only (never stored in a slot): OUTIN's fade-out, which turns into
+// the fade-in over the same length when it ends, at the held slot's switch.
+#define TRACK_LOAD_FADE_FLAG_THEN_IN 0x04
 #define TRACK_LOAD_FADE_TARGET_DEFAULT 0xFF
 #define TRACK_LOAD_FADE_DEFAULT_DURATION_Q12 12
 

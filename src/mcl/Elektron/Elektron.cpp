@@ -66,35 +66,35 @@ const char *blocking_data_type_name(DataType type) {
 }
 
 void trace_blocking_data(const char *stage, DataType type, uint8_t index) {
-  DEBUG_PRINT("[mcl-blocking] ");
+  DEBUG_PRINT(F("[mcl-blocking] "));
   DEBUG_PRINT(stage);
-  DEBUG_PRINT(" type=");
+  DEBUG_PRINT(F(" type="));
   DEBUG_PRINT(blocking_data_type_name(type));
-  DEBUG_PRINT(" index=");
+  DEBUG_PRINT(F(" index="));
   DEBUG_PRINTLN((unsigned)index);
 }
 
 void trace_blocking_listener(const char *stage,
                              ElektronSysexListenerClass *listener) {
-  DEBUG_PRINT("[mcl-blocking] ");
+  DEBUG_PRINT(F("[mcl-blocking] "));
   DEBUG_PRINT(stage);
   if (!listener) {
-    DEBUG_PRINTLN(" listener=null");
+    DEBUG_PRINTLN(F(" listener=null"));
     return;
   }
 
-  DEBUG_PRINT(" msgType=");
+  DEBUG_PRINT(F(" msgType="));
   DEBUG_PRINT((unsigned)listener->msgType);
-  DEBUG_PRINT(" msg_rd=");
+  DEBUG_PRINT(F(" msg_rd="));
   DEBUG_PRINT((unsigned)listener->msg_rd);
   if (listener->sysex && listener->msg_rd < NUM_SYSEX_MSGS) {
     const uint8_t msg_rd = listener->msg_rd;
-    DEBUG_PRINT(" state=");
+    DEBUG_PRINT(F(" state="));
     DEBUG_PRINT((unsigned)listener->sysex->ledger[msg_rd].state);
-    DEBUG_PRINT(" len=");
+    DEBUG_PRINT(F(" len="));
     DEBUG_PRINT((unsigned)listener->sysex->ledger[msg_rd].recordLen);
   }
-  DEBUG_PRINTLN("");
+  DEBUG_PRINTLN(F(""));
 }
 #else
 void trace_blocking_data(const char *, DataType, uint8_t) {}
@@ -204,41 +204,47 @@ uint8_t ElektronDevice::get_track_state(uint16_t &mute_state,
 bool ElektronDevice::get_fw_caps() {
   send_system_command(this, 0x30);
 
-  uint8_t msgType = waitBlocking();
-
-  fw_caps = 0;
-
-  uint8_t begin = sysex_protocol.header_size + 1;
-  auto listener = getSysexListener();
-  if (!listener || !listener->sysex || listener->msg_rd >= NUM_SYSEX_MSGS) {
-    return false;
-  }
-
-  const uint8_t msg_rd = listener->msg_rd;
-  if (!listener->sysex->ledger[msg_rd].ptr) {
-    return false;
-  }
-  const uint16_t record_len = listener->sysex->ledger[msg_rd].recordLen;
-  if (listener->sysex->ledger[msg_rd].state != SYSEX_STATE_FIN ||
-      record_len <= begin) {
-    return false;
-  }
-
-  SysexView sysex(listener->sysex, msg_rd);
-  uint8_t b = 0;
-  if (msgType == 0x72 && sysex.getByte(begin) == 0x30) {
-    if (record_len < static_cast<uint16_t>(begin) + 5u) {
+  // The reply can follow another message: MDX announces a kit dump it has
+  // just loaded (0x54) before it answers. Wait past such messages, and
+  // change fw_caps only when a reply is read, so a kit send (which uses this
+  // query to wait) can never make an X.20 Machinedrum look like an older
+  // one. Probes clear fw_caps themselves.
+  const uint16_t start_clock = read_slowclock();
+  uint16_t elapsed = 0;
+  do {
+    const uint8_t msgType = waitBlocking(1000 - elapsed);
+    if (msgType == 255) {
       return false;
     }
-    begin++;
-    uint8_t *caps = (uint8_t *)&fw_caps;
-    for (uint8_t n = 0; n < 4; n++) {
-      b = sysex.getByte(begin++);
-      if (b == 0xF7) { break; }
-      caps[n] = b;
+    uint8_t begin = sysex_protocol.header_size + 1;
+    auto listener = getSysexListener();
+    if (!listener || !listener->sysex || listener->msg_rd >= NUM_SYSEX_MSGS) {
+      return false;
     }
-    return true;
-  }
+    const uint8_t msg_rd = listener->msg_rd;
+    const uint16_t record_len = listener->sysex->ledger[msg_rd].recordLen;
+    if (msgType == 0x72 && listener->sysex->ledger[msg_rd].ptr &&
+        listener->sysex->ledger[msg_rd].state == SYSEX_STATE_FIN &&
+        record_len > begin) {
+      SysexView sysex(listener->sysex, msg_rd);
+      if (sysex.getByte(begin) == 0x30) {
+        if (record_len < static_cast<uint16_t>(begin) + 5u) {
+          return false;
+        }
+        begin++;
+        uint32_t caps_value = 0;
+        uint8_t *caps = (uint8_t *)&caps_value;
+        for (uint8_t n = 0; n < 4; n++) {
+          const uint8_t b = sysex.getByte(begin++);
+          if (b == 0xF7) { break; }
+          caps[n] = b;
+        }
+        fw_caps = caps_value;
+        return true;
+      }
+    }
+    elapsed = clock_diff(start_clock, read_slowclock());
+  } while (elapsed < 1000);
   return false;
 }
 
@@ -348,27 +354,31 @@ void ElektronDevice::sendCommand(ElektronCommand command, uint8_t param) {
 }
 
 
-void ElektronDevice::draw_microtiming(uint8_t speed, uint8_t timing) {
-  uint8_t a = timing >> 7;
-  uint8_t b = timing & 0x7F;
-  uint8_t data[6] = {0x70, 0x3C, 0x20, speed, a, b};
-  sendRequest(data, 6);
-  // waitBlocking();
+// The popup command: the timing in two 7-bit bytes, then the step's
+// condition and mode when there is one to show.
+static void send_microtiming(ElektronDevice *device, uint8_t command,
+                             uint8_t speed, uint8_t timing, uint8_t condition,
+                             uint8_t mode) {
+  uint8_t data[8] = {0x70,   0x3C,          command,   speed,
+                     (uint8_t)(timing >> 7), (uint8_t)(timing & 0x7F),
+                     condition, mode};
+  device->sendRequest(data, condition == MICROTIMING_NO_CONDITION ? 6 : 8);
 }
 
-void ElektronDevice::draw_microtiming_signed(uint8_t speed,
-                                             int8_t microtiming) {
+void ElektronDevice::draw_microtiming(uint8_t speed, uint8_t timing,
+                                      uint8_t condition, uint8_t mode) {
+  send_microtiming(this, 0x20, speed, timing, condition, mode);
+}
+
+void ElektronDevice::draw_microtiming_signed(uint8_t speed, int8_t microtiming,
+                                             uint8_t condition, uint8_t mode) {
   int16_t encoded = (int16_t)microtiming + 127;
   if (encoded < 0) {
     encoded = 0;
   } else if (encoded > 254) {
     encoded = 254;
   }
-  uint8_t a = (uint8_t)encoded >> 7;
-  uint8_t b = (uint8_t)encoded & 0x7F;
-  uint8_t data[6] = {0x70, 0x3C, 0x27, speed, a, b};
-  sendRequest(data, 6);
-  // waitBlocking();
+  send_microtiming(this, 0x27, speed, (uint8_t)encoded, condition, mode);
 }
 
 void ElektronDevice::draw_pattern_idx(uint8_t idx, uint8_t idx_other, uint8_t chain_mask) {
@@ -432,6 +442,7 @@ void ElektronDevice::activate_enhanced_gui() { send_system_command(this, 0x37, 1
 void ElektronDevice::deactivate_enhanced_gui() { send_system_command(this, 0x37, 0); }
 void ElektronDevice::set_seq_page(uint8_t page) { send_system_command(this, 0x38, page); }
 void ElektronDevice::set_rec_mode(uint8_t mode) { send_system_command(this, 0x3A, mode); }
+void ElektronDevice::setFillState(uint8_t state) { send_system_command(this, 0x46, state); }
 void ElektronDevice::set_key_repeat(uint8_t mode) { send_system_command(this, 0x4E, mode); }
 void ElektronDevice::activate_key_interface() { send_system_command(this, 0x31, 1); }
 void ElektronDevice::deactivate_key_interface() { send_system_command(this, 0x31, 0); }

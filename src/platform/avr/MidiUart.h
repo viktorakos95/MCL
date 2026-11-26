@@ -104,11 +104,7 @@
 #define UART_MIDI 0
 #define UART_SERIAL 1
 
-#ifdef DEBUGMODE
-class MidiUartClass : public MidiUartParent, public Stream {
-#else
 class MidiUartClass : public MidiUartParent {
-#endif
 
 private:
 #ifdef RUNNING_STATUS_OUT
@@ -138,11 +134,11 @@ private:
     volatile uint8_t *ptr = ucsra();
     return *ptr & (1 << UDRE0);
   }
-  void set_tx() {
+  FORCED_INLINE() void set_tx() {
     volatile uint8_t *ptr = ucsrb();
     *ptr |= (1 << UDRIE0);
   }
-  void clear_tx() {
+  FORCED_INLINE() void clear_tx() {
     volatile uint8_t *ptr = ucsrb();
     *ptr &= ~(1 << UDRIE0);
   }
@@ -177,7 +173,7 @@ public:
                 RingBuffer<> *_txRb = nullptr,
                 RingBuffer<> *_txRb_realtime = nullptr) NOINLINE();
 
-  ALWAYS_INLINE() bool avail() { return !rxRb->isEmpty(); }
+  FORCED_INLINE() bool avail() { return !rxRb->isEmpty(); }
   ALWAYS_INLINE() uint8_t m_getc() { return rxRb->get(); }
 
 
@@ -348,14 +344,6 @@ public:
     set_tx();
   }
 
-
-#ifdef DEBUGMODE
-  // Stream pure functions
-  int available() { return 0; }
-  int read() { return 0; }
-  int peek() { return 0; }
-  void flush() { return; }
-#endif
 
 };
 ;

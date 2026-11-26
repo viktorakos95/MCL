@@ -158,12 +158,20 @@ void MCLSeq::onMidiContinueCallback(uint32_t clock_count) {
   (void)clock_count;
   update_params();
   seq_rec_play();
-  SET_BIT16(MDSeqTrack::gui_update, last_primary_track); //force cursor resync
+  // X.20 keeps its cursor at the paused step. The resync sends the last
+  // step, which is right only after a track reset, so it would put X.20
+  // out of step with the track.
+  if (!MD.x20()) {
+    SET_BIT16(MDSeqTrack::gui_update, last_primary_track); //force cursor resync
+  }
 }
 
 void MCLSeq::onMidiStartImmediateCallback(uint32_t clock_count) {
   (void)clock_count;
   realtime = true;
+  // As MDX: a start or stop cancels a queued or playing fill cycle.
+  if (fill_state & (FillQueued | FillCycle))
+    set_fill_state(fill_state & (FillHeld | FillLatched));
 #if !defined(__AVR__)
   legacy_tick_counter = 0;
 #endif
@@ -302,6 +310,8 @@ void MCLSeq::onMidiStartCallback(uint32_t clock_count) {
 
 void MCLSeq::onMidiStopCallback(uint32_t clock_count) {
   (void)clock_count;
+  if (fill_state & (FillQueued | FillCycle))
+    set_fill_state(fill_state & (FillHeld | FillLatched));
 #ifdef EXT_TRACKS
   if (seq_grid_y_runs_legacy_ext_tracks()) {
     for (uint8_t i = 0; i < num_ext_tracks; i++) {
@@ -314,8 +324,8 @@ void MCLSeq::onMidiStopCallback(uint32_t clock_count) {
   if (seq_grid_x_runs_md_tracks()) {
     MD.reset_dsp_params();
 
+    // A MID track's controllers keep their last values, as on the Machinedrum.
     SeqTrackUtil::for_each_md_track([](auto &track, uint8_t) {
-      track.reset_params();
       track.send_notes_off();
       reset_slide_track_locks(track);
     });

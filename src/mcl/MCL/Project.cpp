@@ -3,6 +3,7 @@
 #include "Project.h"
 #include "MCLSd.h"
 #include "MCLGUI.h"
+#include "UpgradeLog.h"
 #include "GUI/Pages/Grid/GridPages.h"
 #include "Devices/MidiSetup.h"
 #include "Sequencer/SeqTrackUtil.h"
@@ -34,13 +35,18 @@ namespace {
 
 bool copy_grid_row_slots_raw(Grid &src_grid, Grid &dst_grid, GridRow row) {
   uint8_t buf[256];
-  static_assert((GRID_WIDTH * GRID_SLOT_BYTES) % sizeof(buf) == 0,
-                "row slot copy buffer must divide row slot bytes");
+  static_assert(GRID_SLOT_BYTES % sizeof(buf) == 0,
+                "row slot copy buffer must divide each slot");
   if (!src_grid.seek(0, row) || !dst_grid.seek(0, row)) {
     return false;
   }
 
-  constexpr uint16_t chunks = (GRID_WIDTH * GRID_SLOT_BYTES) / sizeof(buf);
+  // A row is 65536 bytes, which wraps to zero in AVR's 16-bit size_t.
+  // Divide into chunks before multiplying; only the compile-time check is wide.
+  constexpr uint16_t chunks = GRID_WIDTH * (GRID_SLOT_BYTES / sizeof(buf));
+  static_assert(uint32_t(chunks) * sizeof(buf) ==
+                    uint32_t(GRID_WIDTH) * GRID_SLOT_BYTES,
+                "row copy chunk count must cover all slots");
   for (uint16_t i = 0; i < chunks; i++) {
     if (!src_grid.read(buf, sizeof(buf)) || !dst_grid.write(buf, sizeof(buf))) {
       return false;
@@ -274,13 +280,13 @@ class ATTR_PACKED() LegacyMDTrackStorage {
 public:
   LegacyGridTrackHeader header;
   LegacyMDSeqTrackData seq;
-  MDMachine machine;
+  MDMachineV1 machine;
 };
 
 class ATTR_PACKED() MigratedMDTrackStorage {
 public:
   LegacyGridTrackHeader header;
-  MDMachine machine;
+  MDMachineV1 machine;
   SeqTrackModData mod_data;
   MDSeqTrackData seq_data;
   TrackLoadFadeData load_fade;
@@ -378,13 +384,15 @@ static_assert(sizeof(LegacyFixedPayloadTrackStorage) ==
                   LEGACY_GRID_TRACK_HEADER_SIZE + sizeof(MDFXData),
               "fixed payload migration scratch size changed");
 static_assert(LEGACY_GRID_TRACK_HEADER_SIZE + sizeof(LegacyMDSeqTrackData) +
-                      sizeof(MDMachine) ==
+                      sizeof(MDMachineV1) ==
                   534,
               "origin/dev MDTrack storage size changed");
 static_assert(sizeof(LegacyMDTrackStorage) == 534,
               "origin/dev MDTrack storage size changed");
+// The migration writes track storage version 5; MDTrack widens it on load.
 static_assert(sizeof(MigratedMDTrackStorage) ==
-                  sizeof(MDTrack) - sizeof(void *),
+                  sizeof(MDTrack) - sizeof(void *) -
+                      (sizeof(MDMachine) - sizeof(MDMachineV1)),
               "MDTrack migration storage layout changed");
 constexpr uint16_t PROJECT_RENAME_SUFFIXES =
     256;
@@ -399,10 +407,14 @@ constexpr size_t PROJECT_HEADER_SIZE_LEGACY_CONFIG =
 
 #ifdef MCL_HAS_PROJECT_CONVERSION
 #define PROJECT_VERSION_CAN_OPEN(v)                                           \
-  ((v) == PROJ_MIN_READABLE_VERSION || (v) == PROJ_VERSION)
-#define PROJECT_CONVERSION_ATTR() __attribute__((noinline, cold))
+  ((v) == PROJ_MIN_READABLE_VERSION || (v) == PROJ_PREV_VERSION ||             \
+   (v) == PROJ_VERSION)
+#define PROJECT_CONVERSION_ATTR() __attribute__((noinline, cold)) COLD_SMALL()
 #else
-#define PROJECT_VERSION_CAN_OPEN(v) ((v) == PROJ_VERSION)
+// A 3013 project is laid out like the current one, so it opens without the
+// conversion code: its header is restamped and its tracks widen as they load.
+#define PROJECT_VERSION_CAN_OPEN(v)                                           \
+  ((v) == PROJ_PREV_VERSION || (v) == PROJ_VERSION)
 #endif
 
 bool project_config_version_valid(uint32_t version) {
@@ -449,6 +461,7 @@ uint8_t project_config_sample_bank_setting(const MCLSysConfigData &source) {
   return normalized_sample_bank_setting(source.md_sample_bank);
 }
 
+#ifndef MCL_PROJECT_UPGRADER // the upgrader loads no sample bank
 uint8_t project_config_sample_bank_to_load(const MCLSysConfigData &source) {
   uint8_t setting = project_config_sample_bank_setting(source);
   if (setting >= MD_SAMPLE_BANK_FIXED_FIRST &&
@@ -457,6 +470,7 @@ uint8_t project_config_sample_bank_to_load(const MCLSysConfigData &source) {
   }
   return 0;
 }
+#endif
 
 void clear_project_sample_bank(MCLSysConfigData *data) {
   if (data == nullptr) {
@@ -648,7 +662,7 @@ bool migrate_empty_track_header(Grid &src_grid, Grid &dst_grid,
 
 void init_upgraded_md_track(MigratedMDTrackStorage &dst, const GridLink &link,
                             const LegacyMDSeqTrackData &seq,
-                            const MDMachine &machine) {
+                            const MDMachineV1 &machine) {
   dst.header.version[0] = SEQ_TRACK_LOAD_FADE_STORAGE_VERSION;
   dst.header.version[1] = 0;
   dst.header.active = MD_TRACK_TYPE;
@@ -842,6 +856,7 @@ void normalize_project_config(MCLSysConfigData *data) {
 }
 #endif
 
+#ifndef MCL_PROJECT_UPGRADER // the upgrader applies no project config
 void apply_project_config(MCLSysConfigData *dst,
                           const MCLSysConfigData &source) {
   if (!project_config_valid(source)) {
@@ -865,6 +880,7 @@ void load_project_sample_bank(uint8_t sample_bank) {
   }
   MD.loadSampleBank(sample_bank - 1);
 }
+#endif
 
 } // namespace
 
@@ -874,10 +890,14 @@ void Project::draw_wait_popup(const char *message) {
 }
 
 void Project::draw_upgrade_progress(GridIndex grid, GridRow row) {
-#ifdef OLED_DISPLAY
   uint8_t progress = grid * (GRID_LENGTH / NUM_GRIDS) + row / NUM_GRIDS;
+#ifdef MCL_PROJECT_UPGRADER
+  upgrade_log::progress((uint16_t)progress * 100 / GRID_LENGTH);
+#elif defined(OLED_DISPLAY)
   mcl_gui.draw_progress_bar(progress, GRID_LENGTH, false, MCLGUI::s_progress_x,
                             21);
+#else
+  (void)progress;
 #endif
 }
 
@@ -983,7 +1003,7 @@ again:
     }
     if (proj.load_project(project_path)) {
       grid_page.reload_slot_models = false;
-      DEBUG_PRINTLN("project loaded, setting page to grid");
+      DEBUG_PRINTLN(F("project loaded, setting page to grid"));
       mcl.setPage(GRID_PAGE);
       return true;
     } else {
@@ -1013,7 +1033,7 @@ bool Project::split_project_path(const char *projectname,
                                  const char **basename) const {
   size_t path_len = strlen(projectname);
   if (path_len == 0 || path_len >= PRJ_PATH_LEN) {
-    DEBUG_PRINTLN("bad path len");
+    DEBUG_PRINTLN(F("bad path len"));
     return false;
   }
 
@@ -1022,7 +1042,7 @@ bool Project::split_project_path(const char *projectname,
                                                  : project_basename + 1;
   size_t name_len = strlen(project_basename);
   if (name_len == 0 || name_len > PRJ_NAME_LEN) {
-    DEBUG_PRINTLN("bad name len");
+    DEBUG_PRINTLN(F("bad name len"));
     return false;
   }
   if (basename != nullptr) {
@@ -1110,7 +1130,7 @@ bool Project::read_active_grid_pair(const char *projectname, uint8_t *pair) {
   uint32_t header_version = 0;
   bool ok = mcl_sd.read_data((uint8_t *)&header_version,
                              sizeof(header_version), &header_file);
-  if (ok && header_version == PROJ_VERSION) {
+  if (ok && header_version >= PROJ_PREV_VERSION) {
     ok = mcl_sd.read_data(pair, sizeof(*pair), &header_file);
   } else {
     *pair = 0;
@@ -1154,6 +1174,9 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   DEBUG_PRINTLN(projectname);
   file.close();
   project_loaded = false;
+#ifdef MCL_PROJECT_UPGRADER
+  upgrade_state = UPGRADE_NOT_PROJECT;
+#endif
 
   const char *project_basename = nullptr;
   if (!split_project_path(projectname, &project_basename)) {
@@ -1163,7 +1186,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   char proj_filename[PRJ_NAME_LEN  + 5];
   if (!project_file_name(project_basename, proj_filename,
                          sizeof(proj_filename))) {
-    DEBUG_PRINTLN("bad project filename");
+    DEBUG_PRINTLN(F("bad project filename"));
     return false;
   }
 
@@ -1171,7 +1194,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   chdir_projects();
 
   if (!SD.chdir(projectname)) {
-    DEBUG_PRINTLN("could not enter project dir");
+    DEBUG_PRINTLN(F("could not enter project dir"));
     return false;
   }
 
@@ -1181,6 +1204,10 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     DEBUG_PRINTLN(F("Could not open project file"));
     return false;
   }
+#ifdef MCL_PROJECT_UPGRADER
+  // A project file: unreadable until its versions are read.
+  upgrade_state = UPGRADE_UNREADABLE;
+#endif
   ret = check_project_version();
 
   if (!ret) {
@@ -1261,11 +1288,36 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
 #endif
   }
 
+#ifdef MCL_PROJECT_UPGRADER
+  // A scan has what it needs: the versions decide what opening would do.
+  // Nothing has been written.
+  if (upgrade_scan) {
+    upgrade_state = migrate_track_storage ? UPGRADE_NEEDED : UPGRADE_CURRENT;
+    file.close();
+    for (uint8_t i = 0; i < NUM_GRIDS; i++) {
+      grids[i].close_file();
+    }
+    return true;
+  }
+#endif
 #ifdef MCL_HAS_PROJECT_CONVERSION
   bool rebuilt_grid_pair = false;
+#ifdef MCL_PROJECT_UPGRADER
+  // A conversion writes a new pair of grid files beside the old pair.
+  if (migrate_track_storage) {
+    if (upgrade_room == 0) {
+      upgrade_skipped++;
+      return false;
+    }
+    upgrade_room--;
+  }
+#endif
+#ifndef MCL_PROJECT_UPGRADER
+  // The upgrader's log shows the project instead.
   if (migrate_track_storage || project_needs_update || write_grid_headers) {
     draw_wait_popup("UPGRADING PROJECT");
   }
+#endif
 
   if (migrate_track_storage) {
     if (!migrate_track_storage_versions(project_basename, &pair)) {
@@ -1294,8 +1346,11 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
       ) {
     active_grid_pair = requested_pair;
   }
-  bool applied_project_config = false;
   bool update_header = use_requested_pair;
+#ifndef MCL_PROJECT_UPGRADER
+  // The upgrader converts the files only: it applies no project config and
+  // never reads or writes MCL's config.
+  bool applied_project_config = false;
   uint8_t project_sample_bank = project_config_sample_bank_to_load(cfg);
   if (mcl_cfg.project_config) {
     apply_project_config(&mcl_cfg, cfg);
@@ -1308,6 +1363,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     mcl_cfg.md_sample_bank = project_config_sample_bank_setting(cfg);
     mcl_cfg.md_sample_bank_capture = 0;
   }
+#endif
 
 #if MCL_FEATURE_HOST_ARRANGER
   uint8_t active_arrangement_idx = cfg.active_arrangement_idx;
@@ -1324,11 +1380,15 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   mcl_cfg.active_arrangement_idx = cfg.active_arrangement_idx;
 #endif
 
+  // An older project is stamped with the current version once it is open, so
+  // that MCL 5.0x no longer opens it and misreads the wider tracks.
+  update_header = update_header || project_version < PROJ_VERSION;
 #ifdef MCL_HAS_PROJECT_CONVERSION
-  update_header = update_header || project_needs_update || write_grid_headers ||
-                  project_version < PROJ_VERSION;
+  update_header = update_header || project_needs_update || write_grid_headers;
   bool created_project_header = false;
-  if (project_version < PROJ_VERSION) {
+  // A 3013 header is laid out like the current one and is restamped in
+  // place; only the pre-MCL 5 project file is kept aside as .old.
+  if (project_version == PROJ_MIN_READABLE_VERSION) {
     char old_filename[PRJ_NAME_LEN + 5];
     strcpy(old_filename, proj_filename);
     uint8_t len = strlen(old_filename);
@@ -1363,6 +1423,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   }
 #endif
 
+#ifndef MCL_PROJECT_UPGRADER
   strncpy(mcl_cfg.project, projectname, sizeof(mcl_cfg.project) - 1);
   mcl_cfg.project[sizeof(mcl_cfg.project) - 1] = '\0';
   if (!mcl_cfg.number_projects) { mcl_cfg.number_projects++; }
@@ -1377,6 +1438,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     midi_setup.cfg_ports();
   }
   load_project_sample_bank(project_sample_bank);
+#endif
   grid_page.row_scan = GRID_LENGTH;
   project_loaded = true;
 #if MCL_FEATURE_HOST_ARRANGER
@@ -1406,7 +1468,7 @@ bool Project::read_header() {
   }
 
 #ifndef MCL_HAS_PROJECT_CONVERSION
-  if (header_version != PROJ_VERSION) {
+  if (!PROJECT_VERSION_CAN_OPEN(header_version)) {
     version = header_version;
     return true;
   }
@@ -1424,10 +1486,15 @@ bool Project::read_header() {
     memset(reserved, 0, sizeof(reserved));
     if (project_config_valid(cfg)) {
       normalize_project_config(&cfg);
-    } else {
+    }
+#ifndef MCL_PROJECT_UPGRADER
+    else {
       copy_project_config(&cfg, mcl_cfg);
       clear_project_sample_bank(&cfg);
     }
+#endif
+    // The upgrader never reads MCL's config, so it leaves an invalid copy
+    // as it is: MCL fills it from its own config whenever the project opens.
     return true;
   }
 #endif
@@ -1513,7 +1580,7 @@ bool PROJECT_CONVERSION_ATTR() Project::migrate_legacy_md_aux_slots(
       }
       if (grid_x_header->track_type[0] == EMPTY_TRACK_TYPE) {
         grid_x_header->active = true;
-        grid_x_header->update_model(0, upgraded_md_track.machine.get_model(),
+        grid_x_header->update_model(0, uint8_t(upgraded_md_track.machine.model),
                                     MD_TRACK_TYPE);
       }
       *skip_grid_x0 = true;
@@ -1770,7 +1837,7 @@ bool Project::store_config_from_system() {
   return write_header();
 }
 
-bool Project::copy_grid_pair(const char *from_project,
+COLD_SMALL() bool Project::copy_grid_pair(const char *from_project,
                              const char *from_basename,
                              const char *to_project,
                              const char *to_basename,

@@ -22,6 +22,7 @@ def get_platform_subdir(env):
         "rp2040": "rp2040", "rp2350": "rp2040",
         "tbd": "rp2040", "tbd_picoboot3": "rp2040",
         "avr": "avr", "megacmd": "avr", "megacommand": "avr", "nano": "avr",
+        "megacmd_upgrader": "avr", "megacommand_upgrader": "avr",
     }
     for key, value in env_mapping.items():
         if key in env_name.lower():

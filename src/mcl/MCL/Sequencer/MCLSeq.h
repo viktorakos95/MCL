@@ -84,8 +84,11 @@ public:
   static constexpr bool using_spsx_tracks = false;
 #endif
 
-  uint16_t neighbor_trig_mask = 0;
-  uint16_t fill_mask[2] = {0, 0};
+  // mcl_seq is the only instance and starts zeroed in .bss, so zero-valued
+  // fields here take no initialiser (each one is a store in the AVR global
+  // constructor).
+  uint16_t neighbor_trig_mask;
+  uint16_t fill_mask[2];
   static uint8_t fill_slot(DeviceIdx device_idx) {
     return device_idx == DeviceIdx::Secondary ? 1 : 0;
   }
@@ -103,6 +106,46 @@ public:
     fill_mask[0] = mask;
     fill_mask[1] = mask;
   }
+
+  // MDX's fill (an X.20 Machinedrum advertising FW_CAP_MCL_FILL_STATE):
+  // the participants are the tracks a fill plays on; hold, latch and a
+  // queued cycle turn them on, and fill_mask follows. Older peers keep the
+  // mixer editing fill_mask directly.
+  enum : uint8_t { FillHeld = 1, FillLatched = 2, FillQueued = 4, FillCycle = 8 };
+  bool fill_model;
+  volatile uint8_t fill_state;
+  uint8_t fill_state_sent;
+  uint8_t fill_wrap_prev = 255;
+  // The MD's FILL view changed the tracks taking part: re-read them.
+  volatile bool fill_tracks_dirty;
+  uint16_t fill_participants[2] = {0xFFFF, 0xFFFF};
+  bool fill_active() const {
+    return (fill_state & (FillHeld | FillLatched | FillCycle)) != 0;
+  }
+  void apply_fill() {
+    const uint16_t on = fill_active() ? 0xFFFF : 0;
+    fill_mask[0] = fill_participants[0] & on;
+    fill_mask[1] = fill_participants[1] & on;
+  }
+  void set_fill_state(uint8_t state) {
+    fill_state = state;
+    apply_fill();
+  }
+  // The longest MD track wrapped: a queued fill plays this cycle, a cycle ends.
+  void fill_wrapped() {
+    set_fill_state((fill_state & (FillHeld | FillLatched)) |
+                   ((fill_state & FillQueued) ? FillCycle : 0));
+  }
+  // What the mixer's fill view edits.
+  uint16_t &fill_edit_mask(DeviceIdx device_idx) {
+    return fill_model ? fill_participants[fill_slot(device_idx)]
+                      : fill_mask_for(device_idx);
+  }
+  // The mixer changed what fill_edit_mask names.
+  void fill_edited() {
+    if (fill_model) apply_fill();
+  }
+  void service_fill();
   void set_fill_track(DeviceIdx device_idx, uint8_t track, bool held) {
     if (track >= 16) {
       return;
