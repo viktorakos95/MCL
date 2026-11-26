@@ -94,7 +94,7 @@ When it is released, the encoders go back to their usual job.
 
 ### Turning It On
 
-A tap of **[Bank D]** (the Slide key) turns `FADE` off, or on again in its last mode. The first time, it turns on in fade mode `MIX`.
+Tap **[Bank D]** (the Slide key) to turn `FADE` on or off. It turns on in the mode it had last, or `MIX` the first time.
 
 ![load fade on](../assets/images/load_fade_on.png)
 
@@ -102,7 +102,7 @@ While the fade is on, line 3 shows `FADE` and a small graphic of its mode:
 
 | Fade mode | Graphic | Result |
 | --- | --- | --- |
-| `MIX` | A cross | When a slot loads, the fade direction is determined automatically by what its track is playing (see below). |
+| `MIX` | A cross | The direction depends on what the track is playing (see below). |
 | `OUT` | A filled falling ramp | Every loaded track fades out. |
 | `IN` | A filled rising ramp | Every loaded track fades in. |
 
@@ -117,19 +117,19 @@ Hold **[Bank D]** to set the fade. The Load panel's edit opens, as with **`Load 
 - **[Left/Right]** or Encoder 1 change the row under the cursor. **[Up/Down]** or Encoder 2 move the cursor to `FLEN`, or to the other rows.
 - `FADE` steps through `-` (off), `MIX`, `OUT` and `IN`.
 - `FLEN` steps through `-` and 1 to 256 steps.
-- **[Trig]** 1 to 8 set `FLEN` to 2 to 256 steps, doubling with each trig, and turn the fade on. The trigs above set 256. The trig for the current length is lit; pressing it again sets `FLEN` back to `-`.
+- **[Trig]** 1 to 8 set `FLEN` to 2 to 256 steps, doubling with each trig, and turn the fade on. **[Trig]** 9 to 16 also set 256. The trig for the current length is lit; press it again to set `FLEN` back to `-`.
 
 In Queue mode, where line 3 is `LEN`, `FADE` and `FLEN` take its place for as long as **[Bank D]** is held.
 
-Let go of **[Bank D]** and the edit closes. The cursor of the **`Load | Yes`** and **[Global]** edit is not moved by it: that edit opens where it was last left.
+Release **[Bank D]** to close the edit.
 
 ### Length
 
-With `FLEN` at `-`, a fade lasts the `QUANT` length; with `QUANT` also at `-`, it lasts the slot's own length. Otherwise it lasts `FLEN` steps.
+A fade lasts `FLEN` steps. With `FLEN` at `-`, it lasts the `QUANT` length, or the slot's own length when `QUANT` is also `-`.
 
 ### Fade Mode MIX
 
-In fade mode `MIX`, when a slot loads, the fade direction is determined automatically by what its track is playing when the load arrives:
+In fade mode `MIX`, when a slot loads, the fade direction is determined automatically by what its track is playing:
 
 | The track was | You load | Result |
 | --- | --- | --- |
