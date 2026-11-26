@@ -2040,14 +2040,15 @@ void GridPage::io_loop() {
       io_setting_step(dir, BUTTON_DOWN(Buttons.ENCODER1));
     }
   }
-  // While QUANT or FADE is edited the trig matching its value is lit: trig
-  // n is 2^n steps, so QUANT's LED bit is its step count halved (none for
-  // a count that is not a power of two) and a fade length code of n + 1
-  // lights trig n. Otherwise the selection's LEDs show.
+  // While the mode or QUANT, or FADE, is edited the trig matching QUANT's or
+  // the fade length's value is lit: trig n is 2^n steps, so QUANT's LED bit
+  // is its step count halved (none for a count that is not a power of two)
+  // and a fade length code of n + 1 lights trig n. Otherwise the
+  // selection's LEDs show.
   uint16_t leds = IO_LEDS_SELECTION;
   if ((io_editing || io_slide) && !GridIOPage::show_offset) {
     const uint8_t item = io_item();
-    if (item == IO_ITEM_QUANT) {
+    if (item <= IO_ITEM_QUANT) {
       const uint8_t quant = mcl_cfg.chain_load_quant;
       leds = (quant & (quant - 1)) ? 0 : quant >> 1;
     } else if (item >= IO_ITEM_FMODE) {
@@ -2318,9 +2319,9 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     // Editing the rows, or Slide held: the trigs set values, not slots. Trig
     // n sets QUANT, or the FADE length (turning FADE on), to 2^n steps, the
     // knob's powers of two: QUANT to 64 on trigs 1-6 (trigs 7-16 set 64
-    // too), the fade to 256 on trigs 1-8 (trigs 9-16 set 256 too; either
-    // FADE stop). On the mode
-    // and Queue's LEN they do nothing.
+    // too), on QUANT or on the mode, the cursor's first stop; the fade to
+    // 256 on trigs 1-8 (trigs 9-16 set 256 too; either FADE stop). On
+    // Queue's LEN they do nothing.
     if ((io_editing || io_slide) && !GridIOPage::show_track_type &&
         track < 16) {
       if (event->mask == EVENT_BUTTON_PRESSED) {
@@ -2329,8 +2330,8 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_slide_used |= io_slide;
         if (GridIOPage::show_offset) {
           // Picking a destination: the settings stay as they are.
-        } else if (item == IO_ITEM_QUANT) {
-          // Trigs past 6 set QUANT's maximum, 64.
+        } else if (item <= IO_ITEM_QUANT) {
+          // The mode or QUANT. Trigs past 6 set QUANT's maximum, 64.
           gridio_param4.cur = track < 6 ? 2 << track : 64;
         } else if (item >= IO_ITEM_FMODE) {
           // Length code n is 2^(n-1) steps; the fade turns on. The lit

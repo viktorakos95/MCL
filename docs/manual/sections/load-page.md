@@ -81,7 +81,7 @@ While it is held, a cursor moves over the values:
 
 - Encoder 2 or **[Up/Down]** move the cursor. The value under it is inverted.
 - Encoder 1 or **[Left/Right]** change it.
-- On `QUANT`, **[Trig]** 1 to 6 set 2 to 64 steps, doubling with each trig; the trigs above set 64. The trig for the current value is lit.
+- On the load mode or `QUANT`, **[Trig]** 1 to 6 set `QUANT` to 2 to 64 steps, doubling with each trig; the trigs above set 64. The trig for the current value is lit.
 - On `FADE` or `FLEN`, the trigs set the fade length (see Fade).
 
 While the panel is edited, the step count and the row are hidden.
