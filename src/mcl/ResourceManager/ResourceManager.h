@@ -5,8 +5,9 @@
 #if defined(__AVR__)
 // The largest set a page loads together is the menu page's: short machine
 // names, knob icons, menu options, menu layouts and one option row for each
-// device, 5,633 bytes.
-#define RM_BUFSIZE 5633
+// device (5,633 bytes on 5.10). This fork's X.14 machine names and its
+// manual-step / roll menu entries make the sets larger: 6,500 as on 5.02+.
+#define RM_BUFSIZE 5991
 #elif defined(PLATFORM_TBD)
 // Every rp2040 resource set loaded at once, plus one menu option row for each
 // device, is 14,344 + NUM_DEVS * sizeof(menu_option_t) bytes (checked in

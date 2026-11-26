@@ -78,7 +78,8 @@ const char* MDClass::getMachineName(uint8_t machine) {
   return NULL;
 }
 
-model_to_param_names_t model_param_names[] = {
+// In flash: on AVR a plain const table of structs would sit in main RAM.
+static const model_to_param_names_t model_param_names[] PROGMEM = {
   { GND_SN_MODEL, 0 },
   { GND_NS_MODEL, 9 },
   { GND_IM_MODEL, 11},
@@ -212,8 +213,8 @@ static const char* get_param_name(const model_param_name_t *names, uint8_t param
 static uint16_t get_model_param_names(uint8_t model) NOINLINE();
 static uint16_t get_model_param_names(uint8_t model) {
   for (uint16_t i = 0; i < countof(model_param_names); i++) {
-    if (model == model_param_names[i].model) {
-      return model_param_names[i].offset;
+    if (model == pgm_read_byte(&model_param_names[i].model)) {
+      return pgm_read_word(&model_param_names[i].offset);
     }
   }
   return 0xFFFF;
