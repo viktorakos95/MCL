@@ -406,8 +406,11 @@ void MCL::setup() {
   }
   if (ret) {
     R.Clear();
+#ifndef MCL_PROJECT_UPGRADER
+    // The upgrader opens straight on its log instead.
     R.use_icons_boot();
     gfx.splashscreen(R.icons_boot->mcl_logo_bitmap);
+#endif
 
     ret = mcl_sd.load_init();
   }

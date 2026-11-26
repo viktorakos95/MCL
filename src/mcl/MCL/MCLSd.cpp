@@ -3,6 +3,7 @@
 #include "MCLGUI.h"
 #include "StackMonitor.h"
 #include "Project.h"
+#include "UpgradeLog.h"
 #include "Sequencer/PtcGroups.h"
 #include "platform.h"
 #include <string.h>
@@ -95,13 +96,105 @@ bool wait_for_project_or_headless_boot() {
 #endif
 
 #ifdef MCL_PROJECT_UPGRADER
-// Opening a project converts it, so open every folder under the projects
-// folder once. A folder that is not a project is searched one level down.
-void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
+// What the two passes over the projects folder count.
+struct UpgradeCounts {
+  uint8_t folders; // top-level folders, for the scan's bar
+  uint8_t scanned; // of those, scanned
+  uint8_t current, needed, unreadable;
+  uint8_t index, ok, no_room, failed; // the conversions
+};
+
+// Writes text_P, or n in decimal, at p and returns the end.
+char *put_P(char *p, const char *text_P) {
+  strcpy_P(p, text_P);
+  return p + strlen(p);
+}
+char *put_count(char *p, uint8_t n) {
+  mcl_gui.put_value_at(n, p);
+  return p + strlen(p);
+}
+char *put_projects(char *p, uint8_t n) {
+  p = put_count(p, n);
+  return put_P(p, n == 1 ? PSTR(" PROJECT") : PSTR(" PROJECTS"));
+}
+
+void upgrade_status(const char *text_P, uint8_t n = 0, uint8_t total = 0) {
+  char text[32];
+  put_P(text, text_P);
+  upgrade_log::status(text, n, total);
+}
+
+// Opens the projects folder, or the folder path inside it. SdFat cannot
+// open "." by name (it trims a name's trailing dots), so this changes to the
+// folder and opens the working folder.
+bool open_upgrade_dir(File *dir, const char *path) {
+  proj.chdir_projects();
+  if (path[0] && !SD.chdir(path)) {
+    return false;
+  }
+  return dir->openCwd();
+}
+
+// The top-level folders, for the scan's progress bar.
+uint8_t count_upgrade_folders() {
   File dir;
   File entry;
-  proj.chdir_projects();
-  if (!dir.open(path[0] ? path : ".", O_READ)) {
+  uint8_t n = 0;
+  if (!open_upgrade_dir(&dir, "")) {
+    return 0;
+  }
+  while (entry.openNext(&dir, O_READ)) {
+    if (entry.isDirectory() && n < 255) {
+      n++;
+    }
+    entry.close();
+  }
+  dir.close();
+  return n;
+}
+
+// Converts one project the scan listed, with a line that counts up in
+// percent and ends OK, NO ROOM or FAILED.
+void upgrade_convert(const char *path, UpgradeCounts *c) {
+  char text[32];
+  char *p = put_count(text, ++c->index);
+  *p++ = '/';
+  p = put_count(p, c->needed);
+  *p++ = ' ';
+  strncpy(p, path, text + sizeof(text) - 1 - p);
+  text[sizeof(text) - 1] = '\0';
+  upgrade_log::add_progress(text);
+
+  p = put_P(text, PSTR("UPGRADING "));
+  p = put_count(p, c->index);
+  *p++ = '/';
+  put_count(p, c->needed);
+  upgrade_log::status(text, c->index - 1, c->needed);
+
+  const uint8_t skipped = proj.upgrade_skipped;
+  proj.upgrade_scan = false;
+  const char *result;
+  if (proj.load_project(path)) {
+    result = PSTR("OK");
+    c->ok++;
+  } else if (proj.upgrade_skipped != skipped) {
+    result = PSTR("NO ROOM");
+    c->no_room++;
+  } else {
+    result = PSTR("FAILED");
+    c->failed++;
+  }
+  upgrade_log::set_right_P(result);
+}
+
+// Every folder under the projects folder once, and one level down in a
+// folder that is not a project. A scan lists each project with what it
+// needs and writes nothing; otherwise the projects it listed as UPGRADE
+// convert.
+void upgrade_walk(char *path, bool top, bool scan, UpgradeCounts *c) {
+  File dir;
+  File entry;
+  if (!open_upgrade_dir(&dir, path)) {
     return;
   }
   const uint8_t base = strlen(path);
@@ -118,18 +211,32 @@ void upgrade_projects_in(char *path, uint8_t depth, uint8_t *upgraded) {
     }
     entry.close();
     if (path[at] != '\0' && path[at] != '.') {
-      oled_display.clearDisplay();
-      oled_cursor(0, 8);
-      oled_display.println(F("UPGRADING"));
-      oled_display.println(path);
-      oled_display.display();
-      const uint8_t skipped = proj.upgrade_skipped;
-      if (proj.load_project(path)) {
-        (*upgraded)++;
-      } else if (depth && proj.upgrade_skipped == skipped) {
-        upgrade_projects_in(path, depth - 1, upgraded);
+      proj.upgrade_scan = true;
+      proj.load_project(path);
+      const uint8_t state = proj.upgrade_state;
+      if (state == UPGRADE_NOT_PROJECT) {
+        if (top) {
+          upgrade_walk(path, false, scan, c);
+        }
+      } else if (scan) {
+        const char *word = PSTR("CAN'T READ");
+        if (state == UPGRADE_NEEDED) {
+          word = PSTR("UPGRADE");
+          c->needed++;
+        } else if (state == UPGRADE_CURRENT) {
+          word = PSTR("UP TO DATE");
+          c->current++;
+        } else {
+          c->unreadable++;
+        }
+        upgrade_log::add(path, word);
+      } else if (state == UPGRADE_NEEDED) {
+        upgrade_convert(path, c);
       }
       proj.chdir_projects();
+    }
+    if (top && scan && is_dir) {
+      upgrade_status(PSTR("SCANNING"), ++c->scanned, c->folders);
     }
     path[base] = '\0';
   }
@@ -153,38 +260,98 @@ uint16_t count_upgrade_room() {
   return room > 0xFFFF ? 0xFFFF : room;
 }
 
+void upgrade_finish() __attribute__((noreturn));
+void upgrade_finish() {
+  upgrade_status(PSTR("NOW UPGRADE TO MCL " VERSION_STR));
+  upgrade_log::idle();
+}
+
+// The upgrader's one job: scan the card, say what it found, ask, then
+// convert the projects from before MCL 5.00 with a line for each. Projects
+// that already open in this MCL are not touched. It ends on its last screen,
+// so nothing after it at boot is built into the upgrader.
+void upgrade_all_projects() __attribute__((noreturn));
 void upgrade_all_projects() {
   char path[PRJ_PATH_LEN] = "";
-  uint8_t upgraded = 0;
-  // Nothing on the card is touched until the user agrees.
-  const bool confirmed =
-      mcl_gui.wait_for_confirm("Upgrade", "Convert all projects?");
+  char text[32];
+  char detail[32];
+  char *p;
+  UpgradeCounts c = {};
+  upgrade_log::begin();
+  upgrade_log::add_P(PSTR("MCL " VERSION_STR " PROJECT UPGRADE"));
+  // Nothing is read until the user starts it.
+  strcpy_P(text, PSTR("SCAN FOR PROJECTS?"));
+  detail[0] = '\0';
+  if (!upgrade_log::ask(text, detail)) {
+    upgrade_log::add_P(PSTR("STOPPED, NO PROJECT CHANGED"));
+    upgrade_finish();
+  }
+  upgrade_log::add_P(PSTR("SCANNING SD CARD"));
+  c.folders = count_upgrade_folders();
+  upgrade_status(PSTR("SCANNING"), 0, c.folders);
   proj.upgrade_skipped = 0;
-  if (confirmed) {
-    // Reading the free space of a large card takes a few seconds.
-    oled_display.clearDisplay();
-    oled_cursor(0, 8);
-    oled_display.println(F("CHECKING SD CARD"));
-    oled_display.display();
-    proj.upgrade_room = count_upgrade_room();
-    upgrade_projects_in(path, 1, &upgraded);
+  upgrade_walk(path, true, true, &c);
+
+  p = put_P(text, PSTR("FOUND "));
+  put_projects(p, c.current + c.needed + c.unreadable);
+  upgrade_log::add(text);
+  if (c.unreadable) {
+    p = put_count(text, c.unreadable);
+    put_P(p, PSTR(" CAN'T BE READ"));
+    upgrade_log::add(text);
   }
-  oled_display.clearDisplay();
-  oled_cursor(0, 8);
-  if (confirmed) {
-    oled_display.print(upgraded);
-    oled_display.println(F(" PROJECTS READY"));
-    if (proj.upgrade_skipped) {
-      oled_display.print(proj.upgrade_skipped);
-      oled_display.println(F(" LEFT: SD FULL"));
-    }
-  } else {
-    oled_display.println(F("NOTHING CHANGED"));
+  if (!c.needed) {
+    upgrade_log::add_P(PSTR("NOTHING TO UPGRADE"));
+    upgrade_finish();
   }
-  oled_display.println(F("INSTALL MCL " VERSION_STR));
-  oled_display.display();
-  while (1) {
+  p = put_count(text, c.needed);
+  p = put_P(p, PSTR(" TO UPGRADE, "));
+  p = put_count(p, c.current);
+  put_P(p, PSTR(" UP TO DATE"));
+  upgrade_log::add(text);
+
+  // Reading the free space of a large card takes a few seconds.
+  upgrade_status(PSTR("CHECKING FREE SPACE"));
+  proj.upgrade_room = count_upgrade_room();
+  if (proj.upgrade_room < c.needed) {
+    p = put_P(text, PSTR("ROOM ON CARD FOR "));
+    p = put_count(p, proj.upgrade_room);
+    p = put_P(p, PSTR(" OF "));
+    put_count(p, c.needed);
+    upgrade_log::add(text);
   }
+
+  p = put_P(text, PSTR("UPGRADE "));
+  p = put_projects(p, c.needed);
+  put_P(p, PSTR("?"));
+  detail[0] = '\0';
+  if (proj.upgrade_room < c.needed) {
+    p = put_P(detail, PSTR("ROOM FOR "));
+    put_count(p, proj.upgrade_room);
+  }
+  if (!upgrade_log::ask(text, detail)) {
+    upgrade_log::add_P(PSTR("STOPPED, NO PROJECT CHANGED"));
+    upgrade_finish();
+  }
+
+  upgrade_log::start_file();
+  upgrade_walk(path, true, false, &c);
+  upgrade_status(PSTR("DONE"), c.needed, c.needed);
+  p = put_count(text, c.ok);
+  put_P(p, PSTR(" UPGRADED"));
+  upgrade_log::add(text);
+  if (c.no_room) {
+    p = put_count(text, c.no_room);
+    put_P(p, PSTR(" LEFT, NO ROOM ON CARD"));
+    upgrade_log::add(text);
+    upgrade_log::add_P(PSTR("FREE SOME SPACE, RUN AGAIN"));
+  }
+  if (c.failed) {
+    p = put_count(text, c.failed);
+    put_P(p, PSTR(" FAILED"));
+    upgrade_log::add(text);
+  }
+  upgrade_finish();
 }
 #endif
 
@@ -308,6 +475,13 @@ const char *MCLSd::full_path(const char *path, char *buffer, size_t size) {
 }
 #endif
 bool MCLSd::load_init() {
+#ifdef MCL_PROJECT_UPGRADER
+  // The upgrader converts project files and nothing else: it never opens
+  // the config.
+  if (sd_state) {
+    upgrade_all_projects();
+  }
+#endif
   if (sd_state) {
     char path[64];
     if (mcl_cfg.cfgfile.open(full_path("/config.mcls", path, sizeof(path)), O_RDWR)) {
@@ -357,9 +531,6 @@ bool MCLSd::load_init() {
         }
         ptc_groups.load(mcl_cfg.ptc_group);
 
-#ifdef MCL_PROJECT_UPGRADER
-        upgrade_all_projects();
-#endif
         if (mcl_cfg.number_projects > 0) {
           DEBUG_PRINTLN(
               F("Project count greater than 0, try to load existing"));

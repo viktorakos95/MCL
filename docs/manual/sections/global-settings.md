@@ -105,10 +105,15 @@ The project upgrader is a separate firmware for MegaCommand and MegaCMD, `mcl_pr
 
 1. Back up the SD card.
 2. Install the upgrader.
-3. At start-up it asks `Convert all projects?`. **`Load | Yes`** converts; **`Save | No`** leaves the card unchanged and shows `NOTHING CHANGED`.
-4. It converts the older projects in the projects folder and in the folders one level below it. Each conversion writes new grid files, so it converts as many projects as the card has room for.
-5. It shows how many projects are ready (`PROJECTS READY`) and how many were left because the card is full (`LEFT: SD FULL`), then `INSTALL MCL 5.10`.
-6. Install MCL 5.10 again.
+3. At start-up it shows `PROJECT UPGRADE` and asks `SCAN FOR PROJECTS?`. **`Load | Yes`** starts the scan; **`Save | No`** stops.
+4. The scan lists every project in the projects folder, and in the folders one level below it: `UPGRADE` (from before MCL 5.00), `UP TO DATE` (opens in MCL 5.10 as it is) or `CAN'T READ`. The scan changes nothing.
+5. It asks `UPGRADE 9 PROJECTS?` (with the number found). Each conversion writes new grid files beside the old ones; when the card has room for only some of them, the question shows `ROOM FOR` and how many. **`Load | Yes`** converts them; **`Save | No`** stops with no project changed.
+6. Each project's line counts up in percent, then shows `OK`, `NO ROOM` or `FAILED`. Do not turn the unit off while a project converts.
+7. When the bottom line shows `NOW UPGRADE TO MCL 5.10`, upgrade to MCL 5.10 again.
+
+Turn Encoder 2 to scroll back through the log on the screen. From the second **`Load | Yes`** on, the log is also written to `/Logs/upgrade.txt` on the card, and each run is added to the end of it.
+
+Projects from MCL 5.00 to 5.02 are not touched: MCL 5.10 opens them directly. The upgrader does not change MCL's configuration.
 
 Do not edit project files by hand. Use the project browser, file menu and version browser from MCL.
 

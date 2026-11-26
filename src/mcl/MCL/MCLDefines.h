@@ -4,8 +4,8 @@
 
 /*
  * MCL_PROJECT_UPGRADER builds the one-off firmware that converts every
- * project on the card to the current format. It leaves out the WAV designer
- * to make room for the conversion code. MCL_DISABLE_WAV_DESIGNER leaves it
+ * project on the card to the current format. It leaves out the WAV designer,
+ * project backups and file moves to make room for the conversion code. MCL_DISABLE_WAV_DESIGNER leaves it
  * out of a size-constrained test build.
  */
 #if !defined(MCL_PROJECT_UPGRADER) && !defined(MCL_DISABLE_WAV_DESIGNER)
@@ -98,7 +98,7 @@
  * backup creation/deletion and the project version page from size-constrained
  * builds.
  */
-#ifndef MCL_DISABLE_PROJECT_BACKUP
+#if !defined(MCL_DISABLE_PROJECT_BACKUP) && !defined(MCL_PROJECT_UPGRADER)
 #define MCL_HAS_PROJECT_BACKUP 1
 #endif
 
@@ -106,7 +106,7 @@
  * File/project move mode in the file browser. Define MCL_DISABLE_FILE_MOVE to
  * keep rename/copy/delete but remove the move-destination workflow.
  */
-#ifndef MCL_DISABLE_FILE_MOVE
+#if !defined(MCL_DISABLE_FILE_MOVE) && !defined(MCL_PROJECT_UPGRADER)
 #define MCL_HAS_FILE_MOVE 1
 #endif
 

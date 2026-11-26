@@ -19,6 +19,14 @@
 #define PROJ_VERSION 3014
 #define PRJ_DIR "/Projects"
 
+#ifdef MCL_PROJECT_UPGRADER
+// What a scan found in a folder (Project::upgrade_state).
+#define UPGRADE_NOT_PROJECT 0 // no project file
+#define UPGRADE_UNREADABLE 1  // a project file MCL cannot read
+#define UPGRADE_CURRENT 2     // opens in this MCL as it is
+#define UPGRADE_NEEDED 3      // from before MCL 5.00: its tracks convert
+#endif
+
 class ATTR_PACKED() ProjectHeader {
 public:
   uint32_t version;
@@ -50,6 +58,10 @@ public:
   // left unconverted because it ran out.
   uint16_t upgrade_room;
   uint8_t upgrade_skipped;
+  // Set, load_project only reads the project's versions into upgrade_state
+  // (UPGRADE_*) and returns, writing nothing.
+  bool upgrade_scan;
+  uint8_t upgrade_state;
 #endif
 #ifdef MCL_HAS_PROJECT_BACKUP
   bool load_project_version(const char *projectname, uint8_t pair);

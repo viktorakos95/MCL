@@ -3,6 +3,7 @@
 #include "Project.h"
 #include "MCLSd.h"
 #include "MCLGUI.h"
+#include "UpgradeLog.h"
 #include "GUI/Pages/Grid/GridPages.h"
 #include "Devices/MidiSetup.h"
 #include "Sequencer/SeqTrackUtil.h"
@@ -460,6 +461,7 @@ uint8_t project_config_sample_bank_setting(const MCLSysConfigData &source) {
   return normalized_sample_bank_setting(source.md_sample_bank);
 }
 
+#ifndef MCL_PROJECT_UPGRADER // the upgrader loads no sample bank
 uint8_t project_config_sample_bank_to_load(const MCLSysConfigData &source) {
   uint8_t setting = project_config_sample_bank_setting(source);
   if (setting >= MD_SAMPLE_BANK_FIXED_FIRST &&
@@ -468,6 +470,7 @@ uint8_t project_config_sample_bank_to_load(const MCLSysConfigData &source) {
   }
   return 0;
 }
+#endif
 
 void clear_project_sample_bank(MCLSysConfigData *data) {
   if (data == nullptr) {
@@ -853,6 +856,7 @@ void normalize_project_config(MCLSysConfigData *data) {
 }
 #endif
 
+#ifndef MCL_PROJECT_UPGRADER // the upgrader applies no project config
 void apply_project_config(MCLSysConfigData *dst,
                           const MCLSysConfigData &source) {
   if (!project_config_valid(source)) {
@@ -876,6 +880,7 @@ void load_project_sample_bank(uint8_t sample_bank) {
   }
   MD.loadSampleBank(sample_bank - 1);
 }
+#endif
 
 } // namespace
 
@@ -885,10 +890,14 @@ void Project::draw_wait_popup(const char *message) {
 }
 
 void Project::draw_upgrade_progress(GridIndex grid, GridRow row) {
-#ifdef OLED_DISPLAY
   uint8_t progress = grid * (GRID_LENGTH / NUM_GRIDS) + row / NUM_GRIDS;
+#ifdef MCL_PROJECT_UPGRADER
+  upgrade_log::progress((uint16_t)progress * 100 / GRID_LENGTH);
+#elif defined(OLED_DISPLAY)
   mcl_gui.draw_progress_bar(progress, GRID_LENGTH, false, MCLGUI::s_progress_x,
                             21);
+#else
+  (void)progress;
 #endif
 }
 
@@ -1165,6 +1174,9 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   DEBUG_PRINTLN(projectname);
   file.close();
   project_loaded = false;
+#ifdef MCL_PROJECT_UPGRADER
+  upgrade_state = UPGRADE_NOT_PROJECT;
+#endif
 
   const char *project_basename = nullptr;
   if (!split_project_path(projectname, &project_basename)) {
@@ -1192,6 +1204,10 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     DEBUG_PRINTLN(F("Could not open project file"));
     return false;
   }
+#ifdef MCL_PROJECT_UPGRADER
+  // A project file: unreadable until its versions are read.
+  upgrade_state = UPGRADE_UNREADABLE;
+#endif
   ret = check_project_version();
 
   if (!ret) {
@@ -1272,6 +1288,18 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
 #endif
   }
 
+#ifdef MCL_PROJECT_UPGRADER
+  // A scan has what it needs: the versions decide what opening would do.
+  // Nothing has been written.
+  if (upgrade_scan) {
+    upgrade_state = migrate_track_storage ? UPGRADE_NEEDED : UPGRADE_CURRENT;
+    file.close();
+    for (uint8_t i = 0; i < NUM_GRIDS; i++) {
+      grids[i].close_file();
+    }
+    return true;
+  }
+#endif
 #ifdef MCL_HAS_PROJECT_CONVERSION
   bool rebuilt_grid_pair = false;
 #ifdef MCL_PROJECT_UPGRADER
@@ -1284,9 +1312,12 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     upgrade_room--;
   }
 #endif
+#ifndef MCL_PROJECT_UPGRADER
+  // The upgrader's log shows the project instead.
   if (migrate_track_storage || project_needs_update || write_grid_headers) {
     draw_wait_popup("UPGRADING PROJECT");
   }
+#endif
 
   if (migrate_track_storage) {
     if (!migrate_track_storage_versions(project_basename, &pair)) {
@@ -1315,8 +1346,11 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
       ) {
     active_grid_pair = requested_pair;
   }
-  bool applied_project_config = false;
   bool update_header = use_requested_pair;
+#ifndef MCL_PROJECT_UPGRADER
+  // The upgrader converts the files only: it applies no project config and
+  // never reads or writes MCL's config.
+  bool applied_project_config = false;
   uint8_t project_sample_bank = project_config_sample_bank_to_load(cfg);
   if (mcl_cfg.project_config) {
     apply_project_config(&mcl_cfg, cfg);
@@ -1329,6 +1363,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     mcl_cfg.md_sample_bank = project_config_sample_bank_setting(cfg);
     mcl_cfg.md_sample_bank_capture = 0;
   }
+#endif
 
 #if MCL_FEATURE_HOST_ARRANGER
   uint8_t active_arrangement_idx = cfg.active_arrangement_idx;
@@ -1388,6 +1423,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
   }
 #endif
 
+#ifndef MCL_PROJECT_UPGRADER
   strncpy(mcl_cfg.project, projectname, sizeof(mcl_cfg.project) - 1);
   mcl_cfg.project[sizeof(mcl_cfg.project) - 1] = '\0';
   if (!mcl_cfg.number_projects) { mcl_cfg.number_projects++; }
@@ -1402,6 +1438,7 @@ bool Project::load_project_impl(const char *projectname, uint8_t requested_pair,
     midi_setup.cfg_ports();
   }
   load_project_sample_bank(project_sample_bank);
+#endif
   grid_page.row_scan = GRID_LENGTH;
   project_loaded = true;
 #if MCL_FEATURE_HOST_ARRANGER
@@ -1449,10 +1486,15 @@ bool Project::read_header() {
     memset(reserved, 0, sizeof(reserved));
     if (project_config_valid(cfg)) {
       normalize_project_config(&cfg);
-    } else {
+    }
+#ifndef MCL_PROJECT_UPGRADER
+    else {
       copy_project_config(&cfg, mcl_cfg);
       clear_project_sample_bank(&cfg);
     }
+#endif
+    // The upgrader never reads MCL's config, so it leaves an invalid copy
+    // as it is: MCL fills it from its own config whenever the project opens.
     return true;
   }
 #endif
