@@ -4,31 +4,44 @@ MCL 5.10 (unreleased)
 
 Backup all of your Projects before installing MCL 5.10.
 
-Projects from MCL 5.00 to 5.02 are upgraded when they are first opened. Once
-opened in MCL 5.10, they can no longer be opened by MCL 5.0x.
+Please upgrade your Machinedrum to MDX X.20 before using MCL 5.10.
 
-On MegaCommand and MegaCMD, projects from before MCL 5.00 must first be
-converted with the project upgrader firmware, mcl_project_upgrade_1_0.hex.
-Opening one in MCL 5.10 shows UPGRADE PROJECT. See the manual's Project and
-Configuration Menu page.
+Projects from MCL 5.00 to 5.02 are upgraded when they are first opened. Once
+opened in MCL 5.10, they can no longer be opened by earlier versions of MCL.
+
+On MegaCommand and MegaCMD, MCL 5.10 no longer converts projects from
+before MCL 5.00. They are converted by a separate firmware, the project
+upgrader (mcl_project_upgrade_1_0.hex). Install it: it scans the SD card,
+lists the projects that need converting and asks before converting them.
+It writes a log to /Logs/upgrade.txt on the card. Then upgrade to MCL 5.10
+again. A project that has not been converted shows UPGRADE PROJECT when it
+is opened. See the manual's Project and Configuration Menu page.
 
 *******************
 
-- Machinedrum MDX X.20
+- Machinedrum MDX X.20 Support
 
-  MCL supports all 38 track parameters. Parameters 24 to 37 (envelope,
-  second LFO, retrig, bus sends and envelope destination) are named and
-  shown as on the Machinedrum.
+  MCL 5.10 adds support for MDX X.20's expanded parameter range: all 38
+  track parameters. Parameters 24 to 37 (envelope, second LFO, retrig, bus
+  sends and envelope destination) are named and shown as on the Machinedrum.
 
   They can be locked in the Step Editor, and used by performance
   controllers, scene locks and scene autofill.
 
-  Machines saved to the grid store all 38 parameters, the second LFO and the
-  output routing. Tracks, sounds and Kits from earlier versions start with
-  the Machinedrum's defaults for parameters 24 to 37.
+  On the Machinedrum's LFO page, its encoders set step locks and scene locks
+  for the parameters that page shows: LFO speed, depth and mix, and the
+  envelope parameters on the ENV tab.
 
-  Sending a Kit from MCL no longer resets the envelope, second LFO, retrig
-  and output routing on the Machinedrum.
+  On MegaCommand and MegaCMD, MCL sets the Machinedrum's channel MODE
+  (Global CONTROL > BASE CHANNEL) to EXPANDED when it connects, because
+  parameters 24 to 37 are sent on the extra channels. A base channel above
+  9 is lowered to 9. If the mode is set back to LEGACY on the Machinedrum,
+  MCL stops using the extra channels until it connects again.
+
+  Machinedrum tracks saved to the grid, and Machinedrum sounds, store all 38
+  parameters, the second LFO and the output routing. Tracks, sounds and Kits
+  from earlier versions start with the Machinedrum's defaults for parameters
+  24 to 37.
 
   The names of USR machines are read from the Machinedrum and shown in the
   grid and on the sequencer pages. Their parameter labels are used as
@@ -38,6 +51,61 @@ Configuration Menu page.
   the Machinedrum names it.
 
   TRX-CB is treated as a tonal machine.
+
+- Grid Page Load and Save
+
+  Load and Save are redesigned. They now open on the Grid Page itself
+  instead of on pages of their own: the left column becomes the Load or Save
+  panel and the grid stays visible.
+
+  The old pages covered the grid. With the grid in view you can see the
+  slots you are selecting, the row they load from or save to, and the slots
+  still waiting to load, so loading during a performance is easier to
+  follow.
+
+  The new encoder and arrow key behaviour is set by CONFIG > SYSTEM >
+  LOAD/SAVE (see User Interface Config below). A new install starts on
+  STAY. When MCL 5.10 is installed over MCL 5.00 to 5.02, it starts on
+  LEGACY, which keeps the encoders and arrow keys working as before. Try
+  STAY once you are used to the new panel.
+
+  The Load panel shows the load mode (LOAD, AUTO or QUE), a step count for
+  timing a load, QUANT, and LEN in Queue mode. An arrow marks the row being
+  loaded or saved, and slots waiting to load are outlined until they load.
+
+  Hold the MegaCommand's Load | Yes button, or the Machinedrum's [ Global ],
+  to edit the values on the Load panel: the load mode, QUANT, and FADE and
+  FLEN (LEN in Queue mode). Encoder 2 or [ Up ] / [ Down ] move the cursor;
+  Encoder 1 or [ Left ] / [ Right ] change the value under it. A tap of Load
+  | Yes closes Load.
+
+  While the Load panel is edited, [ Trig ] 1 to 6 set QUANT to 2 to 64
+  steps, or LEN with the cursor on LEN. Hold [ Bank A ], [ Bank B ] or
+  [ Bank C ] in Load to set the load mode and edit the Load panel with the
+  cursor on QUANT.
+
+  Load and Save open again after a visit to the Mixer Page or the Step
+  Editor.
+
+- User Interface Config
+
+  CONFIG > SYSTEM > LOAD/SAVE chooses how Load and Save behave:
+
+   LEGACY (after an upgrade from MCL 5.00 to 5.02)
+     While Load is open, the encoders set the load mode, LEN and QUANT.
+     The arrow keys close Load or Save and move the Grid Page cursor.
+     Load and Save close after a load or save.
+
+   CLOSE
+     While Load or Save is open, the encoders and arrow keys navigate the
+     grid: [ Up ] / [ Down ] move to another row, [ Left ] / [ Right ]
+     scroll the columns shown.
+     Load and Save close after a load or save.
+
+   STAY (the default for a new install)
+     While Load or Save is open, the encoders and arrow keys navigate the
+     grid, as in CLOSE.
+     Load and Save stay open after a load or save, ready for the next one.
 
 - Microtiming Popup
 
@@ -70,6 +138,8 @@ Configuration Menu page.
 
   [ Scale ] alone acts when it is released.
 
+  [ Rec ] + [ Play ] (live record) no longer turns fill on.
+
 - Swing and Slide
 
   New tracks, and tracks built for empty slots, start with the default swing
@@ -78,8 +148,10 @@ Configuration Menu page.
   When the Machinedrum's Swing or Slide window is set to ALL, an edit of the
   track's steps is copied to every Machinedrum track.
 
-  A length or speed change on the Machinedrum's SCALE page goes to the track
-  or to all tracks, as chosen there.
+  In Enhanced mode, track lengths and speeds can be set from the
+  Machinedrum's [ Scale ] menu. Press [ Yes ] there to switch between ALL,
+  which sets every track, and T 01 to T 16, which sets only the track shown.
+  The page open in MCL no longer decides which tracks change.
 
 - Pattern Import
 
@@ -91,83 +163,45 @@ Configuration Menu page.
 
   Microtiming keeps its timing when MDX patterns are imported.
 
-- Grid Page Load and Save
-
-  Load and Save are redesigned. On MegaCommand, MegaCMD and TBD they now
-  open on the Grid Page itself instead of on pages of their own: the left
-  column becomes the Load or Save panel and the grid stays visible.
-
-  The old pages covered the grid. With the grid in view you can see the
-  slots you are selecting, the row they load from or save to, and the slots
-  still waiting to load, so loading during a performance is easier to
-  follow.
-
-  The new encoder and arrow key behaviour is optional. CONFIG > SYSTEM >
-  LOAD/SAVE is LEGACY by default, which keeps the encoders and arrow keys
-  working as before (see User Interface Config below).
-
-  The Load panel shows the load mode (LOAD, AUTO or QUE), a step count for
-  timing a load, QUANT, and LEN in Queue mode. An arrow marks the row being
-  loaded or saved, and slots waiting to load are outlined until they load.
-
-  Hold the MegaCommand's Load | Yes button, or the Machinedrum's [ Global ],
-  to edit the values on the Load panel: the load mode, QUANT, and FADE and
-  FLEN (LEN in Queue mode). Encoder 2 or [ Up ] / [ Down ] move the cursor;
-  Encoder 1 or [ Left ] / [ Right ] change the value under it. A tap of Load
-  | Yes closes Load.
-
-  While the Load panel is edited, [ Trig ] 1 to 6 set QUANT to 2 to 64
-  steps.
-
-  Load and Save open again after a visit to the Mixer Page or the Step
-  Editor.
-
-- User Interface Config
-
-  CONFIG > SYSTEM > LOAD/SAVE chooses how Load and Save behave:
-
-   LEGACY = the default. While Load is open, the encoders set the load mode,
-   LEN and QUANT. The arrow keys close Load or Save and move the Grid Page
-   cursor. Load and Save close after a load or save.
-   CLOSE = while Load is open, the encoders and arrow keys navigate the grid:
-   [ Up ] / [ Down ] move to another row and [ Left ] / [ Right ] scroll the
-   columns shown. On Save the arrow keys close Save. Load and Save close
-   after a load or save.
-   STAY = while Load or Save is open, the encoders and arrow keys navigate
-   the grid: [ Up ] / [ Down ] move to another row and [ Left ] / [ Right ]
-   scroll the columns shown. Load and Save stay open after a load or save,
-   ready for the next one.
-
 - Fade
 
-  Load can fade the levels of Machinedrum tracks as their slots load, in
-  Manual and Auto mode.
+  Load can fade Machinedrum tracks out and in as their slots load, in
+  Manual and Auto mode. Queue loads do not fade.
 
-  In Load, tap [ Bank D ] (Slide) to turn FADE on or off. Hold it to edit
-  the Load panel with the cursor on FADE: the fade mode, and under it the
-  fade length (FLEN).
+  In Load:
 
-  In fade mode AUT, each track picks its own direction from what it is
-  playing when the load arrives:
+   Tap [ Bank D ] (Slide)
+     Turns FADE on or off.
 
-   Playing another slot = that slot fades out, the new slot switches in,
-   then fades in.
-   Playing the slot being loaded = it fades out and stays silent.
-   Silent = the new slot fades in.
+   Hold [ Bank D ]
+     Edits the fade mode (FADE) and the fade length (FLEN) on the Load
+     panel. [ Trig ] 1 to 8 set FLEN to 2 to 256 steps.
 
-  Fade modes OUT and IN make every loaded track fade out or fade in.
+  The fade modes:
 
-  A fade lasts the QUANT length, or FLEN steps when FLEN is set (up to 256).
+   MIX
+     When a slot loads, the fade direction is determined automatically:
+       If the loaded slot is the same as the playing slot, it fades out and
+         stays silent.
+       If the track is playing a different slot, that slot fades out, then
+         the loaded slot fades in.
+       If the track is silent, the loaded slot fades in.
+
+   OUT
+     Every loaded track fades out.
+
+   IN
+     Every loaded track fades in.
+
+  A fade lasts FLEN steps, or the QUANT length when FLEN is "-".
 
   A load made while the sequencer is stopped fades when [ Play ] is pressed.
 
 - Chains
 
-  A Manual or Auto load on a column that is chaining lets the chain run
-  until the load's QUANT point, and loads there.
-
-  [ Bank ] + [ Trig ] row loads do the same, and leave the columns outside
-  their groups chaining.
+  A Manual or Auto load on a column that is chaining lets the running chain
+  continue until the load's QUANT point, and loads there. Previously, loading
+  would break chain loops immediately.
 
 - Projects
 
@@ -194,8 +228,6 @@ Configuration Menu page.
 
   SD card reads and grid slot seeks are faster.
 
-  The group select icons animate on MegaCMD again.
-
 - Bug Fixes / Improvements
 
   Fixed project cloning on AVR copying row labels but leaving out the track
@@ -215,6 +247,21 @@ Configuration Menu page.
 
   Fixed probability conditions in patterns received from the Machinedrum
   playing at the mirrored percentage: a 90% step played at 10%.
+
+  Fixed MID machines leaving notes hanging. A slide on NOTE, N2 or N3, or a
+  lock on a step that plays no note, changed the note while it was
+  sounding, so its Note Off went to another pitch. NOTE, N2, N3, LEN and VEL
+  locks now apply only on steps that play a note, and these parameters no
+  longer slide.
+
+  Fixed PCHG on MID machines sending program 0 when set to OFF, and every
+  other program one too high. It now sends the program the Machinedrum
+  sends, so Kits and patterns made with earlier versions send a program one
+  lower than before.
+
+  MID machines keep their pitch bend, mod wheel, aftertouch and CC values
+  when the sequencer stops, as on the Machinedrum. MCL no longer sends the
+  Kit's values on stop.
 
   Fixed the Sound Manager trying to load a folder as a sound, instead of
   opening it, after the Load Project page had been visited.
