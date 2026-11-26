@@ -324,8 +324,8 @@ void MCLSeq::onMidiStopCallback(uint32_t clock_count) {
   if (seq_grid_x_runs_md_tracks()) {
     MD.reset_dsp_params();
 
+    // A MID track's controllers keep their last values, as on the Machinedrum.
     SeqTrackUtil::for_each_md_track([](auto &track, uint8_t) {
-      track.reset_params();
       track.send_notes_off();
       reset_slide_track_locks(track);
     });
