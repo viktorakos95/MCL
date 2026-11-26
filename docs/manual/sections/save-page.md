@@ -37,7 +37,7 @@ The actual saved data depends on the selected device and slot type.
 | **[Scale]**, **`Page`** | Toggle Grid X / Grid Y while selecting. |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold to open group selection; release to save the selected groups. |
 | **[No/Exit]**, **`Save | No`**, **`Load | Yes`** | Close Save. |
-| **[Up/Down]**, **[Left/Right]** | With `LOAD/SAVE` at `STAY`, **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Otherwise they close Save and move the Grid Page cursor. |
+| **[Up/Down]**, **[Left/Right]** | With `LOAD/SAVE` at `CLOSE` or `STAY`, **[Up/Down]** move to another row and **[Left/Right]** scroll the columns shown. Save stays open. At `LEGACY` they close Save and move the Grid Page cursor. |
 | **[Rec]**, **[Classic/Extended]** | Open the Step Editor, or the Mixer Page while the sequencer plays. Save opens again when you return to the Grid Page. |
 | Other keys, including **[Play]** and **[Stop]** | Close Save and do their usual job. |
 

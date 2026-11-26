@@ -1882,12 +1882,11 @@ static void io_load_knobs(Encoder **encoders) {
   encoders[3] = &gridio_param4;
 }
 
-// Whether the arrows move the grid with the panel left armed: Load's in
-// CLOSE and STAY, Save's in STAY. In LEGACY they disarm and move the
+// Whether the arrows move the grid with the panel left armed: Load's and
+// Save's alike, in CLOSE and STAY. In LEGACY they disarm and move the
 // cursor, as MCL always did.
-static bool io_arrows_scroll(bool load) {
-  return mcl_cfg.io_stay == LOAD_SAVE_STAY ||
-         (load && mcl_cfg.io_stay == LOAD_SAVE_CLOSE);
+static bool io_arrows_scroll() {
+  return mcl_cfg.io_stay != LOAD_SAVE_LEGACY;
 }
 
 // Start or end editing the Load panel's rows: knob 1 changes the chosen
@@ -2457,7 +2456,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         // The trigs pick the columns, so where the arrows move the grid
         // (io_arrows_scroll) LEFT/RIGHT scroll the columns shown by one
         // straight away and the panel stays armed.
-        if (io_arrows_scroll(load)) {
+        if (io_arrows_scroll()) {
           int8_t base = param1.cur - cur_col + (key == MDX_KEY_RIGHT ? 1 : -1);
           if (base >= 0 && base <= (int8_t)getWidth() - MAX_VISIBLE_COLS) {
             io_set_view(base);
@@ -2479,7 +2478,7 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         }
         // Where the arrows move the grid, UP/DOWN move the armed row and the
         // panel stays armed; otherwise they disarm, as below.
-        if (io_arrows_scroll(load)) {
+        if (io_arrows_scroll()) {
           return false;
         }
         io_end();
