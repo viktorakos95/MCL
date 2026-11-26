@@ -42,7 +42,7 @@ Use the Slot Menu `SOUND` option to make a slot load sequence-only.
 | --- | --- |
 | **[Trig]** keys | Select slots. Releasing the trigs loads them. |
 | **[Scale]**, **`Page`** | Toggle Grid X / Grid Y while selecting. |
-| **[Bank A/B/C]** | Set the load mode: Manual, Auto or Queue. |
+| **[Bank A/B/C]** | Set the load mode: Manual, Auto or Queue. Hold to also edit the Load panel with the cursor on `QUANT`. |
 | **[Bank D]** (the Slide key) | Tap to turn `FADE` off or on (not in Queue mode). Hold to edit the Load panel with the cursor on `FADE` (see Fade). |
 | **[Function]** | In Manual mode, open `DEST` to choose a destination (see Destination). |
 | **[Yes/Enter]**, **`Shift | Menu`** | Hold for group selection; release to load the selected groups. |
@@ -68,7 +68,7 @@ A new install starts on `STAY`. When MCL 5.10 is installed over MCL 5.00 to 5.02
 
 ## Editing The Load Panel
 
-Hold **`Load | Yes`**, or **[Global]** on the Machinedrum, to edit the values on the Load panel. Holding **[Bank D]** opens the same edit with the cursor on `FADE` (see Fade).
+Hold **`Load | Yes`**, or **[Global]** on the Machinedrum, to edit the values on the Load panel. Holding **[Bank A]**, **[Bank B]** or **[Bank C]** sets the load mode and opens the same edit with the cursor on `QUANT`. Holding **[Bank D]** opens it with the cursor on `FADE` (see Fade).
 
 ![load edit](../assets/images/load_edit.png)
 
@@ -82,6 +82,7 @@ While it is held, a cursor moves over the values:
 - Encoder 2 or **[Up/Down]** move the cursor. The value under it is inverted.
 - Encoder 1 or **[Left/Right]** change it.
 - On the load mode or `QUANT`, **[Trig]** 1 to 6 set `QUANT` to 2 to 64 steps, doubling with each trig; the trigs above set 64. The trig for the current value is lit.
+- On `LEN`, **[Trig]** 1 to 6 set `LEN` to 2 to 64 steps the same way. Press the lit trig again to set `LEN` back to `-`.
 - On `FADE` or `FLEN`, the trigs set the fade length (see Fade).
 
 While the panel is edited, the step count and the row are hidden.
@@ -192,7 +193,7 @@ In Queue mode, `LEN` sets a length override.
 | `-` | Use the queued slot's stored length. |
 | 2-64 | Override the queued length in steps. |
 
-Turning the encoder that sets `LEN` steps through powers of two. Hold the encoder's button while turning for the values in between, such as `3`, `5` or `6`.
+Turning the encoder that sets `LEN` steps through powers of two. Hold the encoder's button while turning for the values in between, such as `3`, `5` or `6`. While the Load panel is edited, the trigs set `LEN` too (see Editing The Load Panel).
 
 This is useful when a short track should loop for a longer phrase, or when a group of slots should advance together despite having different stored lengths.
 

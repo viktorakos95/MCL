@@ -1863,6 +1863,26 @@ static bool io_fade_edit() {
           clock_diff(io_slide_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS);
 }
 
+// A mode key ([Bank A-C]) held on Load, or 0: its press sets the mode; once
+// held past a tap the rows are edited with the cursor on QUANT, which the
+// trigs set (in Queue, Down moves it to LEN, which they set too). Until the
+// hold time the trigs pick slots and their LEDs show the selection, so a
+// tap shows nothing more than the mode. Released, the cursor goes back
+// where it was.
+static uint8_t io_mode_hold;
+static uint16_t io_mode_hold_clock;
+static uint8_t io_mode_hold_back;
+static void io_mode_hold_end() {
+  if (io_mode_hold) {
+    io_menu_line.cur = io_mode_hold_back;
+    io_mode_hold = 0;
+  }
+}
+static bool io_mode_hold_edit() {
+  return io_mode_hold &&
+         clock_diff(io_mode_hold_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS;
+}
+
 // One step of FADE's mode, in one order everywhere: - (off), MIX, OUT, IN.
 // Off keeps the direction, so a tap turns FADE back on in its last mode.
 static void io_step_fade_mode(int8_t dir) {
@@ -1965,6 +1985,7 @@ void GridPage::io_begin(uint8_t mode) {
   io_edit_leds = IO_LEDS_SELECTION;
   io_slide_end();
   io_slide_used = false;
+  io_mode_hold_end();
   GridIOPage::old_grid = cur_grid;
   io_saved_grid = cur_grid;
   draw_encoders = false;
@@ -2024,7 +2045,7 @@ void GridPage::io_loop() {
             clock_diff(io_tap_clock, read_clock_ms()) >= IO_EDIT_HOLD_MS;
   const bool edit = !GridIOPage::show_offset &&
                     (io_held || key_interface.is_key_down(MDX_KEY_PATSONG) ||
-                     io_fade_edit());
+                     io_fade_edit() || io_mode_hold_edit());
   if (edit != io_editing) {
     io_rows_edit(encoders, edit);
   }
@@ -2040,17 +2061,18 @@ void GridPage::io_loop() {
       io_setting_step(dir, BUTTON_DOWN(Buttons.ENCODER1));
     }
   }
-  // While the mode or QUANT, or FADE, is edited the trig matching QUANT's or
-  // the fade length's value is lit: trig n is 2^n steps, so QUANT's LED bit
-  // is its step count halved (none for a count that is not a power of two)
-  // and a fade length code of n + 1 lights trig n. Otherwise the
-  // selection's LEDs show.
+  // While the mode or QUANT, Queue's LEN, or FADE, is edited the trig
+  // matching QUANT's, LEN's or the fade length's value is lit: trig n is 2^n
+  // steps, so QUANT's and LEN's LED bit is the step count halved (none for
+  // a count that is not a power of two) and a fade length code of n + 1
+  // lights trig n. Otherwise the selection's LEDs show.
   uint16_t leds = IO_LEDS_SELECTION;
   if ((io_editing || io_slide) && !GridIOPage::show_offset) {
     const uint8_t item = io_item();
-    if (item <= IO_ITEM_QUANT) {
-      const uint8_t quant = mcl_cfg.chain_load_quant;
-      leds = (quant & (quant - 1)) ? 0 : quant >> 1;
+    if (item <= IO_ITEM_QLEN) {
+      const uint8_t steps = item == IO_ITEM_QLEN ? mcl_cfg.chain_queue_length
+                                                 : mcl_cfg.chain_load_quant;
+      leds = (steps & (steps - 1)) ? 0 : steps >> 1;
     } else if (item >= IO_ITEM_FMODE) {
       const uint8_t len = mcl_cfg.load_fade_len;
       // LEN's trig, with FADE on or off (LEN shows either way).
@@ -2319,9 +2341,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
     // Editing the rows, or Slide held: the trigs set values, not slots. Trig
     // n sets QUANT, or the FADE length (turning FADE on), to 2^n steps, the
     // knob's powers of two: QUANT to 64 on trigs 1-6 (trigs 7-16 set 64
-    // too), on QUANT or on the mode, the cursor's first stop; the fade to
-    // 256 on trigs 1-8 (trigs 9-16 set 256 too; either FADE stop). On
-    // Queue's LEN they do nothing.
+    // too), on QUANT or on the mode, the cursor's first stop, or with a
+    // mode key held; Queue's LEN to 64 the same way on LEN, the lit trig
+    // again back to "-"; the fade to 256 on trigs 1-8 (trigs 9-16 set 256
+    // too; either FADE stop).
     if ((io_editing || io_slide) && !GridIOPage::show_track_type &&
         track < 16) {
       if (event->mask == EVENT_BUTTON_PRESSED) {
@@ -2330,6 +2353,10 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         io_slide_used |= io_slide;
         if (GridIOPage::show_offset) {
           // Picking a destination: the settings stay as they are.
+        } else if (item == IO_ITEM_QLEN) {
+          const uint8_t len = track < 6 ? 2 << track : 64;
+          gridio_param2.cur =
+              track < 6 && (uint8_t)gridio_param2.cur == len ? 1 : len;
         } else if (item <= IO_ITEM_QUANT) {
           // The mode or QUANT. Trigs past 6 set QUANT's maximum, 64.
           gridio_param4.cur = track < 6 ? 2 << track : 64;
@@ -2444,6 +2471,15 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         if (load && !GridIOPage::show_offset &&
             !key_interface.is_key_down(MDX_KEY_FUNC)) {
           gridload_param1.cur = key - MDX_KEY_BANKA + 1;
+          // Held, the edit on QUANT (io_mode_hold_edit), not while FADE is
+          // held.
+          if (!io_slide) {
+            io_mode_hold_end();
+            io_mode_hold_back = io_menu_line.cur;
+            io_mode_hold = key;
+            io_mode_hold_clock = read_clock_ms();
+            io_menu_line.cur = IO_ITEM_QUANT;
+          }
         }
         return true;
       case MDX_KEY_LEFT:
@@ -2497,6 +2533,11 @@ bool GridPage::io_handleEvent(gui_event_t *event) {
         return false;
       }
       }
+    }
+    if (event->mask == EVENT_BUTTON_RELEASED && io_mode_hold &&
+        key == io_mode_hold) {
+      io_mode_hold_end();
+      return true;
     }
     if (event->mask == EVENT_BUTTON_RELEASED && key == MDX_KEY_BANKD) {
       // A tap: let go before the hold time with nothing used. A longer
