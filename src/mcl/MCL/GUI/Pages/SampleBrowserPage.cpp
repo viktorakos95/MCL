@@ -14,13 +14,30 @@ static const char *const c_syx_suffix = ".syx";
 
 static bool s_query_returned = false;
 
+#ifdef MCL_BLACKBOX
+// The Blackbox's SAMPLE button (src/mcl_bb/platform/bb_mcl.cpp): this browser in
+// "cable mode" plays the file from the Blackbox into the MD's input while its RAM
+// record runs, instead of sending it over SDS; listening while browsing is optional.
+extern "C" volatile uint8_t bb_cable_mode;
+extern "C" void bb_sample_back(void);
+extern "C" void bb_sample_browse(const char *name);
+extern "C" void bb_sample_record(const char *name);
+#endif
+
 void SampleBrowserPage::setup() {
   char path[64];
   SD.mkdir(mcl_sd.full_path(c_wav_root, path, sizeof(path)), true);
   SD.mkdir(mcl_sd.full_path(c_syx_root, path, sizeof(path)), true);
   sysex = MD.midi->midiSysex;
   FileBrowserPage::setup();
+#ifdef MCL_BLACKBOX
+  // The whole card: the Blackbox's own sample folders as well as MCL's.
+  card_root = true;
+  strcpy(lwd, "/");
+  SD.chdir("/");
+#else
   _cd(mcl_sd.full_path(c_wav_root, path, sizeof(path)));
+#endif
   position.reset();
 }
 
@@ -42,8 +59,18 @@ void SampleBrowserPage::display() {
     uint8_t len = strlen(temp_entry);
 
     if (len > 4) {
+#ifndef __AVR__
+      bool is_wav = strcasecmp(c_wav_suffix, (&temp_entry[len - 4])) == 0;
+      bool is_syx = strcasecmp(c_syx_suffix, (&temp_entry[len - 4])) == 0;
+#else
       bool is_wav = strcmp(c_wav_suffix, (&temp_entry[len - 4])) == 0;
       bool is_syx = strcmp(c_syx_suffix, (&temp_entry[len - 4])) == 0;
+#endif
+#ifdef MCL_BLACKBOX
+      if (is_wav && bb_cable_mode) {
+        bb_sample_browse(temp_entry);  // (plays it if listening is on)
+      }
+#endif
       Wav wav_file;
 
       uint32_t size = 0;
@@ -223,6 +250,12 @@ void SampleBrowserPage::on_new() {
 
 void SampleBrowserPage::on_cancel() {
   pending_action = 0;
+#ifdef MCL_BLACKBOX
+  if (bb_cable_mode && !show_samplemgr) {                      // the Blackbox's SAMPLE view: NO (MCL's or the Machinedrum's key) goes back to it
+    bb_sample_back();
+    return;
+  }
+#endif
   if (show_samplemgr) {
     show_samplemgr = false;
     //init(false);
@@ -233,6 +266,12 @@ void SampleBrowserPage::on_cancel() {
 }
 
 void SampleBrowserPage::on_select(const char *__) {
+#ifdef MCL_BLACKBOX
+  if (bb_cable_mode && !show_samplemgr) {
+    bb_sample_record(__);
+    return;
+  }
+#endif
   if (!show_samplemgr) {
     pending_action = PA_SELECT;
     show_ram_slots = false;

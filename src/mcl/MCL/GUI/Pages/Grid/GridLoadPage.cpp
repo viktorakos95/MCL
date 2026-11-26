@@ -31,6 +31,9 @@ const char *const load_mode_short_labels[] PROGMEM = {
 static void copy_load_mode_label(char *str, uint8_t mode, bool short_label) {
   const char *const *labels =
       short_label ? load_mode_short_labels : load_mode_labels;
+  if (mode < LOAD_MANUAL || mode > LOAD_QUEUE) {
+    mode = LOAD_MANUAL;  // (a stray value would index past the 3-entry table)
+  }
   strcpy_P(str, (const char *)pgm_read_ptr(&labels[mode - LOAD_MANUAL]));
 }
 
@@ -45,6 +48,9 @@ void GridLoadPage::init() {
 #endif
   key_interface.on();
   // GUI.display();
+  if (mcl_cfg.load_mode < LOAD_MANUAL || mcl_cfg.load_mode > LOAD_QUEUE) {
+    mcl_cfg.load_mode = LOAD_MANUAL;
+  }
   encoders[kLoadModeEncoder]->cur = mcl_cfg.load_mode;
   encoders[kLoadLenEncoder]->cur = mcl_cfg.chain_queue_length;
   encoders[3]->cur = mcl_cfg.chain_load_quant;

@@ -168,7 +168,14 @@ void beat_repeat_tick(MidiUartClass *uart) {
   }
 
   uint8_t rate = beat_repeat_normalized_rate(mcl_cfg.beat_repeat_rate);
-  uint8_t period = pgm_read_byte(&BEAT_REPEAT_DIV192_PERIOD[rate]);
+  // The table is in AVR units (12 a 16th). Elsewhere div192th_counter runs at
+  // div192th_ticks_per_16th() a 16th (6 * clock_interpolation: 48 or 96 on the
+  // ARM builds), and the fixed table fired every rate 4-8x too fast there.
+  uint32_t period = MidiClock.scale_legacy_div192_to_current(
+      pgm_read_byte(&BEAT_REPEAT_DIV192_PERIOD[rate]));
+  if (period == 0) {
+    period = 1;
+  }
 
   // Deliberately no "fire instantly on newly-pressed pad" case: every hit,
   // including the very first one after pressing, waits for this grid point

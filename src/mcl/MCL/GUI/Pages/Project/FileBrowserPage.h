@@ -53,7 +53,11 @@ class FileBrowserFileTypes {
   bool compare(const char *str) {
     for (uint8_t n = 0; n < count; n++) {
       DEBUG_PRINT(F("Comparing ")); DEBUG_PRINT(str); DEBUG_PRINT(F(" ")); DEBUG_PRINTLN(types[n]);
+#ifndef __AVR__
+      if (strcasecmp(str, types[n]) == 0) {  // (FAT short names are upper case)
+#else
       if (strcmp(str, types[n]) == 0) {
+#endif
         DEBUG_PRINTLN(F("match"));
         return true;
       }
@@ -100,6 +104,11 @@ public:
   char lwd[128];
   // Files are listed without their suffix: set by a browser of one file type.
   bool hide_suffix;
+#ifdef MCL_BLACKBOX
+  // Browse from the card's root rather than MCL's folder (the sample manager
+  // on the Blackbox: its samples are elsewhere on the shared card).
+  bool card_root = false;
+#endif
   static char title[12];
   static char str_save[16];
   uint8_t cur_row;

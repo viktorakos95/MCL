@@ -156,6 +156,7 @@ void RAMPage::setup_ram_rec(uint8_t track, uint8_t model, uint8_t lev,
                             uint8_t source, uint8_t pan,
                             uint8_t linked_track) {
   MDTrack md_track;
+  md_track.init(); // (mod_data: the arp / LFO settings the track loads with; left uninitialised they were stack garbage)
   MDSeqTrack md_seq_track;
   bool clear_locks = true;
 
@@ -391,6 +392,7 @@ bool RAMPage::slice(uint8_t track, uint8_t linked_track) {
 void RAMPage::setup_ram_play(uint8_t track, uint8_t model, uint8_t pan,
                              uint8_t linked_track) {
   MDTrack md_track;
+  md_track.init(); // (mod_data: the arp / LFO settings the track loads with; left uninitialised they were stack garbage)
   MDSeqTrack md_seq_track;
 
   bool clear_locks = true;

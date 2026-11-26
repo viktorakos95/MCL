@@ -423,7 +423,11 @@ void FileBrowserPage::_cd_up() {
   DEBUG_PRINTLN(F("cd_up"));
   // don't cd up if we are at the root
 #ifndef __AVR__
-  if (mcl_sd.mcl_root[0] == '\0') {
+  if (mcl_sd.mcl_root[0] == '\0'
+#ifdef MCL_BLACKBOX
+      || card_root
+#endif
+  ) {
     if (strlen(lwd) < 2) {
       init();
       return;
@@ -458,7 +462,11 @@ void FileBrowserPage::_cd_up() {
   // in case root is trimmed, add it back
   if (lwd[0] == '\0') {
 #ifndef __AVR__
-    if (mcl_sd.mcl_root[0] == '\0') {
+    if (mcl_sd.mcl_root[0] == '\0'
+#ifdef MCL_BLACKBOX
+        || card_root
+#endif
+    ) {
       strcpy_P(lwd, mclstr_root_path);
     } else {
       strcpy(lwd, mcl_sd.mcl_root);
@@ -502,7 +510,11 @@ bool FileBrowserPage::_cd(const char *child) {
   file.close();
 #ifndef __AVR__
   char rooted_child[sizeof(lwd)];
-  if (mcl_sd.mcl_root[0] != '\0' && child[0] == '/') {
+  if (mcl_sd.mcl_root[0] != '\0' && child[0] == '/'
+#ifdef MCL_BLACKBOX
+      && !card_root
+#endif
+  ) {
     child = mcl_sd.full_path(child, rooted_child, sizeof(rooted_child));
   }
 #endif
@@ -522,6 +534,12 @@ bool FileBrowserPage::_cd(const char *child) {
     return false;
   }
   const char *ptr = child;
+#ifdef MCL_BLACKBOX
+  if (!absolute_child && lwd[0] != '\0') {
+    // the card's current folder is MCL-wide: other parts (grid / project files while a sequence plays) move it; a child is relative to the folder shown here
+    SD.chdir(lwd);
+  }
+#endif
 
   if (child[0] == '/' && child[1] != '\0') {
     SD.chdir("/");
