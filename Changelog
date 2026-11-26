@@ -13,9 +13,9 @@ On MegaCommand and MegaCMD, MCL 5.10 no longer converts projects from
 before MCL 5.00. They are converted by a separate firmware, the project
 upgrader (mcl_project_upgrade_1_0.hex). Install it: it scans the SD card,
 lists the projects that need converting and asks before converting them.
-It writes a log to /Logs/upgrade.txt on the card. Then upgrade to MCL 5.10
-again. A project that has not been converted shows UPGRADE PROJECT when it
-is opened. See the manual's Project and Configuration Menu page.
+Then upgrade to MCL 5.10 again. A project that has not been converted
+shows UPGRADE PROJECT when it is opened. See the manual's Project and
+Configuration Menu page.
 
 *******************
 
